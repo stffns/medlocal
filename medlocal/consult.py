@@ -27,11 +27,9 @@ RULES:
 1. ONLY use information from the protocols. Never invent medical information.
 2. Be a GUIDE: explain what to look for, what to do, and why each step matters.
 3. Include dosages with weight/age ranges when the protocol provides them.
-4. NEVER suggest a drug the patient is allergic to.
-5. CRITICAL: Respond in the SAME LANGUAGE as the question. If the question is in Amharic, respond in Amharic. If in French, respond in French. If in Spanish, respond in Spanish. The field labels (condition, assessment, actions) stay in that language too.
-6. Always ask about vaccination status for children with fever + rash.
-7. BEFORE recommending any medication, your ask_also MUST include: "Any known drug allergies?" This is mandatory whenever antibiotics, antimalarials, or any medication is recommended.
-8. When the query describes symptoms without confirmation, ask_also should include the key questions needed to confirm the diagnosis BEFORE treating.
+4. NEVER recommend a drug the patient is allergic to. Only recommend SAFE alternatives.
+5. Respond in the SAME LANGUAGE as the question.
+6. BEFORE recommending any medication, ask_also MUST include drug allergy verification.
 
 Respond with a JSON object following the provided schema. For each field:
 - condition: Name the suspected condition (e.g. "Measles", not "Measles Who")
@@ -81,7 +79,7 @@ def consult(
     # --- Filter by relevance but keep diverse results ---
     best_score = max(r.score for r in results)
     threshold = best_score * 0.03  # low threshold to include differential diagnoses
-    relevant = [r for r in results if r.score >= threshold][:5]  # max 5 to avoid confusion
+    relevant = [r for r in results if r.score >= threshold][:4]  # max 4 — less noise for small models
     if not relevant:
         result = {
             "answer": _REFER_MSG,
@@ -233,11 +231,23 @@ _CONSULT_SCHEMA = {
 }
 
 
+def _clean_protocol_refs(text: str) -> str:
+    """Remove protocol ID references that small models inject."""
+    import re as _re
+    # Remove patterns like: (Protocol 1), (Protocol ID '1'), (Protocolo 7)
+    text = _re.sub(r"\s*\(Protocol(?:o)?\s*(?:ID\s*)?'?\d+'?\)", "", text, flags=_re.IGNORECASE)
+    # Remove standalone "Protocol X" references
+    text = _re.sub(r"\bProtocol(?:o)?\s*(?:ID\s*)?'?\d+'?(?:\s*\([^)]*\))?", "", text, flags=_re.IGNORECASE)
+    # Clean up double spaces
+    text = _re.sub(r"  +", " ", text).strip()
+    return text
+
+
 def _format_structured(data: dict) -> str:
     """Format structured JSON response into readable markdown."""
     parts = []
-    condition = data.get("condition", "")
-    assessment = data.get("assessment", "")
+    condition = _clean_protocol_refs(data.get("condition", ""))
+    assessment = _clean_protocol_refs(data.get("assessment", ""))
     if condition:
         parts.append(f"**Assessment:** **{condition}** — {assessment}")
     else:
@@ -247,16 +257,17 @@ def _format_structured(data: dict) -> str:
     if actions:
         parts.append("**Actions:**")
         for i, a in enumerate(actions, 1):
-            # Strip leading numbers/bullets that the model may inject (e.g. "1. ", "- ")
             import re as _re
             cleaned = _re.sub(r"^\s*\d+[\.\)]\s*", "", a)
+            cleaned = _clean_protocol_refs(cleaned)
             parts.append(f"{i}. {cleaned}")
 
     refer = data.get("refer_if", [])
     if refer:
-        parts.append("**Refer if:** " + "; ".join(refer))
+        cleaned_refer = [_clean_protocol_refs(r) for r in refer]
+        parts.append("**Refer if:** " + "; ".join(cleaned_refer))
 
-    source = data.get("source", "")
+    source = _clean_protocol_refs(data.get("source", ""))
     if source:
         parts.append(f"**Source:** {source}")
 
