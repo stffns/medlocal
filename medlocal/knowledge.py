@@ -27,8 +27,9 @@ class KnowledgeBase:
     def __init__(self, cfg: MedLocalConfig) -> None:
         Path(cfg.core_db).parent.mkdir(parents=True, exist_ok=True)
         Path(cfg.local_db).parent.mkdir(parents=True, exist_ok=True)
-        self._core = Memory(db=cfg.core_db, profile="medlocal-core")
-        self._local = Memory(db=cfg.local_db, profile="medlocal-local")
+        # Larger chunks for medical protocols — keeps title+symptoms+treatment together
+        self._core = Memory(db=cfg.core_db, profile="medlocal-core", chunk_size=2048, chunk_overlap=256)
+        self._local = Memory(db=cfg.local_db, profile="medlocal-local", chunk_size=2048, chunk_overlap=256)
 
     def search(self, query: str, top_k: int = 5) -> list[SearchResult]:
         """Federated search across both profiles, ranked by score."""
