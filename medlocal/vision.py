@@ -133,8 +133,13 @@ def triage_and_consult(
     image_path: str,
     kb: KnowledgeBase,
     cfg: MedLocalConfig,
+    *,
+    user_context: str = "",
 ) -> dict:
     """Full pipeline: image → visual description → protocol retrieval → clinical guidance.
+
+    Args:
+        user_context: Additional symptoms/context provided by the health worker.
 
     Returns dict with: description, answer, sources, confidence, emergency.
     """
@@ -143,8 +148,13 @@ def triage_and_consult(
     # Step 1: Describe what we see
     description = triage(image_path, cfg.llm)
 
-    # Step 2: Use the description to consult protocols
-    result = consult(description, kb, cfg.llm)
+    # Step 2: Combine visual findings with CHW context
+    query = description
+    if user_context.strip():
+        query = f"Visual findings: {description}\nHealth worker reports: {user_context}"
+
+    # Step 3: Consult protocols with combined context
+    result = consult(query, kb, cfg.llm)
     result["description"] = description
 
     return result

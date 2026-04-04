@@ -270,7 +270,10 @@ class VisionScanResponse(BaseModel):
 
 
 @app.post("/api/vision/triage", response_model=VisionTriageResponse)
-async def api_vision_triage(file: bytes = fastapi.File(...)):
+async def api_vision_triage(
+    file: bytes = fastapi.File(...),
+    context: str = fastapi.Form(""),
+):
     """Visual triage: photo → clinical description → protocol retrieval."""
     import tempfile
     cfg = _get_cfg()
@@ -279,7 +282,7 @@ async def api_vision_triage(file: bytes = fastapi.File(...)):
         f.write(file)
         tmp = f.name
     try:
-        result = triage_and_consult(tmp, kb, cfg)
+        result = triage_and_consult(tmp, kb, cfg, user_context=context)
         return VisionTriageResponse(
             description=result.get("description", ""),
             answer=result["answer"],

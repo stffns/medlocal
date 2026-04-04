@@ -466,6 +466,7 @@ doConsult = async function() {
   const formData = new FormData();
   const bytes = await file.arrayBuffer();
   formData.append('file', new Blob([bytes]), file.name);
+  if (textQ) formData.append('context', textQ);
 
   try {
     const res = await fetch(API+endpoints[mode], {method:'POST', body:formData});
