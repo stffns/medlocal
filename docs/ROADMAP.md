@@ -3,121 +3,142 @@
 ## Key Insights from Genesis Conversation
 
 ### Architecture Decisions
-1. **vstash IS the knowledge** — Gemma no necesita "saber" medicina. El conocimiento vive en vstash, el modelo solo razona sobre contexto recuperado. Esto permite usar modelos pequeños (E2B/E4B).
-2. **Teacher offline, Judge on-device** — Modelo grande (Claude/GPT-4/Gemini Pro) genera Q&A pairs una vez. Gemma E4B/E2B solo evalua respuestas contra respuestas conocidas. Tarea simple = modelo pequeño.
+1. **vstash IS the knowledge** — Gemma no necesita "saber" medicina. El conocimiento vive en vstash, el modelo solo razona sobre contexto recuperado.
+2. **Teacher offline, Judge on-device** — Modelo grande genera Q&A pairs una vez. Gemma solo evalua respuestas contra respuestas conocidas.
 3. **Core cerrado + Local abierto** — Seguridad medica. Core WHO no se toca. Local para protocolos nacionales/regionales.
-4. **Web local, no app nativa** — FastAPI + HTML sirve a cualquier dispositivo con navegador. PWA para produccion post-hackathon.
-5. **Domain-agnostic** — La arquitectura sirve para derecho, agricultura, educacion, mantenimiento industrial. Medico es el primer vertical por el hackathon.
+4. **Web local, no app nativa** — FastAPI + HTML sirve a cualquier dispositivo con navegador.
+5. **Domain-agnostic** — La arquitectura sirve para cualquier vertical. Medico es el primero.
 
-### vstash Features que aportan valor directo
-- **Temporal scoring** — Protocolos frecuentes suben de ranking (adapta al contexto epidemiologico local)
-- **Adaptive gamma** — Zero cold start degradation en deploys nuevos
-- **Relevance signal** — "No se, refiera al hospital" > respuesta inventada (puede salvar vidas)
-- **MMR dedup** — Cobertura diversa en protocolos largos
-- **Context expansion (±1)** — 2.64x mas contexto, pasos que dependen de pasos previos
-- **Multi-profile federated** — Core WHO + Local buscan juntos, fuente visible
-- **Direct chunk access** — Recall recupera chunk exacto O(1) cuando el trabajador falla una pregunta
-- **Journal** — Memoria institucional local ("brote de dengue esta semana")
-
-### Modelo E2B vs E4B
-- E2B: 2.3B params efectivos, <1.5GB cuantizado, 3x mas rapido que E4B, corre en telefono de $50
-- E4B: 4.5B params efectivos, mas capacidad de razonamiento, necesita mas recursos
-- **Estrategia**: Probar ambos como juez. Si E2B mantiene calidad, usar como default. E4B para dispositivos con mas capacidad.
-- El dato impactante para hackathon: sistema medico completo en 1.5GB modelo + 50MB knowledge base
-
-### Fuentes de Documentos Medicos
-- **MSF Clinical Guidelines** — Manual de campo perfecto para community health workers
-- **WHO Essential Medicines List** — Dosificaciones completas
-- **WHO IMAI District Clinician Manual** — 800 pags de atencion primaria
-- **Hesperian "Where There Is No Doctor"** — Clasico para CHW, Creative Commons
-- **WHO guias especificas**: malaria, TB, HIV, neonatal, emergencias
-- **DermNet** — Atlas dermatologico open access (para vision mode)
-- **Guias nacionales** (Kenya, Colombia, etc.) — Perfil local
-- **OpenWHO.org** — Cursos y materiales de capacitacion
+### Lessons Learned (Session 2026-04-04)
+1. **Consultation index WORSENED quality** — Q&A pairs caused false positive matches (measles from fever alone). Removed. Raw protocols + clean retrieval + capable model is the winning formula.
+2. **chunk_size=2048 resolved retrieval gaps** — vstash 0.17.1 with larger chunks keeps title+symptoms+treatment together. No need for index workaround.
+3. **Keyword expansion must NOT diagnose** — Only translate symptoms to clinical terms. Diagnostic expansion is hidden hallucination in the retrieval pipeline.
+4. **E2B not viable for generative mode** — Fails drug allergy safety, diagnoses measles from fever alone. E4B is minimum for generation. E2B only for selector mode (future).
+5. **Bigger model != safer** — Gemini Pro failed allergy test. Gemini Flash was safest cloud model.
+6. **Structured JSON output via schema** — Forces model to name condition, list actions. Eliminates vague assessments.
+7. **Protocol refs in output** — Small models inject "Protocol ID 1" despite instructions. Fixed with _clean_protocol_refs() post-processing.
+8. **Vision needs CHW context** — Image alone insufficient for diagnosis. CHW text combined with visual findings produces correct results.
 
 ---
 
-## Roadmap
+## Current State (2026-04-04)
 
-### Phase 1 — Core Quality (Current Sprint)
-**Goal: Respuestas clinicas confiables con Gemini Flash / Gemma E4B**
-
-- [x] Dual-profile knowledge base (core + local)
-- [x] Consultation with structured prompts optimized for small models
-- [x] Multi-query retrieval (keyword expansion)
-- [x] Judge with few-shot calibration
+### Completed
+- [x] 54 clinical protocols (WHO/MSF sourced, structured markdown)
+- [x] Safety layer (emergency detection, confidence, dosage check, allergy verification, audit log)
+- [x] Structured JSON output via schema (forces condition naming)
+- [x] Multi-query retrieval (symptom-only keyword expansion)
+- [x] Judge with double grounding (Q&A pair + source protocol)
 - [x] Teacher/Judge LLM separation in config
-- [x] Gemini 2.5 Flash integration via OpenAI-compatible API
-- [x] 6 clinical protocols ingested (diarrhea, malaria, pneumonia, pre-eclampsia, newborn, nutrition)
-- [x] Bilingual responses (EN/ES verified)
-- [x] 5 WHO PDFs downloaded
-- [ ] Download and ingest MSF Clinical Guidelines
-- [ ] Download Hesperian "Where There Is No Doctor"
-- [ ] Test with Gemma 4 E4B on-device (Ollama/LM Studio)
-- [ ] Test with Gemma 4 E2B on-device
-- [ ] Compare E2B vs E4B vs Flash quality on same 6 scenarios
-- [ ] Add 10+ more clinical protocols (TB, HIV, diabetes, snake bites, burns, first aid)
+- [x] Unified web UI (consult + vision + camera + follow-ups)
+- [x] Vision mode (triage, medication ID, document scan)
+- [x] Vision + text context combined in pipeline
+- [x] vstash chunk_size=2048 for medical content
+- [x] 201 training cards across 15 topics
+- [x] E2E test suite (22 cases)
+- [x] Model benchmark (24 scenarios x 8 models)
+- [x] Tested: E2B, E4B, Qwen 4B/9B, Gemma 31B, Flash Lite/Flash/Pro
+- [x] Bilingual verified (ES, FR, SW, HA, PT, AR, HI, AM)
+- [x] CLAUDE.md, README, constitution, roadmap, sources plan
+- [x] Repo private on GitHub
 
-### Phase 2 — Vision Mode
-**Goal: Camera-based workflows for the hackathon demo**
-
-- [ ] Vision engine with 3 workflows (triage, medication ID, document scan)
-- [ ] Image input support in llm.py (Gemma 4 multimodal via OpenAI API)
-- [ ] `POST /api/vision/triage` — Photo → clinical description → protocol retrieval
-- [ ] `POST /api/vision/medication` — Photo → drug ID → interactions/contraindications
-- [ ] `POST /api/vision/scan` — Photo → OCR → auto-ingest to local profile
-- [ ] CLI commands: `medlocal vision triage`, `medlocal vision scan`
-- [ ] Test with real wound/rash images from DermNet
-- [ ] Test medication identification with common drug packaging
-
-### Phase 3 — Mobile Web UI
-**Goal: Usable interface on a phone screen**
-
-- [ ] FastAPI serves mobile-first HTML (single file, zero build step)
-- [ ] 5 tabs: Consult, Chat, Training, Vision, Admin
-- [ ] Dark theme, large buttons for field use
-- [ ] Camera capture with `capture="environment"` for rear camera
-- [ ] Admin panel: add/remove local documents, view stats
-- [ ] OFFLINE badge visible
-- [ ] Sources marked as [WHO] or [LOCAL]
-- [ ] PWA manifest for install-to-homescreen
-
-### Phase 4 — Training Mode Polish
-**Goal: Complete spaced repetition loop**
-
-- [ ] Pre-generate card deck with large teacher model (Claude/Gemini Pro)
-- [ ] Ship pre-built training.db with cards for all core protocols
-- [ ] Judge evaluation with E4B/E2B on-device
-- [ ] Progress dashboard (accuracy trends, topics mastered)
-- [ ] Weekly/daily study session reminders (PWA notifications)
-
-### Phase 5 — Hackathon Submission
-**Deadline: May 18, 2026**
-
-- [ ] Kaggle notebook demonstrating complete workflow
-- [ ] End-to-end demo: ingest → consult → vision → train cycle
-- [ ] Benchmark comparison table (vstash vs Chroma vs BM25)
-- [ ] README with installation, usage, and impact narrative
-- [ ] Video demo (optional but strong for judges)
-- [ ] Constitution document polished for submission
-
-### Phase 6 — Post-Hackathon (if project continues)
-- [ ] Native PWA with service worker for full offline
-- [ ] Deepgram voice integration (ask by speaking, hear answer)
-- [ ] Multi-language protocol packs (FR, PT, SW, AR)
-- [ ] Field testing with actual CHW organization
-- [ ] Domain expansion: agriculture, legal, education verticals
-- [ ] Distribution model: pre-configured packages per country/organization
+### Benchmark Results
+```
+Model             Pass Rate   Avg Time   Safety   Clinical
+Gemma E2B             71.4%      5.3s      5/6       7/10
+Gemma E4B             76.2%      8.8s      6/6       7/10
+Qwen 3.5 9B           90.5%     18.6s      6/6      10/10
+```
+- E4B: minimum viable for on-device generative mode
+- Qwen 9B: best quality, same architecture
+- E2B: too small for safety-critical generation
 
 ---
 
-## Commercial Vision (Post-Hackathon)
+## Next Steps (Priority Order)
 
-**Model: Platform + customization, not SaaS**
-- Sell pre-configured core.db packages per domain/country
-- Charge for customization of local profile for organizations
-- No per-query cost, no subscription, no vendor lock-in
-- Target customers: NGOs (MSF, WHO), health ministries, training programs
-- Revenue: licensing + professional services for deployment
+### P0 — Fix Before Hackathon Submission
 
-**Key differentiator**: "We don't modify the model. Clinical protocols come directly from WHO, verifiable, without fine-tuning distortion. The model only reasons about them." — More auditable for medical use.
+1. **Error handling in vision pipeline**
+   - What: Add try/catch, user-visible error messages when LLM doesn't support vision, image is corrupt, or model is unloaded
+   - Where: `vision.py`, `web.py` (JS error display)
+   - Why: Silt flagged — silence is suspicious
+
+2. **Medication ID pipeline completion**
+   - What: After identifying drug from photo, search Essential Medicines protocol for dosing, interactions, contraindications
+   - Where: `vision.py:identify_medication()` → add consult step
+   - Why: Currently extracts drug name but doesn't look up clinical info
+
+3. **Retrieval gap: symptom → disease bridging**
+   - What: Protocols titled by disease ("Malaria Treatment") don't match symptom queries ("fever intermittent chills"). E4B needs follow-up, Qwen 9B doesn't.
+   - Options: (a) Better titles in protocols, (b) chunk_size tuning, (c) selector mode for E4B
+   - Where: `data/core/protocols/` titles, `fever-assessment-imci.md` table
+   - Why: Malaria not found for classic malaria symptoms without follow-up
+
+4. **French response broken**
+   - What: E4B context overflow on French, JSON truncation
+   - Where: Reduce context size or increase model context window
+   - Why: Failed in benchmark for both E4B and E2B
+
+### P1 — Hackathon Deliverables
+
+5. **Kaggle notebook demo**
+   - Full workflow: ingest → consult → vision → train cycle
+   - Include benchmark results table
+   - Show multilingual examples
+   - Honest limitations section
+
+6. **Video demo (optional but strong)**
+   - Phone screen recording: open browser → ask question → get answer → take photo → follow up
+   - 2-3 minutes max
+
+7. **Pre-built core.db for distribution**
+   - Ship the SQLite with all 54 protocols pre-ingested
+   - User just installs + runs, no ingestion step
+
+### P2 — Post-Hackathon
+
+8. **Selector mode for E2B**
+   - Gemma selects best pre-written answer instead of generating
+   - Zero hallucination by design
+   - Makes E2B viable for phone deployment
+
+9. **Formulary protocol (drug interactions/dosing)**
+   - Extract from MSF Essential Drugs Guide (663 pages)
+   - Enable medication photo → full drug info lookup
+
+10. **PWA with service worker**
+    - Install to homescreen, offline-first
+    - Push notifications for training reminders
+
+11. **Multi-language protocol packs**
+    - French, Portuguese, Swahili, Arabic translations of core protocols
+    - Improves retrieval for non-English queries
+
+12. **Field testing with CHW organization**
+    - Partner with MSF, WHO, or local NGO
+    - Real-world validation
+
+---
+
+## Architecture Notes
+
+### What Works
+```
+CHW question → vstash (chunk_size=2048) → top 4 protocols → LLM structured output → safety checks → response
+```
+
+### What Doesn't Work
+- Consultation index (false positive contamination) — REMOVED
+- Diagnostic keyword expansion (hidden hallucination) — REVERTED to symptom-only
+- Specific safety rules (creates bias) — REVERTED to generic rules
+- E2B for generative mode (fails safety) — E4B minimum
+
+### Model Tiers
+| Tier | Model | Use Case |
+|------|-------|----------|
+| Phone (future) | E2B | Selector mode only |
+| Phone/Tablet | E4B | Generative consultation (minimum viable) |
+| Laptop | Qwen 3.5 9B | Best quality, same architecture |
+| Cloud baseline | Gemini Flash | Gold standard for comparison |
+| Teacher | Gemini Flash | Training card + index generation (offline) |
