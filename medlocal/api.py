@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import fastapi
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ from .consult import consult
 from .knowledge import KnowledgeBase
 from .store import Card, ReviewLog, TrainingStore
 from .training import evaluate, generate_cards, schedule
+from .vision import identify_medication, scan_and_ingest, triage_and_consult
 
 app = FastAPI(title="MedLocal API", version="0.1.0")
 
@@ -54,6 +56,9 @@ class ConsultRequest(BaseModel):
 class ConsultResponse(BaseModel):
     answer: str
     sources: list[dict]
+    confidence: str = "MEDIUM"
+    safety_flags: list[str] = []
+    emergency: bool = False
 
 
 class IngestRequest(BaseModel):
@@ -133,8 +138,14 @@ def api_consult(req: ConsultRequest):
     """Clinical consultation — ask a medical question."""
     cfg = _get_cfg()
     kb = _get_kb()
-    answer, sources = consult(req.question, kb, cfg.llm, history=req.history)
-    return ConsultResponse(answer=answer, sources=sources)
+    result = consult(req.question, kb, cfg.llm, history=req.history)
+    return ConsultResponse(
+        answer=result["answer"],
+        sources=result["sources"],
+        confidence=result["confidence"].name,
+        safety_flags=[f.name for f in result.get("safety_flags", [])],
+        emergency=result.get("emergency", False),
+    )
 
 
 @app.post("/api/ingest", response_model=IngestResponse)
@@ -156,7 +167,7 @@ def api_train_generate(req: TrainGenerateRequest):
     """Generate training cards for a topic."""
     cfg = _get_cfg()
     kb = _get_kb()
-    cards = generate_cards(kb, req.topic, cfg.llm, max_chunks=req.max_chunks)
+    cards = generate_cards(kb, req.topic, cfg.get_teacher_llm(), max_chunks=req.max_chunks)
     if not cards:
         raise HTTPException(status_code=400, detail="No cards generated")
 
@@ -193,8 +204,15 @@ def api_train_answer(req: AnswerRequest):
         if not card:
             raise HTTPException(status_code=404, detail="Card not found")
 
+        # Double grounding: validate against both expected answer AND source protocol
+        source_protocol = None
+        if card.chunk_id:
+            kb = _get_kb()
+            source_protocol = kb.get_chunk(card.chunk_id, card.source_profile)
+
         rating, feedback = evaluate(
             card.question, card.answer, req.answer, cfg.llm,
+            source_protocol=source_protocol,
         )
 
         now = datetime.now(timezone.utc)
@@ -227,6 +245,94 @@ def api_train_topics():
     cfg = _get_cfg()
     with TrainingStore(cfg.recall_db) as store:
         return store.list_topics()
+
+
+# ------------------------------------------------------------------ #
+# Vision endpoints                                                     #
+# ------------------------------------------------------------------ #
+
+
+class VisionTriageResponse(BaseModel):
+    description: str
+    answer: str
+    sources: list[dict]
+    confidence: str
+    emergency: bool
+
+
+class VisionMedicationResponse(BaseModel):
+    identification: str
+
+
+class VisionScanResponse(BaseModel):
+    text: str
+    chunks: int
+
+
+@app.post("/api/vision/triage", response_model=VisionTriageResponse)
+async def api_vision_triage(file: bytes = fastapi.File(...)):
+    """Visual triage: photo → clinical description → protocol retrieval."""
+    import tempfile
+    cfg = _get_cfg()
+    kb = _get_kb()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as f:
+        f.write(file)
+        tmp = f.name
+    try:
+        result = triage_and_consult(tmp, kb, cfg)
+        return VisionTriageResponse(
+            description=result.get("description", ""),
+            answer=result["answer"],
+            sources=result["sources"],
+            confidence=result["confidence"].name,
+            emergency=result.get("emergency", False),
+        )
+    finally:
+        import os
+        os.unlink(tmp)
+
+
+@app.post("/api/vision/medication", response_model=VisionMedicationResponse)
+async def api_vision_medication(file: bytes = fastapi.File(...)):
+    """Identify medication from photo."""
+    import tempfile
+    cfg = _get_cfg()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as f:
+        f.write(file)
+        tmp = f.name
+    try:
+        text = identify_medication(tmp, cfg.llm)
+        return VisionMedicationResponse(identification=text)
+    finally:
+        import os
+        os.unlink(tmp)
+
+
+@app.post("/api/vision/scan", response_model=VisionScanResponse)
+async def api_vision_scan(file: bytes = fastapi.File(...)):
+    """Scan document photo → extract text → ingest into local profile."""
+    import tempfile
+    cfg = _get_cfg()
+    kb = _get_kb()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as f:
+        f.write(file)
+        tmp = f.name
+    try:
+        result = scan_and_ingest(tmp, kb, cfg)
+        return VisionScanResponse(text=result["text"], chunks=result["chunks"])
+    finally:
+        import os
+        os.unlink(tmp)
+
+
+@app.get("/api/chunk/{chunk_id}")
+def api_get_chunk(chunk_id: int, profile: str = Query("core")):
+    """Get the full text of a specific chunk — for viewing sources."""
+    kb = _get_kb()
+    text = kb.get_chunk(chunk_id, profile)
+    if text is None:
+        raise HTTPException(status_code=404, detail="Chunk not found")
+    return {"chunk_id": chunk_id, "profile": profile, "text": text}
 
 
 @app.get("/api/search")

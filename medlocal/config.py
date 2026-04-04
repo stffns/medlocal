@@ -33,6 +33,10 @@ class MedLocalConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    teacher_llm: LLMConfig | None = Field(
+        default=None,
+        description="LLM for card generation (offline, can be a large model). Falls back to llm.",
+    )
     core_db: str = Field(
         default=str(_DEFAULT_CONFIG_DIR / "core.db"),
         description="Path to core (read-only) vstash knowledge base",
@@ -45,6 +49,10 @@ class MedLocalConfig(BaseModel):
         default=str(_DEFAULT_CONFIG_DIR / "training.db"),
         description="Path to FSRS training database",
     )
+
+    def get_teacher_llm(self) -> LLMConfig:
+        """Teacher LLM config — falls back to main llm if not set."""
+        return self.teacher_llm or self.llm
 
 
 def load_config() -> MedLocalConfig:

@@ -54,12 +54,30 @@ def consult_cmd(
     kb = KnowledgeBase(cfg)
 
     console.print("[dim]Searching protocols...[/dim]")
-    answer, sources = consult(question, kb, cfg.llm)
+    result = consult(question, kb, cfg.llm)
 
-    console.print(Panel(answer, title="Clinical Guidance", border_style="green"))
-    if sources:
+    # Safety indicators
+    confidence = result["confidence"]
+    safety_flags = result.get("safety_flags", [])
+    emergency = result.get("emergency", False)
+
+    border = "red" if emergency else ("yellow" if confidence.value <= 1 else "green")
+    title = "⚠ EMERGENCY" if emergency else "Clinical Guidance"
+
+    console.print(Panel(result["answer"], title=title, border_style=border))
+
+    # Confidence badge
+    conf_style = {"HIGH": "green", "MEDIUM": "yellow", "LOW": "red"}
+    console.print(f"  Confidence: [{conf_style.get(confidence.name, 'white')}]{confidence.name}[/]")
+
+    if safety_flags:
+        from .safety import SafetyFlag
+        for flag in safety_flags:
+            console.print(f"  [bold red]⚠ {flag.name}[/bold red]")
+
+    if result.get("sources"):
         console.print("[dim]Sources:[/dim]")
-        for s in sources:
+        for s in result["sources"]:
             console.print(f"  [dim]{s['title']} ({s['profile']}, score: {s['score']})[/dim]")
 
 
@@ -85,14 +103,17 @@ def chat() -> None:
             break
 
         console.print("[dim]Searching protocols...[/dim]")
-        answer, sources = consult(question, kb, cfg.llm, history=history)
+        result = consult(question, kb, cfg.llm, history=history)
 
         history.append({"role": "user", "content": question})
-        history.append({"role": "assistant", "content": answer})
+        history.append({"role": "assistant", "content": result["answer"]})
 
-        console.print(Panel(answer, title="Clinical Guidance", border_style="green"))
-        if sources:
-            for s in sources:
+        emergency = result.get("emergency", False)
+        border = "red" if emergency else "green"
+        title = "⚠ EMERGENCY" if emergency else "Clinical Guidance"
+        console.print(Panel(result["answer"], title=title, border_style=border))
+        if result.get("sources"):
+            for s in result["sources"]:
                 console.print(f"  [dim]{s['title']} ({s['profile']})[/dim]")
         console.print()
 
@@ -112,7 +133,7 @@ def train(
     kb = KnowledgeBase(cfg)
 
     console.print(f"[bold]Generating training cards[/bold] for: {topic}")
-    cards = generate_cards(kb, topic, cfg.llm, max_chunks=max_chunks)
+    cards = generate_cards(kb, topic, cfg.get_teacher_llm(), max_chunks=max_chunks)
 
     if not cards:
         console.print("[yellow]No cards generated.[/yellow]")
@@ -122,6 +143,22 @@ def train(
         saved = store.add_cards(cards)
 
     console.print(f"[green]Created {len(saved)} training cards[/green] for topic: {topic}")
+
+
+@app.command()
+def index() -> None:
+    """Generate consultation index from all protocols (uses teacher LLM)."""
+    from .config import load_config
+    from .indexer import index_all_protocols
+    from .knowledge import KnowledgeBase
+
+    cfg = load_config()
+    kb = KnowledgeBase(cfg)
+
+    console.print("[bold]Generating consultation index[/bold] from all protocols...")
+    console.print("[dim]Using teacher LLM — this may take several minutes[/dim]")
+    total = index_all_protocols(kb, cfg)
+    console.print(f"[green]Created {total} consultation pairs[/green]")
 
 
 @app.command()
@@ -136,10 +173,12 @@ def study(
     from rich.prompt import Prompt
 
     from .config import load_config
+    from .knowledge import KnowledgeBase
     from .store import Rating, ReviewLog, TrainingStore
     from .training import evaluate, schedule
 
     cfg = load_config()
+    kb = KnowledgeBase(cfg)
 
     with TrainingStore(cfg.recall_db) as store:
         due = store.get_due_cards(topic, limit=50)
@@ -178,9 +217,15 @@ def study(
                 if answer.strip().lower() == "s":
                     continue
 
+                # Retrieve source protocol for double grounding
+                source_protocol = None
+                if card.chunk_id:
+                    source_protocol = kb.get_chunk(card.chunk_id, card.source_profile)
+
                 console.print("[dim]Evaluating...[/dim]")
                 rating, feedback = evaluate(
                     card.question, card.answer, answer, cfg.llm,
+                    source_protocol=source_protocol,
                 )
                 console.print(Panel(card.answer, title="Correct Answer", border_style="green"))
 
@@ -255,14 +300,14 @@ def search(
 def serve(
     port: int = typer.Option(8765, help="Port for the API server"),
 ) -> None:
-    """Start the MedLocal API server."""
+    """Start the MedLocal web server with mobile UI."""
     import uvicorn
 
-    from .api import app as api_app
+    from .web import app as web_app  # noqa: F811 — imports api.app + adds UI route
 
-    console.print(f"[bold]MedLocal API[/bold] running on http://localhost:{port}")
-    console.print(f"[dim]Docs at http://localhost:{port}/docs[/dim]")
-    uvicorn.run(api_app, host="0.0.0.0", port=port)
+    console.print(f"[bold]MedLocal[/bold] running on http://localhost:{port}")
+    console.print(f"[dim]API docs at http://localhost:{port}/docs[/dim]")
+    uvicorn.run(web_app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

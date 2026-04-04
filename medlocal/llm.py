@@ -28,7 +28,7 @@ def chat(
     }
 
     base_url = cfg.base_url or base_urls.get(cfg.provider, "https://api.openai.com/v1")
-    api_key = cfg.api_key or os.getenv("MEDLOCAL_API_KEY", "not-needed")
+    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.api_key or "not-needed"
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
 
@@ -56,3 +56,38 @@ def chat(
             time.sleep(wait)
 
     raise RuntimeError(f"LLM call failed after {_MAX_RETRIES} attempts: {last_exc}") from last_exc
+
+
+def chat_structured(
+    messages: list[dict[str, str]],
+    cfg: LLMConfig,
+    schema: dict,
+    schema_name: str = "response",
+) -> dict:
+    """Send a chat completion with JSON schema enforcement. Returns parsed dict."""
+    import json
+
+    base_urls = {
+        "ollama": "http://localhost:11434/v1",
+        "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    }
+
+    base_url = cfg.base_url or base_urls.get(cfg.provider, "https://api.openai.com/v1")
+    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.api_key or "not-needed"
+
+    client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
+
+    response = client.chat.completions.create(
+        model=cfg.model,
+        messages=messages,
+        temperature=cfg.temperature,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema_name,
+                "schema": schema,
+            },
+        },
+    )
+    text = response.choices[0].message.content or "{}"
+    return json.loads(text)

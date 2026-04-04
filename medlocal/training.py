@@ -11,7 +11,7 @@ from fsrs import Card as FSRSCard
 from fsrs import Rating as FSRSRating
 from fsrs import Scheduler
 
-from .config import LLMConfig
+from .config import LLMConfig, MedLocalConfig
 from .knowledge import KnowledgeBase
 from .llm import chat
 from .store import Card, Rating
@@ -37,23 +37,19 @@ _RATING_MAP = {
 # ------------------------------------------------------------------ #
 
 _TEACHER_PROMPT = """\
-You are a medical education expert creating training scenarios for community health workers.
+You are a medical education expert. Generate study items from the protocol below.
 
-From the clinical protocol below, generate study items at three levels:
+Three levels:
+- Level 0 (1 item): Key concept summary. "q" = topic title, "a" = 2-3 sentence summary.
+- Level 1 (1-2 items): Clinical recall. "q" = question about dosage/procedure, "a" = precise answer.
+- Level 2 (1-2 items): Patient scenario. "q" = realistic scenario + question, "a" = correct action + reasoning.
 
-**Level 0 — Key Concept** (1 item): Summarize the critical clinical knowledge in 2-3 sentences.
-  "q" = topic title, "a" = concise summary
+Rules:
+- Every answer must come directly from the protocol text.
+- Use the same language as the protocol.
 
-**Level 1 — Clinical Recall** (1-2 items): Test knowledge of protocols, dosages, \
-or procedures.
-  "q" = direct question about the protocol, "a" = precise answer from the guideline
-
-**Level 2 — Clinical Scenario** (1-2 items): Present a realistic patient scenario.
-  "q" = scenario description + question, "a" = correct action per protocol + reasoning
-
-All items must be grounded in the protocol text. Do not invent medical information.
-Respond in the same language as the protocol.
-Return ONLY a JSON array: [{{"level": 0, "q": "...", "a": "..."}}, ...]"""
+Return ONLY a JSON array:
+[{{"level": 0, "q": "...", "a": "..."}}, {{"level": 1, "q": "...", "a": "..."}}, ...]"""
 
 
 def generate_cards(
@@ -155,18 +151,35 @@ def _parse_json_lenient(text: str) -> list | None:
 # ------------------------------------------------------------------ #
 
 _JUDGE_PROMPT = """\
-You are evaluating a community health worker's answer about clinical protocols.
+You are evaluating a community health worker's answer.
+You have TWO sources of truth:
+1. The EXPECTED ANSWER (from training materials)
+2. The SOURCE PROTOCOL (the original clinical guideline)
 
-Evaluate and respond with ONLY a JSON object:
-{{"rating": "again|hard|good|easy", "feedback": "brief explanation"}}
+The student's answer is correct if it matches EITHER the expected answer OR the source protocol.
+If the student gives information that is in the protocol but not in the expected answer, that is still correct.
+If the student gives information NOT in either source, that is wrong.
 
-Rating criteria:
-- "again": Wrong or dangerous — could lead to patient harm.
-- "hard": Partially correct but missing critical details.
-- "good": Correct with minor omissions that wouldn't affect patient care.
-- "easy": Perfect — demonstrates clear clinical understanding.
+Respond with ONLY a JSON object: {{"rating": "again|hard|good|easy", "feedback": "one sentence"}}
 
-Focus on clinical accuracy. Accept answers in any language.
+Rating scale:
+- "again": Wrong or dangerous — information contradicts the protocol.
+- "hard": Partially correct but missing critical details from the protocol.
+- "good": Correct with minor omissions.
+- "easy": Fully correct and grounded in the protocol.
+
+EXAMPLES:
+
+Expected: "Give ORS 75ml/kg over 4 hours and zinc 20mg/day for 10 days"
+Protocol mentions: ORS Plan B, zinc supplementation, continue breastfeeding
+Student: "Give the child water and paracetamol"
+{{"rating": "again", "feedback": "ORS is required, not plain water. Paracetamol is not indicated for diarrhea."}}
+
+Expected: "Give ORS 75ml/kg over 4 hours and zinc 20mg/day for 10 days"
+Protocol mentions: ORS Plan B, zinc supplementation, continue breastfeeding
+Student: "Start ORS rehydration, give zinc, keep breastfeeding"
+{{"rating": "easy", "feedback": "Correct treatment including continued breastfeeding from the protocol."}}
+
 Give feedback in the same language the student used."""
 
 
@@ -175,25 +188,33 @@ def evaluate(
     correct_answer: str,
     student_answer: str,
     llm_cfg: LLMConfig,
+    *,
+    source_protocol: str | None = None,
 ) -> tuple[Rating, str]:
-    """Evaluate a training answer. Returns (rating, feedback)."""
+    """Evaluate a training answer against expected answer AND source protocol.
+
+    Args:
+        source_protocol: Original protocol text (from vstash chunk).
+            If provided, the judge validates against both the expected answer
+            and the original protocol — double grounding.
+
+    Returns (rating, feedback).
+    """
     _RATING_STR = {
         "again": Rating.AGAIN, "hard": Rating.HARD,
         "good": Rating.GOOD, "easy": Rating.EASY,
     }
 
+    user_content = f"Question: {question}\n\nExpected answer: {correct_answer}"
+    if source_protocol:
+        user_content += f"\n\nSource protocol:\n{source_protocol}"
+    user_content += f"\n\nStudent's answer: {student_answer}"
+
     try:
         response = chat(
             messages=[
                 {"role": "system", "content": _JUDGE_PROMPT},
-                {
-                    "role": "user",
-                    "content": (
-                        f"Question: {question}\n\n"
-                        f"Correct answer: {correct_answer}\n\n"
-                        f"Student's answer: {student_answer}"
-                    ),
-                },
+                {"role": "user", "content": user_content},
             ],
             cfg=llm_cfg,
         )
