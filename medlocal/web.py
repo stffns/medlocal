@@ -184,6 +184,25 @@ function renderAnswer(r) {
     html += ' <span class="badge flag">'+f+'</span>';
   });
   html += '<div style="margin-top:12px;white-space:pre-wrap">'+formatMd(r.answer)+'</div>';
+  // Triage question chips (tappable yes/no buttons)
+  if (r.triage_questions && r.triage_questions.length) {
+    html += '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">';
+    r.triage_questions.forEach((tq,i) => {
+      html += '<div style="margin-bottom:10px">';
+      html += '<div style="font-size:14px;margin-bottom:6px">'+esc(tq.text)+'</div>';
+      if (tq.type === 'yes_no') {
+        const yesHint = tq.if_yes ? ' title="'+esc(tq.if_yes)+'"' : '';
+        const noHint = tq.if_no ? ' title="'+esc(tq.if_no)+'"' : '';
+        html += '<button onclick="answerTriage(this,\\''+esc(tq.text)+'\\',\\'yes\\')" style="padding:8px 20px;margin-right:8px;background:var(--green);color:#000;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer"'+yesHint+'>Yes</button>';
+        html += '<button onclick="answerTriage(this,\\''+esc(tq.text)+'\\',\\'no\\')" style="padding:8px 20px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer"'+noHint+'>No</button>';
+      } else {
+        html += '<input type="text" onkeydown="if(event.key===\\'Enter\\')answerTriage(this,\\''+esc(tq.text)+'\\',this.value)" placeholder="Type answer..." style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;width:60%">';
+      }
+      if (tq.source) html += '<span style="font-size:10px;color:var(--text2);margin-left:8px">'+esc(tq.source)+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
   if (r.sources && r.sources.length) {
     const srcId = 'src-'+Math.random().toString(36).substr(2,6);
     html += '<div class="sources"><a onclick="document.getElementById(\\''+srcId+'\\').style.display=document.getElementById(\\''+srcId+'\\').style.display===\\'none\\'?\\'block\\':\\'none\\'" style="cursor:pointer;color:var(--text2);font-size:12px">View retrieved protocols</a>';
@@ -406,6 +425,20 @@ document.getElementById('consult-q').addEventListener('keydown', e => {
 document.getElementById('search-q').addEventListener('keydown', e => {
   if (e.key==='Enter') { doSearch(); }
 });
+
+// Triage answer — sends response as follow-up
+function answerTriage(btn, question, answer) {
+  // Disable all buttons in this triage block
+  const parent = btn.closest('.result') || btn.parentElement.parentElement;
+  parent.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  // Highlight selected answer
+  btn.style.opacity = '1';
+  btn.style.fontWeight = '900';
+  // Send as follow-up
+  const input = document.getElementById('consult-q');
+  input.value = question + ': ' + answer;
+  doConsult();
+}
 
 // Source viewer
 async function viewSource(chunkId, profile) {

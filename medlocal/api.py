@@ -59,6 +59,8 @@ class ConsultResponse(BaseModel):
     confidence: str = "MEDIUM"
     safety_flags: list[str] = []
     emergency: bool = False
+    mode: str = "guidance"
+    triage_questions: list[dict] = []
 
 
 class IngestRequest(BaseModel):
@@ -145,6 +147,8 @@ def api_consult(req: ConsultRequest):
         confidence=result["confidence"].name,
         safety_flags=[f.name for f in result.get("safety_flags", [])],
         emergency=result.get("emergency", False),
+        mode=result.get("mode", "guidance"),
+        triage_questions=result.get("triage_questions", []),
     )
 
 

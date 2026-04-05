@@ -21,22 +21,34 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = """\
 You are a clinical decision support assistant guiding community health workers step by step.
-Read ALL protocols provided. Your answer should be a practical GUIDE — not a glossary.
+Read ALL protocols provided.
+
+You have TWO modes:
+
+MODE 1 — GUIDED ASSESSMENT (when critical information is missing):
+If the question describes symptoms but lacks key details needed to classify or treat, do NOT guess.
+Instead, ask the NEXT MOST IMPORTANT question from the clinical protocol's decision tree.
+Ask ONE question at a time. Explain briefly why you are asking.
+Set mode to "assessment".
+
+MODE 2 — CLINICAL GUIDANCE (when you have enough information):
+When you have enough details to identify the condition and recommend actions, give the full response.
+Set mode to "guidance".
+
+DECISION: Use assessment mode when ANY of these are missing:
+- Danger signs not checked (can the patient drink? convulsions? consciousness?)
+- Age not specified for a child (dosages depend on age/weight)
+- Duration of symptoms unknown
+- Key differentiating symptoms not asked (e.g., fever+rash but no mention of red eyes or vaccination status)
+
+Use guidance mode when you can confidently identify the condition AND give specific actions.
 
 RULES:
-1. ONLY use information from the protocols. Never invent medical information.
-2. Be a GUIDE: explain what to look for, what to do, and why each step matters.
-3. Include dosages with weight/age ranges when the protocol provides them.
-4. NEVER recommend a drug the patient is allergic to. Only recommend SAFE alternatives.
-5. Respond in the SAME LANGUAGE as the question.
-6. BEFORE recommending any medication, ask_also MUST include drug allergy verification.
-
-Respond with a JSON object following the provided schema. For each field:
-- condition: Name the suspected condition (e.g. "Measles", not "Measles Who")
-- assessment: Explain WHY you suspect this — what symptoms match the protocol
-- actions: Step-by-step guide with specifics (dosages, durations, what to watch for)
-- refer_if: Danger signs that mean the patient needs a hospital NOW
-- ask_also: Critical questions the health worker should ask the patient/caregiver"""
+1. ONLY use information from the protocols. Never invent.
+2. NEVER recommend a drug the patient is allergic to.
+3. Respond in the SAME LANGUAGE as the question.
+4. In assessment mode: ask ONE question, explain why, and what the possible answers mean.
+5. In guidance mode: give specific actions with dosages, durations, and danger signs."""
 
 
 def consult(
@@ -168,6 +180,8 @@ def consult(
         "confidence": confidence,
         "safety_flags": safety_flags,
         "emergency": is_emergency,
+        "mode": structured.get("mode", "guidance"),
+        "triage_questions": structured.get("triage_questions", []),
     }
     if verify:
         result["grounded"] = grounded
@@ -199,35 +213,54 @@ Then provide the immediate stabilization steps from the protocol.
 _CONSULT_SCHEMA = {
     "type": "object",
     "properties": {
+        "mode": {
+            "type": "string",
+            "enum": ["assessment", "guidance"],
+            "description": "assessment = need more info (ask next question), guidance = enough info to advise",
+        },
         "condition": {
             "type": "string",
-            "description": "The suspected condition name only (e.g. 'Measles', 'Severe malaria', 'Pre-eclampsia'). NOT the protocol name.",
+            "description": "The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write 'Evaluating' or the differential.",
         },
         "assessment": {
             "type": "string",
-            "description": "One sentence explaining WHY this condition is suspected based on the symptoms described",
+            "description": "In guidance mode: why you suspect this condition. In assessment mode: what you know so far and what is missing.",
+        },
+        "next_question": {
+            "type": "string",
+            "description": "In assessment mode: the ONE next question to ask. Empty in guidance mode.",
+        },
+        "triage_questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "The clinical question to ask"},
+                    "type": {"type": "string", "enum": ["yes_no", "short_answer"], "description": "yes_no for tappable buttons, short_answer for text input"},
+                    "if_yes": {"type": "string", "description": "What it means if answer is yes"},
+                    "if_no": {"type": "string", "description": "What it means if answer is no"},
+                    "source": {"type": "string", "description": "Protocol this question comes from"},
+                },
+                "required": ["text", "type"],
+            },
+            "description": "In assessment mode: 2-4 focused clinical questions from the decision tree. Each has type (yes_no or short_answer) and consequence. Empty in guidance mode.",
         },
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Step-by-step clinical actions. Include dosages, durations, and what to observe. Each step should be actionable and specific.",
+            "description": "In guidance mode: step-by-step clinical actions with dosages. In assessment mode: immediate actions to take while assessing (e.g. check danger signs).",
         },
         "refer_if": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Danger signs requiring immediate referral to hospital. Be specific about what to look for.",
+            "description": "Danger signs requiring immediate referral.",
         },
         "source": {
             "type": "string",
-            "description": "Protocol names used in the answer",
-        },
-        "ask_also": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Critical questions the health worker should ask the patient or caregiver to improve the assessment. Always include vaccination status for children.",
+            "description": "Protocol names used",
         },
     },
-    "required": ["condition", "assessment", "actions", "refer_if", "source"],
+    "required": ["mode", "condition", "assessment", "actions", "refer_if", "source"],
 }
 
 
@@ -245,35 +278,61 @@ def _clean_protocol_refs(text: str) -> str:
 
 def _format_structured(data: dict) -> str:
     """Format structured JSON response into readable markdown."""
+    import re as _re
+    mode = data.get("mode", "guidance")
     parts = []
+
     condition = _clean_protocol_refs(data.get("condition", ""))
     assessment = _clean_protocol_refs(data.get("assessment", ""))
-    if condition:
-        parts.append(f"**Assessment:** **{condition}** — {assessment}")
+
+    if mode == "assessment":
+        # Guided assessment mode — asking questions
+        if condition:
+            parts.append(f"**Evaluating:** **{condition}**")
+        if assessment:
+            parts.append(f"{assessment}")
+
+        # The key question
+        next_q = _clean_protocol_refs(data.get("next_question", ""))
+        if next_q:
+            parts.append(f"\n**Next question:**\n{next_q}")
+
+        # Immediate actions while assessing
+        actions = data.get("actions", [])
+        if actions:
+            parts.append("\n**While assessing:**")
+            for i, a in enumerate(actions, 1):
+                cleaned = _re.sub(r"^\s*\d+[\.\)]\s*", "", a)
+                parts.append(f"{i}. {_clean_protocol_refs(cleaned)}")
+
+        # Always show danger signs
+        refer = data.get("refer_if", [])
+        if refer:
+            parts.append("\n**Refer immediately if:** " + "; ".join(
+                _clean_protocol_refs(r) for r in refer))
+
     else:
-        parts.append(f"**Assessment:** {assessment}")
+        # Guidance mode — full clinical response
+        if condition:
+            parts.append(f"**Assessment:** **{condition}** — {assessment}")
+        else:
+            parts.append(f"**Assessment:** {assessment}")
 
-    actions = data.get("actions", [])
-    if actions:
-        parts.append("**Actions:**")
-        for i, a in enumerate(actions, 1):
-            import re as _re
-            cleaned = _re.sub(r"^\s*\d+[\.\)]\s*", "", a)
-            cleaned = _clean_protocol_refs(cleaned)
-            parts.append(f"{i}. {cleaned}")
+        actions = data.get("actions", [])
+        if actions:
+            parts.append("**Actions:**")
+            for i, a in enumerate(actions, 1):
+                cleaned = _re.sub(r"^\s*\d+[\.\)]\s*", "", a)
+                parts.append(f"{i}. {_clean_protocol_refs(cleaned)}")
 
-    refer = data.get("refer_if", [])
-    if refer:
-        cleaned_refer = [_clean_protocol_refs(r) for r in refer]
-        parts.append("**Refer if:** " + "; ".join(cleaned_refer))
+        refer = data.get("refer_if", [])
+        if refer:
+            parts.append("**Refer if:** " + "; ".join(
+                _clean_protocol_refs(r) for r in refer))
 
-    source = _clean_protocol_refs(data.get("source", ""))
-    if source:
-        parts.append(f"**Source:** {source}")
-
-    ask = data.get("ask_also", [])
-    if ask:
-        parts.append("**Ask also:** " + " ".join(ask))
+        source = _clean_protocol_refs(data.get("source", ""))
+        if source:
+            parts.append(f"**Source:** {source}")
 
     return "\n".join(parts)
 
