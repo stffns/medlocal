@@ -18,21 +18,38 @@ from pathlib import Path
 
 import requests
 
-CHT_RAW_BASE = "https://raw.githubusercontent.com/medic/cht-core/master/config/default/forms/app"
 OUTPUT_DIR = Path("data/core/cht-workflows")
 
-# Known clinical forms (skip administrative ones like replace_user, undo_death_report)
-CLINICAL_FORMS = [
-    "delivery",
-    "pregnancy",
-    "pregnancy_danger_sign",
-    "pregnancy_danger_sign_follow_up",
-    "pregnancy_facility_visit_reminder",
-    "pregnancy_home_visit",
-    "pnc_danger_sign_follow_up_baby",
-    "pnc_danger_sign_follow_up_mother",
-    "death_report",
-]
+# Sources: CHT default + PIH Malawi (real deployment with IMCI, TB, HIV, etc.)
+SOURCES = {
+    "default": {
+        "base_url": "https://raw.githubusercontent.com/medic/cht-core/master/config/default/forms/app",
+        "forms": [
+            "delivery", "pregnancy", "pregnancy_danger_sign",
+            "pregnancy_danger_sign_follow_up", "pregnancy_home_visit",
+            "pnc_danger_sign_follow_up_baby", "pnc_danger_sign_follow_up_mother",
+        ],
+    },
+    "malawi": {
+        "base_url": "https://raw.githubusercontent.com/medic/cht-pih-malawi-app/main/forms/app",
+        "forms": [
+            "under_5_screening", "over_5_screening", "danger_signs_screening",
+            "immunization", "delivery", "delivery_check",
+            "newborn_postnatal_follow_up", "postnatal_follow_up",
+            "pregnancy", "pregnancy_follow_up",
+            "fp_screening", "fp_follow_up",
+            "hiv_screening", "hiv_home_visit",
+            "tb_screening", "tb_home_visit", "tb_contact_tracing",
+            "sputum_collection", "tb_results",
+            "daily_follow_up", "referral_follow_up",
+            "discharge_instructions",
+        ],
+    },
+}
+
+# Legacy — used if no --source specified
+CHT_RAW_BASE = SOURCES["default"]["base_url"]
+CLINICAL_FORMS = SOURCES["default"]["forms"]
 
 
 def download_form(form_name: str) -> str | None:
@@ -248,27 +265,49 @@ def main():
     parser.add_argument("--form", help="Convert specific form (e.g., pregnancy_danger_sign)")
     parser.add_argument("--list", action="store_true", help="List available forms")
     parser.add_argument("--all", action="store_true", help="Convert all clinical forms")
+    parser.add_argument("--source", choices=list(SOURCES.keys()), default=None,
+                        help="Source app (default, malawi, or all)")
     args = parser.parse_args()
 
     if args.list:
-        list_forms()
+        for src_name, src in SOURCES.items():
+            print(f"\n{src_name} ({len(src['forms'])} forms):")
+            for f in src['forms']:
+                print(f"  - {f}")
         return
 
-    if args.form:
-        forms = [args.form]
+    # Determine which sources to process
+    if args.source:
+        sources_to_run = {args.source: SOURCES[args.source]}
     elif args.all:
-        forms = CLINICAL_FORMS
+        sources_to_run = SOURCES
     else:
-        forms = CLINICAL_FORMS
+        sources_to_run = {"default": SOURCES["default"]}
 
-    converted = 0
-    for form in forms:
-        print(f"\nProcessing: {form}")
-        path = convert_form(form)
-        if path:
-            converted += 1
+    total_converted = 0
+    total_forms = 0
 
-    print(f"\nConverted {converted}/{len(forms)} forms to {OUTPUT_DIR}/")
+    for src_name, src in sources_to_run.items():
+        print(f"\n{'='*50}")
+        print(f"  Source: {src_name}")
+        print(f"{'='*50}")
+
+        global CHT_RAW_BASE
+        CHT_RAW_BASE = src["base_url"]
+
+        if args.form:
+            forms = [args.form]
+        else:
+            forms = src["forms"]
+
+        total_forms += len(forms)
+        for form in forms:
+            print(f"\nProcessing: {form}")
+            path = convert_form(form)
+            if path:
+                total_converted += 1
+
+    print(f"\nConverted {total_converted}/{total_forms} forms to {OUTPUT_DIR}/")
     print("Next: run 'medlocal ingest data/core/cht-workflows/ --profile core' to ingest")
 
 
