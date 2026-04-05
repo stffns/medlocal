@@ -248,7 +248,7 @@ Ask about EACH of the following. If ANY is present, refer immediately.
 
 ## Decision Rule
 
-- If ANY danger sign above is present → **REFER URGENTLY** to health facility
+- If ANY danger sign above is present ? **REFER URGENTLY** to health facility
 - Accompany the patient if possible
 - Complete follow-up within 3 days
 
@@ -268,4 +268,4 @@ Ask about EACH of the following. If ANY is present, refer immediately.
 ## When to Use This Workflow
 - Clinical assessment workflow
 
-Source: Community Health Toolkit (CHT) — medic/cht-core reference app (MIT License)
+Source: Community Health Toolkit (CHT) - medic/cht-core reference app (MIT License)
