@@ -35,20 +35,22 @@ MODE 2 — CLINICAL GUIDANCE (when you have enough information):
 When you have enough details to identify the condition and recommend actions, give the full response.
 Set mode to "guidance".
 
-DECISION: Use assessment mode when ANY of these are missing:
-- Danger signs not checked (can the patient drink? convulsions? consciousness?)
-- Age not specified for a child (dosages depend on age/weight)
-- Duration of symptoms unknown
-- Key differentiating symptoms not asked (e.g., fever+rash but no mention of red eyes or vaccination status)
+DECISION: Use assessment mode ONLY when critical information is truly missing.
+If the user already provided information (e.g. "sin fiebre" = no fever, "hace 2 semanas" = duration 2 weeks), treat it as answered — do NOT ask again.
+Only ask about details NOT already mentioned:
+- Danger signs not yet addressed
+- Age not specified for a child
+- Key differentiating symptoms still unknown
 
-Use guidance mode when you can confidently identify the condition AND give specific actions.
+Use guidance mode when you can identify the condition AND give specific actions.
 
 RULES:
 1. ONLY use information from the protocols. Never invent.
 2. NEVER recommend a drug the patient is allergic to.
-3. Respond in the SAME LANGUAGE as the question.
-4. In assessment mode: ask ONE question, explain why, and what the possible answers mean.
-5. In guidance mode: give specific actions with dosages, durations, and danger signs."""
+3. Respond in the SAME LANGUAGE as the question. ALL fields (condition, assessment, actions, refer_if) must be in the same language. Translate protocol content if needed.
+4. In guidance mode: give specific actions with dosages, durations, and danger signs.
+5. When screening answers are provided in brackets [...] (e.g. "[fever: no. rash: yes]"), switch to GUIDANCE mode. Give SPECIFIC treatment: drug names, dosages, durations, home care steps. Do NOT give meta-actions like "recommend treatment" — give the actual treatment.
+6. The "condition" field must be the clinical condition name (e.g. "Eczema Dermatitis", "Pneumonia"), never the mode name."""
 
 
 def consult(
@@ -66,15 +68,19 @@ def consult(
         dict with keys: answer, sources, confidence, safety_flags, emergency,
         grounded (if verify=True), issues (if verify=True).
     """
+    import re as _re
     safety_flags: list[SafetyFlag] = []
 
-    # --- Emergency detection on the question itself ---
-    is_emergency, emergency_patterns = detect_emergency(question)
+    # --- Separate clinical query from triage context for retrieval ---
+    search_query = _extract_search_query(question)
+
+    # --- Emergency detection on clinical query only (not triage answers) ---
+    is_emergency, emergency_patterns = detect_emergency(search_query)
     if is_emergency:
         safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
 
-    # --- Retrieval ---
-    results = _multi_query_search(kb, question, llm_cfg)
+    # --- Retrieval (use clean query, not triage answers) ---
+    results = _multi_query_search(kb, search_query, llm_cfg)
 
     if not results:
         result = {
@@ -138,6 +144,11 @@ def consult(
     if is_emergency:
         system = _EMERGENCY_PREFIX + system
 
+    # Detect triage answers — force guidance mode via context injection
+    has_triage = bool(_re.search(r'\[.+\]\s*$', question))
+    if has_triage:
+        system += _GUIDANCE_INJECTION
+
     messages = [{"role": "system", "content": system}]
     if history:
         messages.extend(history)
@@ -146,7 +157,27 @@ def consult(
         "content": f"{context}\n\n{question}",
     })
 
-    structured = chat_structured(messages, llm_cfg, _CONSULT_SCHEMA, "clinical_response")
+    schema = _CONSULT_SCHEMA_GUIDANCE if has_triage else _CONSULT_SCHEMA
+    structured = chat_structured(messages, llm_cfg, schema, "clinical_response")
+
+    # Force guidance mode when triage answers were provided
+    if has_triage:
+        structured["mode"] = "guidance"
+
+    # Clean protocol refs from all text fields
+    for key in ("condition", "assessment", "next_question", "source"):
+        if key in structured and isinstance(structured[key], str):
+            structured[key] = _clean_protocol_refs(structured[key])
+    if "refer_if" in structured and isinstance(structured["refer_if"], list):
+        structured["refer_if"] = [
+            _clean_protocol_refs(r) for r in structured["refer_if"]
+            if _clean_protocol_refs(r).strip()
+        ]
+
+    # In assessment mode, generate triage questions (LLM call for language matching)
+    if structured.get("mode") == "assessment":
+        structured["triage_questions"] = _generate_triage_questions(structured, llm_cfg)
+
     answer = _format_structured(structured)
 
     # --- Post-generation safety checks ---
@@ -182,6 +213,12 @@ def consult(
         "emergency": is_emergency,
         "mode": structured.get("mode", "guidance"),
         "triage_questions": structured.get("triage_questions", []),
+        # Raw structured fields for rich UI rendering
+        "condition": structured.get("condition", ""),
+        "assessment": structured.get("assessment", ""),
+        "actions": structured.get("actions", []),
+        "refer_if": structured.get("refer_if", []),
+        "source_protocol": structured.get("source", ""),
     }
     if verify:
         result["grounded"] = grounded
@@ -210,45 +247,33 @@ Then provide the immediate stabilization steps from the protocol.
 """
 
 
-_CONSULT_SCHEMA = {
+_GUIDANCE_INJECTION = """
+
+IMPORTANT: The screening answers are provided in brackets at the end of the question.
+You MUST use GUIDANCE mode. Do NOT ask more questions. Give the full clinical recommendation NOW.
+Give SPECIFIC treatments with drug names, dosages, and durations from the protocols."""
+
+
+_CONSULT_SCHEMA_GUIDANCE = {
     "type": "object",
     "properties": {
         "mode": {
             "type": "string",
-            "enum": ["assessment", "guidance"],
-            "description": "assessment = need more info (ask next question), guidance = enough info to advise",
+            "enum": ["guidance"],
+            "description": "Must be guidance — screening is complete.",
         },
         "condition": {
             "type": "string",
-            "description": "The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write 'Evaluating' or the differential.",
+            "description": "The identified condition name (e.g. 'Eczema Dermatitis', 'Contact Dermatitis').",
         },
         "assessment": {
             "type": "string",
-            "description": "In guidance mode: why you suspect this condition. In assessment mode: what you know so far and what is missing.",
-        },
-        "next_question": {
-            "type": "string",
-            "description": "In assessment mode: the ONE next question to ask. Empty in guidance mode.",
-        },
-        "triage_questions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string", "description": "The clinical question to ask"},
-                    "type": {"type": "string", "enum": ["yes_no", "short_answer"], "description": "yes_no for tappable buttons, short_answer for text input"},
-                    "if_yes": {"type": "string", "description": "What it means if answer is yes"},
-                    "if_no": {"type": "string", "description": "What it means if answer is no"},
-                    "source": {"type": "string", "description": "Protocol this question comes from"},
-                },
-                "required": ["text", "type"],
-            },
-            "description": "In assessment mode: 2-4 focused clinical questions from the decision tree. Each has type (yes_no or short_answer) and consequence. Empty in guidance mode.",
+            "description": "Clinical reasoning: why you suspect this condition based on symptoms and screening.",
         },
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "In guidance mode: step-by-step clinical actions with dosages. In assessment mode: immediate actions to take while assessing (e.g. check danger signs).",
+            "description": "Specific treatment steps with drug names, dosages, durations (e.g. 'Apply hydrocortisone 1% cream twice daily for 7 days'). NEVER write meta-actions.",
         },
         "refer_if": {
             "type": "array",
@@ -264,16 +289,164 @@ _CONSULT_SCHEMA = {
 }
 
 
+_CONSULT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "mode": {
+            "type": "string",
+            "enum": ["assessment", "guidance"],
+            "description": "assessment = need more info (ask next question), guidance = enough info to advise",
+        },
+        "condition": {
+            "type": "string",
+            "description": "The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write the differential.",
+        },
+        "assessment": {
+            "type": "string",
+            "description": "In guidance mode: why you suspect this condition. In assessment mode: summarize what you know so far. Do NOT ask questions here — questions are handled separately.",
+        },
+        "actions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Concrete clinical steps. In guidance mode: specific treatments (e.g. 'Apply hydrocortisone 1% cream twice daily for 7 days', 'Give ORS 200ml after each stool'). NEVER write meta-actions like 'recommend treatment' or 'identify condition'. In assessment mode: what to do while waiting (e.g. 'Keep wound clean and dry').",
+        },
+        "refer_if": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Danger signs requiring immediate referral.",
+        },
+        "source": {
+            "type": "string",
+            "description": "Protocol names used",
+        },
+    },
+    "required": ["mode", "condition", "assessment", "actions", "refer_if", "source"],
+}
+
+
+def _extract_search_query(question: str) -> str:
+    """Strip triage/screening context from question — keep only clinical symptoms for retrieval."""
+    import re as _re
+    # Remove bracketed triage answers: [answer1: yes. answer2: no]
+    clean = _re.sub(r'\s*\[.*?\]\s*$', '', question)
+    # Split on "Danger signs checked" or similar separator
+    parts = _re.split(
+        r'[.;]\s*(?:Danger signs? checked|Screening results|Now give)',
+        clean, flags=_re.IGNORECASE,
+    )
+    clean = parts[0].strip()
+    return clean if len(clean) >= 5 else question
+
+
+
+_TRIAGE_PROMPT = """\
+Generate 3-4 screening questions for this clinical case. Write in the SAME LANGUAGE as the assessment.
+
+Format each line as: [YN] or [TEXT] followed by the question.
+[YN] = yes/no question (danger signs, symptoms present/absent)
+[TEXT] = needs a typed answer (age, duration, weight, description)
+
+Example:
+[TEXT] What is the patient's age?
+[YN] Does the patient have fever?
+[YN] Can the patient drink fluids?
+[TEXT] How long has the rash been present?
+
+Assessment: {assessment}
+Condition: {condition}
+Questions:"""
+
+
+def _generate_triage_questions(
+    data: dict,
+    llm_cfg: "LLMConfig | None" = None,
+) -> list[dict]:
+    """Generate triage questions via a fast LLM call.
+
+    Language-agnostic: the model generates in whatever language the assessment uses.
+    The LLM tags each question as [YN] or [TEXT] — no hardcoded keyword detection.
+    Falls back to basic IMCI questions if the LLM call fails.
+    """
+    import re as _re
+    source = _clean_protocol_refs(data.get("source", "")) or "IMCI"
+    condition = data.get("condition", "")
+    assessment = data.get("assessment", "")
+
+    if llm_cfg:
+        try:
+            prompt = _TRIAGE_PROMPT.format(
+                assessment=assessment[:300],
+                condition=condition,
+            )
+            raw = chat([{"role": "user", "content": prompt}], llm_cfg).strip()
+            questions = []
+            for line in raw.split("\n"):
+                line = line.strip()
+                if not line or len(line) < 8:
+                    continue
+                # Parse [YN] or [TEXT] tag from the LLM output
+                tag_match = _re.match(r'\[?(YN|TEXT)\]?\s*(.+)', line, _re.IGNORECASE)
+                if tag_match:
+                    q_type = "yes_no" if tag_match.group(1).upper() == "YN" else "short_answer"
+                    q_text = tag_match.group(2).strip()
+                else:
+                    # No tag — strip numbering and default to yes_no
+                    q_text = _re.sub(r'^\d+[\.\)\-]\s*', '', line).strip()
+                    q_type = "yes_no"
+                if len(q_text) < 5:
+                    continue
+                questions.append({
+                    "text": q_text if q_text.endswith("?") else q_text + "?",
+                    "type": q_type,
+                    "source": source,
+                })
+                if len(questions) >= 4:
+                    break
+            if questions:
+                return questions
+        except Exception:
+            logger.debug("Triage question generation failed, using fallback")
+
+    # Fallback: basic danger sign questions (English, works for any case)
+    return [
+        {"text": "What is the patient's age?", "type": "short_answer", "source": source},
+        {"text": "Can the patient drink or breastfeed?", "type": "yes_no",
+         "if_yes": "Good sign", "if_no": "Danger sign — refer", "source": source},
+        {"text": "Any convulsions or loss of consciousness?", "type": "yes_no",
+         "if_yes": "Danger sign — refer urgently", "if_no": "Continue", "source": source},
+        {"text": "Any signs of severe illness (unable to eat, persistent vomiting)?", "type": "yes_no",
+         "if_yes": "Danger sign — refer", "if_no": "Continue assessment", "source": source},
+    ]
+
+
 def _clean_protocol_refs(text: str) -> str:
-    """Remove protocol ID references that small models inject."""
+    """Remove protocol ID references and LaTeX artifacts that small models inject."""
     import re as _re
     # Remove patterns like: (Protocol 1), (Protocol ID '1'), (Protocolo 7)
     text = _re.sub(r"\s*\(Protocol(?:o)?\s*(?:ID\s*)?'?\d+'?\)", "", text, flags=_re.IGNORECASE)
-    # Remove standalone "Protocol X" references
+    # Remove standalone "Protocol X" or "protocol_X" references
     text = _re.sub(r"\bProtocol(?:o)?\s*(?:ID\s*)?'?\d+'?(?:\s*\([^)]*\))?", "", text, flags=_re.IGNORECASE)
-    # Clean up double spaces
-    text = _re.sub(r"  +", " ", text).strip()
-    return text
+    # Remove underscore variants: protocol_1, protocol_2, etc.
+    text = _re.sub(r"\bprotocol[_\s]*\d+\b", "", text, flags=_re.IGNORECASE)
+    # Clean LaTeX artifacts
+    text = _re.sub(r"\\ge(?:q)?\s*", ">=", text)
+    text = _re.sub(r"\\le(?:q)?\s*", "<=", text)
+    text = _re.sub(r"\\circ", "°", text)
+    text = _re.sub(r"\^\{([^}]*)\}", r"\1", text)  # ^{\circ} → °
+    text = _re.sub(r"\\times", "×", text)
+    text = _re.sub(r"\\pm", "±", text)
+    text = _re.sub(r"\\text\{([^}]*)\}", r"\1", text)
+    text = _re.sub(r"\$([^$]+)\$", r"\1", text)  # $...$ → ...
+    # Remove dangling connectors left after removing protocol refs
+    text = _re.sub(r";\s*;", ";", text)
+    text = _re.sub(r"\b(?:and|y|e)\s*\d+\b", "", text)  # "y 4", "and 3"
+    text = _re.sub(r"^\s*(?:and|y|e)\s+", "", text)  # leading "y "
+    text = _re.sub(r"\s+(?:and|y|e)\s*$", "", text)  # trailing " y"
+    text = _re.sub(r",\s*(?:and|y|e)\s*,", ",", text)  # ", y ,"
+    # Clean up double spaces, trailing semicolons/commas
+    text = _re.sub(r"  +", " ", text)
+    text = _re.sub(r"\s*[;,]\s*$", "", text)
+    return text.strip()
 
 
 def _format_structured(data: dict) -> str:

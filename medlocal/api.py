@@ -61,6 +61,12 @@ class ConsultResponse(BaseModel):
     emergency: bool = False
     mode: str = "guidance"
     triage_questions: list[dict] = []
+    # Structured fields for rich UI rendering
+    condition: str = ""
+    assessment: str = ""
+    actions: list[str] = []
+    refer_if: list[str] = []
+    source_protocol: str = ""
 
 
 class IngestRequest(BaseModel):
@@ -149,6 +155,11 @@ def api_consult(req: ConsultRequest):
         emergency=result.get("emergency", False),
         mode=result.get("mode", "guidance"),
         triage_questions=result.get("triage_questions", []),
+        condition=result.get("condition", ""),
+        assessment=result.get("assessment", ""),
+        actions=result.get("actions", []),
+        refer_if=result.get("refer_if", []),
+        source_protocol=result.get("source_protocol", ""),
     )
 
 
@@ -262,6 +273,14 @@ class VisionTriageResponse(BaseModel):
     sources: list[dict]
     confidence: str
     emergency: bool
+    safety_flags: list[str] = []
+    mode: str = "guidance"
+    triage_questions: list[dict] = []
+    condition: str = ""
+    assessment: str = ""
+    actions: list[str] = []
+    refer_if: list[str] = []
+    source_protocol: str = ""
 
 
 class VisionMedicationResponse(BaseModel):
@@ -293,6 +312,14 @@ async def api_vision_triage(
             sources=result["sources"],
             confidence=result["confidence"].name,
             emergency=result.get("emergency", False),
+            safety_flags=[f.name for f in result.get("safety_flags", [])],
+            mode=result.get("mode", "guidance"),
+            triage_questions=result.get("triage_questions", []),
+            condition=result.get("condition", ""),
+            assessment=result.get("assessment", ""),
+            actions=result.get("actions", []),
+            refer_if=result.get("refer_if", []),
+            source_protocol=result.get("source_protocol", ""),
         )
     finally:
         import os

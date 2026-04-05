@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Vision prompts                                                       #
 # ------------------------------------------------------------------ #
 
-_TRIAGE_PROMPT = """\
+_TRIAGE_PROMPT_BASE = """\
 You are a clinical visual assessment assistant for community health workers.
 
 Describe what you see in this clinical photo using medical terminology.
@@ -26,6 +26,7 @@ Focus on: location, size, color, texture, borders, surrounding tissue.
 Do NOT diagnose. Only describe the visual findings.
 
 Keep your description under 100 words. Use simple clinical language.
+{language_instruction}
 End with: "Suggested search terms: [3-5 medical terms for protocol lookup]"
 """
 
@@ -108,13 +109,23 @@ def _chat_with_image(
 # Vision workflows                                                     #
 # ------------------------------------------------------------------ #
 
-def triage(image_path: str, cfg: LLMConfig) -> str:
+def triage(image_path: str, cfg: LLMConfig, *, user_context: str = "") -> str:
     """Describe clinical findings in an image.
 
     Returns a text description with suggested search terms.
     """
+    if user_context.strip():
+        lang_instruction = (
+            f'The health worker reports: "{user_context}"\n'
+            f'Use this context to focus your description. '
+            f'Respond in the SAME LANGUAGE as the health worker.'
+        )
+    else:
+        lang_instruction = ""
+    prompt = _TRIAGE_PROMPT_BASE.format(language_instruction=lang_instruction)
+
     b64, media = _encode_image(image_path)
-    return _chat_with_image(_TRIAGE_PROMPT, b64, media, cfg)
+    return _chat_with_image(prompt, b64, media, cfg)
 
 
 def identify_medication(image_path: str, cfg: LLMConfig) -> str:
@@ -143,18 +154,30 @@ def triage_and_consult(
 
     Returns dict with: description, answer, sources, confidence, emergency.
     """
+    import re
     from .consult import consult
 
-    # Step 1: Describe what we see
-    description = triage(image_path, cfg.llm)
+    # Step 1: Describe what we see (in the user's language)
+    description = triage(image_path, cfg.llm, user_context=user_context)
 
-    # Step 2: Combine visual findings with CHW context
-    query = description
+    # Step 2: Extract search terms from description (model appends them)
+    search_terms = ""
+    match = re.search(r"Suggested search terms?:\s*(.+)", description, re.IGNORECASE)
+    if match:
+        search_terms = match.group(1).strip()
+
+    # Step 3: Search using user context (clinical symptoms), NOT visual terms
+    # Visual terms like "papules, macules" pull in wrong protocols (dermatitis instead of measles)
+    # The visual description goes to the LLM as context, not to retrieval
     if user_context.strip():
-        query = f"Visual findings: {description}\nHealth worker reports: {user_context}"
+        query = user_context
+    else:
+        query = search_terms or description[:100]
 
-    # Step 3: Consult protocols with combined context
-    result = consult(query, kb, cfg.llm)
+    # Step 4: Consult with visual description injected as additional context
+    visual_ctx = description.replace(search_terms, "").strip() if search_terms else description
+    enriched_query = f"{query}\n\n[Visual examination: {visual_ctx}]"
+    result = consult(enriched_query, kb, cfg.llm)
     result["description"] = description
 
     return result

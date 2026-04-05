@@ -81,6 +81,7 @@ def chat_structured(
         model=cfg.model,
         messages=messages,
         temperature=cfg.temperature,
+        max_tokens=4096,
         response_format={
             "type": "json_schema",
             "json_schema": {
@@ -90,4 +91,17 @@ def chat_structured(
         },
     )
     text = response.choices[0].message.content or "{}"
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Try to repair truncated JSON by closing open strings/objects
+        repaired = text.rstrip()
+        if not repaired.endswith("}"):
+            repaired += '"}'
+            if repaired.count("[") > repaired.count("]"):
+                repaired = repaired[:-1] + '"]}'
+        try:
+            return json.loads(repaired)
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse structured LLM output, returning empty")
+            return {}
