@@ -81,11 +81,20 @@ def parse_xform(xml_text: str, form_name: str) -> dict:
             continue
 
         text_id_lower = text_id.lower()
-        if any(kw in text_id_lower for kw in ["note", "message", "refer", "congratulate"]):
-            result["messages"].append(text)
-        elif any(kw in text_id_lower for kw in ["danger", "sign", "risk", "symptom"]):
+        # Skip non-clinical fields
+        if any(skip in text_id_lower for skip in [
+            "patient_name", "patient_id", "date_of_birth", "name", "dob",
+            "sex", "uuid", "source", "contact", "phone", "select_contact",
+            "inputs:", "yes_no", "translation", "translator", "label_translator",
+        ]):
+            continue
+        if any(kw in text_id_lower for kw in ["note", "message", "refer", "congratulate", "summary"]):
+            if len(text) > 15:
+                result["messages"].append(text)
+        elif any(kw in text_id_lower for kw in ["danger", "sign", "risk", "symptom", "bleeding",
+                 "fever", "pain", "seizure", "fits", "pale", "swelling", "breathing"]):
             result["questions"].append({"ref": text_id, "text": text, "type": "danger_sign"})
-        elif any(kw in text_id_lower for kw in ["label"]) and len(text) > 5:
+        elif "label" in text_id_lower and len(text) > 10:
             result["questions"].append({"ref": text_id, "text": text, "type": "assessment"})
 
     # Extract calculations (decision logic)
@@ -131,36 +140,46 @@ def generate_protocol(parsed: dict) -> str:
     lines.append(f"*Used by 40,000+ community health workers in 15 countries*")
     lines.append("")
 
-    # Danger signs
+    # Danger signs — deduplicated
     danger_signs = [q for q in parsed["questions"] if q["type"] == "danger_sign"]
     if danger_signs:
         lines.append("## Danger Signs to Check")
         lines.append("Ask about EACH of the following. If ANY is present, refer immediately.")
         lines.append("")
+        seen = set()
         for q in danger_signs:
             text = q["text"]
-            if text and not text.startswith("["):
+            if text and not text.startswith("[") and text.lower() not in seen:
+                seen.add(text.lower())
                 lines.append(f"- {text}")
         lines.append("")
 
-    # Assessment questions
+    # Assessment questions — deduplicated, skip generic labels
     assessment = [q for q in parsed["questions"] if q["type"] == "assessment"]
     if assessment:
-        lines.append("## Assessment Steps")
-        lines.append("")
-        for i, q in enumerate(assessment, 1):
+        seen = set()
+        useful = []
+        for q in assessment:
             text = q["text"]
-            if text and not text.startswith("[") and len(text) > 10:
+            if (text and not text.startswith("[") and len(text) > 10
+                    and text.lower() not in seen
+                    and text.lower() not in ("yes", "no", "select one")):
+                seen.add(text.lower())
+                useful.append(text)
+        if useful:
+            lines.append("## Assessment Steps")
+            lines.append("")
+            for i, text in enumerate(useful, 1):
                 lines.append(f"{i}. {text}")
-        lines.append("")
+            lines.append("")
 
-    # Decision logic
+    # Decision logic — simplified
     if parsed["conditions"]:
-        lines.append("## Decision Rules")
+        lines.append("## Decision Rule")
         lines.append("")
-        for c in parsed["conditions"]:
-            ref = c["ref"].split("/")[-1] if "/" in c["ref"] else c["ref"]
-            lines.append(f"- **{ref}**: If any danger sign is present → REFER URGENTLY")
+        lines.append("- If ANY danger sign above is present → **REFER URGENTLY** to health facility")
+        lines.append("- Accompany the patient if possible")
+        lines.append("- Complete follow-up within 3 days")
         lines.append("")
 
     # Messages/instructions

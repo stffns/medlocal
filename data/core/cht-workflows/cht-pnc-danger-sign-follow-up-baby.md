@@ -19,19 +19,11 @@ Ask about EACH of the following. If ANY is present, refer immediately.
 - Fever
 - Blue skin color (hypothermia)
 
-## Assessment Steps
+## Decision Rule
 
-3. Delivery Report ID
-4. What is the patient's name?
-7. Date of Birth
-
-## Decision Rules
-
-- **t_danger_signs_referral_follow_up_date**: If any danger sign is present → REFER URGENTLY
-- **t_danger_signs_referral_follow_up**: If any danger sign is present → REFER URGENTLY
-- **r_danger_sign_present**: If any danger sign is present → REFER URGENTLY
-- **__still_experiencing_danger_sign**: If any danger sign is present → REFER URGENTLY
-- **__has_danger_sign**: If any danger sign is present → REFER URGENTLY
+- If ANY danger sign above is present → **REFER URGENTLY** to health facility
+- Accompany the patient if possible
+- Complete follow-up within 3 days
 
 ## Instructions for Health Worker
 

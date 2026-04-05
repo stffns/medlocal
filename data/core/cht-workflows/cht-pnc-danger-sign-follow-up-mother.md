@@ -15,23 +15,11 @@ Ask about EACH of the following. If ANY is present, refer immediately.
 - Foul smelling vaginal discharge
 - Convulsions
 
-## Assessment Steps
+## Decision Rule
 
-5. Delivery Report ID
-6. What is the patient's name?
-9. Date of Birth
-
-## Decision Rules
-
-- **t_danger_signs_referral_follow_up_date**: If any danger sign is present → REFER URGENTLY
-- **t_danger_signs_referral_follow_up**: If any danger sign is present → REFER URGENTLY
-- **r_danger_sign_present**: If any danger sign is present → REFER URGENTLY
-- **custom_woman_label_translator**: If any danger sign is present → REFER URGENTLY
-- **custom_woman_label**: If any danger sign is present → REFER URGENTLY
-- **custom_woman_start_label_translator**: If any danger sign is present → REFER URGENTLY
-- **custom_woman_start_label**: If any danger sign is present → REFER URGENTLY
-- **__still_experiencing_danger_sign**: If any danger sign is present → REFER URGENTLY
-- **__has_danger_sign**: If any danger sign is present → REFER URGENTLY
+- If ANY danger sign above is present → **REFER URGENTLY** to health facility
+- Accompany the patient if possible
+- Complete follow-up within 3 days
 
 ## Instructions for Health Worker
 

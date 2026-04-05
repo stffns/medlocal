@@ -5,10 +5,8 @@
 
 ## Assessment Steps
 
-6. What is the patient's name?
-9. Date of Birth
-13. Reminder of Upcoming Health Facility Visit
-14. Did you remind the client in-person or by phone?
+1. Reminder of Upcoming Health Facility Visit
+2. Did you remind the client in-person or by phone?
 
 ## Instructions for Health Worker
 
