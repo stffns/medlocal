@@ -192,9 +192,10 @@ export default function ConsultMessage({ message, onTriageSubmit }) {
       <div className="max-w-[90%] px-5 py-4 rounded-2xl rounded-bl-md bg-surface-2 border border-border space-y-3 overflow-hidden">
         {/* Badges */}
         <div className="flex flex-wrap gap-1.5">
-          {r.emergency && <Badge label="EMERGENCY" />}
+          {r.urgency === 'emergency' && <Badge label="EMERGENCY" variant="EMERGENCY" />}
+          {r.urgency === 'urgent' && <Badge label="URGENT" variant="URGENT_REFERRAL" />}
           <Badge label={r.confidence} />
-          {r.safety_flags?.filter(f => f !== 'EMERGENCY_DETECTED' || !r.emergency).map((f, i) => (
+          {r.safety_flags?.filter(f => f !== 'EMERGENCY_DETECTED' && f !== 'URGENT_REFERRAL').map((f, i) => (
             <Badge key={i} label={f.replace(/_/g, ' ')} />
           ))}
         </div>

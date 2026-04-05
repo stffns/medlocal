@@ -205,12 +205,22 @@ def consult(
                 "Consult your supervisor before acting."
             )
 
+    # Combine regex emergency detection with LLM urgency classification
+    llm_urgency = structured.get("urgency", "routine")
+    if llm_urgency == "emergency":
+        is_emergency = True
+        if SafetyFlag.EMERGENCY_DETECTED not in safety_flags:
+            safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
+    elif llm_urgency == "urgent" and SafetyFlag.EMERGENCY_DETECTED not in safety_flags:
+        safety_flags.append(SafetyFlag.URGENT_REFERRAL)
+
     result = {
         "answer": answer,
         "sources": sources,
         "confidence": confidence,
         "safety_flags": safety_flags,
         "emergency": is_emergency,
+        "urgency": llm_urgency,
         "mode": structured.get("mode", "guidance"),
         "triage_questions": structured.get("triage_questions", []),
         # Raw structured fields for rich UI rendering
@@ -254,6 +264,12 @@ You MUST use GUIDANCE mode. Do NOT ask more questions. Give the full clinical re
 Give SPECIFIC treatments with drug names, dosages, and durations from the protocols."""
 
 
+_URGENCY_FIELD = {
+    "type": "string",
+    "enum": ["routine", "urgent", "emergency"],
+    "description": "routine = no danger signs, can manage at health post. urgent = needs referral within hours (e.g. severe dehydration, high fever in pregnancy). emergency = life-threatening, refer IMMEDIATELY (e.g. convulsions, not breathing, severe bleeding, eclampsia, shock).",
+}
+
 _CONSULT_SCHEMA_GUIDANCE = {
     "type": "object",
     "properties": {
@@ -262,6 +278,7 @@ _CONSULT_SCHEMA_GUIDANCE = {
             "enum": ["guidance"],
             "description": "Must be guidance — screening is complete.",
         },
+        "urgency": _URGENCY_FIELD,
         "condition": {
             "type": "string",
             "description": "The identified condition name (e.g. 'Eczema Dermatitis', 'Contact Dermatitis').",
@@ -285,7 +302,7 @@ _CONSULT_SCHEMA_GUIDANCE = {
             "description": "Protocol names used",
         },
     },
-    "required": ["mode", "condition", "assessment", "actions", "refer_if", "source"],
+    "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source"],
 }
 
 
@@ -297,6 +314,7 @@ _CONSULT_SCHEMA = {
             "enum": ["assessment", "guidance"],
             "description": "assessment = need more info (ask next question), guidance = enough info to advise",
         },
+        "urgency": _URGENCY_FIELD,
         "condition": {
             "type": "string",
             "description": "The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write the differential.",
@@ -320,7 +338,7 @@ _CONSULT_SCHEMA = {
             "description": "Protocol names used",
         },
     },
-    "required": ["mode", "condition", "assessment", "actions", "refer_if", "source"],
+    "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source"],
 }
 
 

@@ -59,6 +59,7 @@ class ConsultResponse(BaseModel):
     confidence: str = "MEDIUM"
     safety_flags: list[str] = []
     emergency: bool = False
+    urgency: str = "routine"
     mode: str = "guidance"
     triage_questions: list[dict] = []
     # Structured fields for rich UI rendering
@@ -153,6 +154,7 @@ def api_consult(req: ConsultRequest):
         confidence=result["confidence"].name,
         safety_flags=[f.name for f in result.get("safety_flags", [])],
         emergency=result.get("emergency", False),
+        urgency=result.get("urgency", "routine"),
         mode=result.get("mode", "guidance"),
         triage_questions=result.get("triage_questions", []),
         condition=result.get("condition", ""),
@@ -273,6 +275,7 @@ class VisionTriageResponse(BaseModel):
     sources: list[dict]
     confidence: str
     emergency: bool
+    urgency: str = "routine"
     safety_flags: list[str] = []
     mode: str = "guidance"
     triage_questions: list[dict] = []
@@ -312,6 +315,7 @@ async def api_vision_triage(
             sources=result["sources"],
             confidence=result["confidence"].name,
             emergency=result.get("emergency", False),
+            urgency=result.get("urgency", "routine"),
             safety_flags=[f.name for f in result.get("safety_flags", [])],
             mode=result.get("mode", "guidance"),
             triage_questions=result.get("triage_questions", []),

@@ -31,6 +31,7 @@ class SafetyFlag(IntEnum):
     LOW_CONFIDENCE = 2          # Retrieval quality too low
     HALLUCINATION_SUSPECTED = 3 # Answer contains info not in protocols
     DOSAGE_MENTIONED = 4        # Dosage in answer — needs extra scrutiny
+    URGENT_REFERRAL = 5         # LLM classified as urgent — refer within hours
 
 
 # ------------------------------------------------------------------ #

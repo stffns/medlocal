@@ -43,6 +43,7 @@ export default function ConsultView() {
           confidence: vr.confidence || 'MEDIUM',
           safety_flags: vr.safety_flags || [],
           emergency: vr.emergency || false,
+          urgency: vr.urgency || 'routine',
           mode: vr.mode || 'guidance',
           triage_questions: vr.triage_questions || [],
           condition: vr.condition || vr.description || '',

@@ -4,6 +4,7 @@ const STYLES = {
   LOW: 'bg-red text-white',
   EMERGENCY: 'bg-red text-white animate-pulse',
   EMERGENCY_DETECTED: 'bg-red/80 text-white',
+  URGENT_REFERRAL: 'bg-orange-500 text-white',
   DEFAULT: 'bg-surface-3 text-text-2',
 };
 
