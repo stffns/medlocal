@@ -82,7 +82,15 @@ Qwen 3.5 9B           90.5%     18.6s      6/6      10/10
 
 ### P1 — Hackathon Deliverables
 
-5. **Kaggle notebook demo**
+5. **Ingest CHT decision support workflows**
+   - What: Download CHT reference apps (medic/cht-core), extract decision trees (JSON/XML), convert to structured markdown, ingest into core.db
+   - CHT workflows: maternal health, child health, malaria screening, immunization, etc.
+   - Two layers in core.db: WHO protocols (theory) + CHT workflows (field-tested practice)
+   - Narrative: "CHT validated these workflows with 40,000 CHWs in 15 countries. MedLocal makes them accessible via natural language + vision + spaced repetition."
+   - Caution: Convert to markdown (not raw JSON), validate no conflicts with WHO protocols
+   - Reference: https://github.com/medic/cht-core
+
+6. **Kaggle notebook demo**
    - Full workflow: ingest → consult → vision → train cycle
    - Include benchmark results table
    - Show multilingual examples
