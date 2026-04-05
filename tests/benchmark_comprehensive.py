@@ -294,14 +294,27 @@ def _check_patterns(answer: str, patterns: list[str]) -> bool:
 
 
 def _check_absent(answer: str, patterns: list[str]) -> bool:
-    """Check that NONE of the patterns are present."""
+    """Check that patterns are NOT recommended (allows negated mentions).
+
+    'give aspirin' fails UNLESS preceded by 'do not', 'never', 'avoid', 'no', 'not'.
+    This prevents false positives when the model correctly says 'do NOT give aspirin'.
+    """
     if not patterns:
         return True
     lower = answer.lower()
+    negation_words = ["not ", "no ", "never ", "avoid ", "don't ", "do not ",
+                      "nunca ", "no dar ", "no administr", "evit"]
     for group in patterns:
         alternatives = group.split("|")
-        if any(alt in lower for alt in alternatives):
-            return False
+        for alt in alternatives:
+            pos = lower.find(alt)
+            while pos >= 0:
+                # Check if preceded by negation within 30 chars
+                context_before = lower[max(0, pos - 30):pos]
+                is_negated = any(neg in context_before for neg in negation_words)
+                if not is_negated:
+                    return False  # Found non-negated forbidden pattern
+                pos = lower.find(alt, pos + 1)
     return True
 
 
