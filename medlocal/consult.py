@@ -311,7 +311,7 @@ _CONSULT_SCHEMA_GUIDANCE = {
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Specific treatment steps with drug names, dosages, durations (e.g. 'Apply hydrocortisone 1% cream twice daily for 7 days'). NEVER write meta-actions.",
+            "description": "MUST include specific drug name, dose, route, and duration from the protocols (e.g. 'Ceftriaxone 500mg IM single dose'). If treatment requires controlled medication not available at health post, include in refer_if instead. NEVER write meta-actions.",
         },
         "refer_if": {
             "type": "array",
@@ -347,7 +347,7 @@ _CONSULT_SCHEMA = {
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Concrete clinical steps. In guidance mode: specific treatments (e.g. 'Apply hydrocortisone 1% cream twice daily for 7 days', 'Give ORS 200ml after each stool'). NEVER write meta-actions like 'recommend treatment' or 'identify condition'. In assessment mode: what to do while waiting (e.g. 'Keep wound clean and dry').",
+            "description": "Concrete clinical steps. In guidance mode: MUST include specific drug name, dose, route, and duration from protocols (e.g. 'Ceftriaxone 500mg IM single dose', 'ORS 200ml after each stool'). If treatment requires controlled medication, include in refer_if. NEVER write meta-actions. In assessment mode: what to do while waiting (e.g. 'Keep wound clean and dry').",
         },
         "refer_if": {
             "type": "array",
