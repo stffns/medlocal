@@ -54,7 +54,7 @@ def consult_cmd(
     kb = KnowledgeBase(cfg)
 
     console.print("[dim]Searching protocols...[/dim]")
-    result = consult(question, kb, cfg.llm)
+    result = consult(question, kb, cfg.llm, language=cfg.language)
 
     # Safety indicators
     confidence = result["confidence"]
@@ -103,7 +103,7 @@ def chat() -> None:
             break
 
         console.print("[dim]Searching protocols...[/dim]")
-        result = consult(question, kb, cfg.llm, history=history)
+        result = consult(question, kb, cfg.llm, history=history, language=cfg.language)
 
         history.append({"role": "user", "content": question})
         history.append({"role": "assistant", "content": result["answer"]})

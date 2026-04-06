@@ -37,6 +37,10 @@ class MedLocalConfig(BaseModel):
         default=None,
         description="LLM for card generation (offline, can be a large model). Falls back to llm.",
     )
+    language: str = Field(
+        default="auto",
+        description="Response language. 'auto' = match question language. Otherwise ISO name: English, Spanish, French, Portuguese, Swahili, Hindi, Arabic, etc.",
+    )
     core_db: str = Field(
         default=str(_DEFAULT_CONFIG_DIR / "core.db"),
         description="Path to core (read-only) vstash knowledge base",

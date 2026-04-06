@@ -63,6 +63,7 @@ def consult(
     history: list[dict[str, str]] | None = None,
     audit: AuditLog | None = None,
     verify: bool = False,
+    language: str = "auto",
 ) -> dict:
     """Answer a clinical question using retrieved protocols.
 
@@ -166,9 +167,9 @@ def consult(
     if is_emergency:
         system = _EMERGENCY_PREFIX + system
 
-    # Anchor the answer language explicitly — schema descriptions are too weak
-    q_lang = _detect_language(question)
-    system += f"\n\nLANGUAGE: The \"answer\" field MUST be written in {q_lang}. Protocols are in English — translate for the answer only."
+    # Resolve response language: config setting > auto-detect from question
+    q_lang = language if language != "auto" else _detect_language(question)
+    system += f"\n\nLANGUAGE: ALL fields MUST be written in {q_lang}. Protocols are in English — translate as needed."
 
     # Detect triage answers — force guidance mode via context injection
     has_triage = bool(_re.search(r'\[.+\]\s*$', question))

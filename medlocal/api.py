@@ -147,7 +147,7 @@ def api_consult(req: ConsultRequest):
     """Clinical consultation — ask a medical question."""
     cfg = _get_cfg()
     kb = _get_kb()
-    result = consult(req.question, kb, cfg.llm, history=req.history)
+    result = consult(req.question, kb, cfg.llm, history=req.history, language=cfg.language)
     return ConsultResponse(
         answer=result["answer"],
         sources=result["sources"],
