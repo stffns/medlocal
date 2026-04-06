@@ -47,11 +47,11 @@ Use guidance mode when you can identify the condition AND give specific actions.
 RULES:
 1. ONLY use information from the protocols. Never invent.
 2. NEVER recommend a drug the patient is allergic to.
-3. INTERNAL FIELDS (condition, assessment, actions, refer_if, source) MUST be in ENGLISH regardless of the question language. These are for internal processing.
-4. The "answer" field is the ONLY user-facing text. Write it in the SAME LANGUAGE as the question. It must be a complete, formatted clinical response (assessment, actions, referral criteria, source).
+3. ALL fields (condition, assessment, actions, refer_if, answer) MUST be in the SAME LANGUAGE as the question. Translate protocol content if needed.
+4. The "answer" field is a complete, formatted clinical response (assessment, actions, referral criteria, source).
 5. In guidance mode: give specific actions with dosages, durations, and danger signs.
 6. When screening answers are provided in brackets [...] (e.g. "[fever: no. rash: yes]"), switch to GUIDANCE mode. Give SPECIFIC treatment: drug names, dosages, durations, home care steps. Do NOT give meta-actions like "recommend treatment" — give the actual treatment.
-7. The "condition" field must be the clinical condition name in English (e.g. "Eczema Dermatitis", "Pneumonia"), never the mode name.
+7. The "condition" field must be the clinical condition name (e.g. "Eczema Dermatitis", "Pneumonia"), never the mode name.
 8. If the protocols provided do NOT cover the patient's question or condition, say this is outside the scope of available protocols and recommend consulting a supervisor or referring to a facility. Do NOT answer from general medical knowledge."""
 
 
@@ -312,29 +312,29 @@ _CONSULT_SCHEMA_GUIDANCE = {
         "urgency": _URGENCY_FIELD,
         "condition": {
             "type": "string",
-            "description": "IN ENGLISH. The identified condition name (e.g. 'Eczema Dermatitis', 'Contact Dermatitis').",
+            "description": " The identified condition name (e.g. 'Eczema Dermatitis', 'Contact Dermatitis').",
         },
         "assessment": {
             "type": "string",
-            "description": "IN ENGLISH. Clinical reasoning: why you suspect this condition based on symptoms and screening.",
+            "description": " Clinical reasoning: why you suspect this condition based on symptoms and screening.",
         },
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "IN ENGLISH. MUST include specific drug name, dose, route, and duration from the protocols (e.g. 'Ceftriaxone 500mg IM single dose'). If treatment requires controlled medication not available at health post, include in refer_if instead. NEVER write meta-actions.",
+            "description": " MUST include specific drug name, dose, route, and duration from the protocols (e.g. 'Ceftriaxone 500mg IM single dose'). If treatment requires controlled medication not available at health post, include in refer_if instead. NEVER write meta-actions.",
         },
         "refer_if": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "IN ENGLISH. Danger signs requiring immediate referral.",
+            "description": " Danger signs requiring immediate referral.",
         },
         "source": {
             "type": "string",
-            "description": "IN ENGLISH. Protocol names used",
+            "description": " Protocol names used",
         },
         "answer": {
             "type": "string",
-            "description": "User-facing response in the SAME LANGUAGE as the question. Complete formatted clinical response including assessment, treatment actions with dosages, referral criteria, and source protocol. This is what the user sees.",
+            "description": "Complete formatted response in the SAME LANGUAGE as all other fields. Complete formatted clinical response including assessment, treatment actions with dosages, referral criteria, and source protocol. This is what the user sees.",
         },
     },
     "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source", "answer"],
@@ -352,29 +352,29 @@ _CONSULT_SCHEMA = {
         "urgency": _URGENCY_FIELD,
         "condition": {
             "type": "string",
-            "description": "IN ENGLISH. The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write the differential.",
+            "description": " The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write the differential.",
         },
         "assessment": {
             "type": "string",
-            "description": "IN ENGLISH. In guidance mode: why you suspect this condition. In assessment mode: summarize what you know so far. Do NOT ask questions here — questions are handled separately.",
+            "description": " In guidance mode: why you suspect this condition. In assessment mode: summarize what you know so far. Do NOT ask questions here — questions are handled separately.",
         },
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "IN ENGLISH. Concrete clinical steps. In guidance mode: MUST include specific drug name, dose, route, and duration from protocols (e.g. 'Ceftriaxone 500mg IM single dose', 'ORS 200ml after each stool'). If treatment requires controlled medication, include in refer_if. NEVER write meta-actions. In assessment mode: what to do while waiting (e.g. 'Keep wound clean and dry').",
+            "description": " Concrete clinical steps. In guidance mode: MUST include specific drug name, dose, route, and duration from protocols (e.g. 'Ceftriaxone 500mg IM single dose', 'ORS 200ml after each stool'). If treatment requires controlled medication, include in refer_if. NEVER write meta-actions. In assessment mode: what to do while waiting (e.g. 'Keep wound clean and dry').",
         },
         "refer_if": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "IN ENGLISH. Danger signs requiring immediate referral.",
+            "description": " Danger signs requiring immediate referral.",
         },
         "source": {
             "type": "string",
-            "description": "IN ENGLISH. Protocol names used",
+            "description": " Protocol names used",
         },
         "answer": {
             "type": "string",
-            "description": "User-facing response in the SAME LANGUAGE as the question. In assessment mode: explain what you're evaluating and ask the next question. In guidance mode: complete clinical response with assessment, treatment actions with dosages, referral criteria, and source. This is what the user sees.",
+            "description": "Complete formatted response in the SAME LANGUAGE as all other fields. In assessment mode: explain what you're evaluating and ask the next question. In guidance mode: complete clinical response with assessment, treatment actions with dosages, referral criteria, and source. This is what the user sees.",
         },
     },
     "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source", "answer"],
@@ -382,30 +382,63 @@ _CONSULT_SCHEMA = {
 
 
 def _detect_language(text: str) -> str:
-    """Detect language from text using word-boundary heuristics.
+    """Detect language from text using character and word heuristics.
 
-    Returns a language name string for use in prompts (e.g. 'Spanish', 'Portuguese').
-    No LLM call — uses regex word-boundary matching to avoid substring false positives.
+    Returns a language name for use in prompts (e.g. 'Spanish', 'Portuguese').
+    No LLM call. Two-pass strategy:
+    1. Script/character detection (non-Latin scripts, Spanish/Portuguese diacritics)
+    2. Word-boundary markers for Latin-script disambiguation
     """
     import re as _re
+
+    # --- Pass 1: Script/character detection (fast, decisive) ---
+    # Non-Latin scripts: unambiguous
+    if _re.search(r'[\u0900-\u097F]', text):  # Devanagari
+        return "Hindi"
+    if _re.search(r'[\u0600-\u06FF]', text):  # Arabic
+        return "Arabic"
+
+    # Spanish-specific characters: ñ, ¿, ¡
+    has_spanish_chars = bool(_re.search(r'[ñ¿¡]', text))
+    # Portuguese-specific characters: ã, õ, ç (when not in French context)
+    has_portuguese_chars = bool(_re.search(r'[ãõ]', text))
+    # French-specific: ê, ë, î, ï, û, ü, ç + œ, «, »
+    has_french_chars = bool(_re.search(r'[êëîïûœ«»]', text))
+
+    # If only one script matches, return immediately
+    char_hits = sum([has_spanish_chars, has_portuguese_chars, has_french_chars])
+    if char_hits == 1:
+        if has_spanish_chars:
+            return "Spanish"
+        if has_portuguese_chars:
+            return "Portuguese"
+        if has_french_chars:
+            return "French"
+
+    # --- Pass 2: Word markers (for Latin-script without distinctive chars) ---
     text_lower = text.lower()
-    # Discriminating function words — use words unique to each language
-    # Spanish vs Portuguese: avoid shared words (con/com, por, que, está)
     _MARKERS = {
-        "Spanish": [r"\bel\b", r"\blos\b", r"\blas\b", r"\bdel\b", r"\bpero\b", r"\btiene\b", r"\bniño\b", r"\bniña\b", r"\bmuy\b", r"\btambién\b", r"\bhay\b", r"\bpuede\b", r"\bdebe\b"],
+        "Spanish": [r"\bel\b", r"\blos\b", r"\blas\b", r"\bdel\b", r"\bpero\b", r"\btiene\b", r"\btengo\b", r"\bmuy\b", r"\btambién\b", r"\bhay\b", r"\bpuede\b", r"\bduele\b", r"\bdesde\b", r"\bhace\b"],
         "Portuguese": [r"\bnão\b", r"\btem\b", r"\bdos\b", r"\bdas\b", r"\bmas\b", r"\bou\b", r"\bela\b", r"\bele\b", r"\bcriança\b", r"\bmuito\b", r"\btambém\b", r"\bpreciso\b", r"\bpode\b", r"\bdeve\b"],
-        "French": [r"\ble\b", r"\bles\b", r"\bdes\b", r"\bdu\b", r"\bavec\b", r"\bune\b", r"\best\b", r"\bpas\b", r"\benfant\b", r"\bfièvre\b", r"\bpour\b", r"\bdans\b"],
+        "French": [r"\ble\b", r"\bles\b", r"\bdes\b", r"\bdu\b", r"\bavec\b", r"\bune\b", r"\best\b", r"\bpas\b", r"\bpour\b", r"\bdans\b", r"\bje\b", r"\bne\b"],
         "Swahili": [r"\bna\b", r"\bya\b", r"\bwa\b", r"\bkwa\b", r"\bni\b", r"\bkatika\b", r"\bana\b", r"\bhana\b"],
-        "Hindi": ["है", "का", "के", "की", "में", "को", "से", "और"],
-        "Arabic": ["في", "من", "على", "إلى", "هذا", "هل"],
     }
     scores = {}
     for lang, patterns in _MARKERS.items():
         scores[lang] = sum(1 for p in patterns if _re.search(p, text_lower))
-    best = max(scores, key=scores.get)
-    if scores[best] == 0:
+
+    # If character detection narrowed it + word scores confirm, use that
+    if has_spanish_chars and has_portuguese_chars:
+        # Both have diacritics — use word scores to disambiguate
+        if scores.get("Spanish", 0) > scores.get("Portuguese", 0):
+            return "Spanish"
+        if scores.get("Portuguese", 0) > scores.get("Spanish", 0):
+            return "Portuguese"
+        return "Spanish"  # default for shared diacritics (á, é, ó common in both)
+
+    best = max(scores, key=scores.get) if scores else "English"
+    if scores.get(best, 0) == 0:
         return "English"
-    # Accept score of 1 only if it's the sole winner (no ties)
     if scores[best] == 1:
         tied = [l for l, s in scores.items() if s == scores[best]]
         if len(tied) == 1:
