@@ -47,8 +47,18 @@ Check for danger signs FIRST:
 - Children: Azithromycin 10-20 mg/kg/day for 7 days
 - **Refer** if not improving after 5 days of treatment
 
+## Antipyretic Dosing — Children
+- **Paracetamol (first choice):** 10-15 mg/kg every 6 hours (safe from birth)
+- **Ibuprofen:** 5-10 mg/kg every 8 hours — **only if ≥6 months old**
+  - Under 6 months: do NOT give ibuprofen, use paracetamol only
+  - At 6 months: prefer paracetamol; ibuprofen is an option if paracetamol insufficient
+  - Do NOT give ibuprofen if dehydrated, vomiting, or suspected dengue
+- Can alternate paracetamol and ibuprofen if single agent insufficient (≥6 months only)
+
 ## Do NOT Use
 - Aspirin in children under 12 (risk of Reye syndrome)
+- Ibuprofen in children under 6 months
+- Ibuprofen in suspected dengue, dehydration, or bleeding risk
 - Cold baths or alcohol sponging (causes shivering, raises core temperature)
 - Antibiotics for every fever — most fevers are viral
 
