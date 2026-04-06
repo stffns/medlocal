@@ -12,7 +12,7 @@
 ### Urethral Discharge (men)
 - Symptoms: discharge from penis, pain when urinating
 - Treat for BOTH gonorrhea + chlamydia:
-  - Ceftriaxone 250 mg IM single dose (gonorrhea)
+  - Ceftriaxone 500 mg IM single dose (gonorrhea)
   - PLUS Azithromycin 1g oral single dose (chlamydia)
 - Treat all sexual partners
 - Abstain from sex until treatment complete + 7 days
@@ -41,7 +41,7 @@
   - Rule out pregnancy (ectopic pregnancy is a surgical emergency)
   - Ask about drug allergies (3 antibiotics will be given)
 - Treatment (only after assessment confirms PID):
-  - Ceftriaxone 250 mg IM single dose
+  - Ceftriaxone 500 mg IM single dose
   - PLUS Doxycycline 100 mg twice daily for 14 days
   - PLUS Metronidazole 500 mg twice daily for 14 days
 - If severe (fever >=38C, rebound tenderness, unable to eat): **REFER URGENTLY**
@@ -71,4 +71,4 @@
 - Pregnancy with positive syphilis (urgent treatment needed)
 - Symptoms not improving after 7 days of treatment
 
-Source: WHO Guidelines for the Management of STIs (2021); WHO Syndromic Management Guidelines
+Source: WHO Guidelines for the Management of STIs (2021); CDC STI Treatment Guidelines (2021 — ceftriaxone dose updated from 250mg to 500mg due to rising gonococcal resistance)

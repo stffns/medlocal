@@ -563,13 +563,14 @@ def _audit_kwargs(result: dict) -> dict:
 
 
 _KEYWORDS_PROMPT = """\
-Rewrite this question using medical terminology for the symptoms described. Do NOT diagnose.
-Only translate lay terms to clinical terms.
+Rewrite this question using ENGLISH medical terminology for protocol search.
+Translate ALL terms to English, regardless of the input language.
+Do NOT diagnose — only translate symptoms to clinical search terms.
 Example: "baby not breathing after birth" → "newborn apnea birth resuscitation ventilation"
-Example: "child fever rash red eyes" → "pediatric febrile exanthem conjunctivitis maculopapular rash"
-Example: "chest pain sweating" → "chest pain diaphoresis acute cardiac"
-Example: "pregnant woman convulsions" → "pregnancy seizure antepartum convulsion"
-Return ONLY the terms separated by spaces.
+Example: "niño con fiebre y sarpullido" → "pediatric febrile exanthem rash measles"
+Example: "secreción uretral purulenta, diplococos gramnegativos" → "urethral discharge gonorrhea STI ceftriaxone"
+Example: "pregnant woman convulsions" → "pregnancy seizure eclampsia magnesium sulfate"
+Return ONLY English terms separated by spaces.
 Question: """
 
 
