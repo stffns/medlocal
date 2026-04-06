@@ -215,6 +215,16 @@ def consult(
             if _clean_protocol_refs(r).strip()
         ]
 
+    # If LLM classified as emergency but regex didn't catch it (and mode is
+    # still assessment), override: emergencies should never wait for triage.
+    llm_urgency = structured.get("urgency", "routine")
+    if llm_urgency == "emergency" and structured.get("mode") == "assessment":
+        structured["mode"] = "guidance"
+        structured["triage_questions"] = []
+        if not is_emergency:
+            is_emergency = True
+            safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
+
     # In assessment mode, generate triage questions in the user's language
     if structured.get("mode") == "assessment":
         # Combine answer + question for more language signal

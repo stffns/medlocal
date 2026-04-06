@@ -135,6 +135,10 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\b(ingestion|ingest(ed)?|swallow(ed)?|drink|drank)\b.{0,30}\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b",
     r"(?i)\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b.{0,30}\b(ingestion|ingest(ed)?|swallow(ed)?)\b",
     r"(?i)\bpoisoning\b",
+    # Head trauma / altered consciousness
+    r"(?i)\baltered mental status\b",
+    r"(?i)\bhead (trauma|injury|contusion)\b",
+    r"(?i)\bskull fracture\b",
     # Circulatory/bleeding
     r"(?i)\bsevere (bleeding|hemorrhage)\b",
     r"(?i)\bshock\b",
