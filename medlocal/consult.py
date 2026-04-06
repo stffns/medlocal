@@ -184,6 +184,10 @@ def consult(
     if has_triage:
         system += _GUIDANCE_INJECTION
 
+    # Emergency: skip assessment, go straight to guidance with referral
+    if is_emergency:
+        system += _EMERGENCY_GUIDANCE_INJECTION
+
     messages = [{"role": "system", "content": system}]
     if history:
         messages.extend(history)
@@ -192,12 +196,14 @@ def consult(
         "content": f"{context}\n\n[Respond in {q_lang}]\n{question}",
     })
 
-    schema = _CONSULT_SCHEMA_GUIDANCE if has_triage else _CONSULT_SCHEMA
+    schema = _CONSULT_SCHEMA_GUIDANCE if (has_triage or is_emergency) else _CONSULT_SCHEMA
     structured = chat_structured(messages, llm_cfg, schema, "clinical_response")
 
-    # Force guidance mode when triage answers were provided
-    if has_triage:
+    # Force guidance mode when triage answers were provided or emergency detected
+    if has_triage or is_emergency:
         structured["mode"] = "guidance"
+    if is_emergency:
+        structured["urgency"] = "emergency"
 
     # Clean protocol refs from all text fields
     for key in ("condition", "assessment", "next_question", "source"):
@@ -302,6 +308,15 @@ _GUIDANCE_INJECTION = """
 IMPORTANT: The screening answers are provided in brackets at the end of the question.
 You MUST use GUIDANCE mode. Do NOT ask more questions. Give the full clinical recommendation NOW.
 Give SPECIFIC treatments with drug names, dosages, and durations from the protocols."""
+
+_EMERGENCY_GUIDANCE_INJECTION = """
+
+EMERGENCY: Danger signs detected. You MUST use GUIDANCE mode — do NOT use assessment mode.
+Do NOT ask screening questions. The patient needs IMMEDIATE referral.
+Start with: ⚠ REFER IMMEDIATELY to the nearest health facility.
+Then give immediate stabilization steps from the protocols while waiting for transport.
+If the protocols do not cover this specific condition, still give general stabilization
+advice (airway, breathing, positioning, keep warm) and refer."""
 
 
 _URGENCY_FIELD = {

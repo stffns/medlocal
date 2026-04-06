@@ -131,6 +131,10 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\b(costal|intercostal|subcostal)\s*(retraction|recession)s?\b",
     r"(?i)\bsevere.{0,10}(respiratory|breathing) distress\b",
     r"(?i)\bstridor\b",
+    # Poisoning/ingestion (any chemical ingestion = emergency)
+    r"(?i)\b(ingestion|ingest(ed)?|swallow(ed)?|drink|drank)\b.{0,30}\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b",
+    r"(?i)\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b.{0,30}\b(ingestion|ingest(ed)?|swallow(ed)?)\b",
+    r"(?i)\bpoisoning\b",
     # Circulatory/bleeding
     r"(?i)\bsevere (bleeding|hemorrhage)\b",
     r"(?i)\bshock\b",
