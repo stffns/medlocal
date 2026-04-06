@@ -213,7 +213,7 @@ PROTOCOL_ADHERENCE = [
      "must_contain": ["back blow|chest thrust|heimlich|cough|golpe|espalda|tos|choking"],
      "must_not_contain": []},
     {"id": "PA04", "q": "What is the FAST test for stroke?",
-     "must_contain": ["face|arm|speech|time|scope|outside|refer|facility|not covered"],
+     "must_contain": ["face|arm|speech|time"],
      "must_not_contain": []},
     {"id": "PA05", "q": "How to do the 20-minute whole blood clotting test for snakebite?",
      "must_contain": ["blood|glass|20 min|clot|tilt"],
