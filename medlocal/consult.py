@@ -589,12 +589,16 @@ def _multi_query_search(
         ).strip()
         secondary = kb.search(keywords, top_k=10)
 
-        # Merge and deduplicate by chunk_id
-        seen = {r.chunk_id for r in results}
+        # Merge: deduplicate by chunk_id, keep higher score
+        seen = {r.chunk_id: i for i, r in enumerate(results)}
         for r in secondary:
-            if r.chunk_id not in seen:
+            if r.chunk_id in seen:
+                idx = seen[r.chunk_id]
+                if r.score > results[idx].score:
+                    results[idx] = r  # upgrade score
+            else:
+                seen[r.chunk_id] = len(results)
                 results.append(r)
-                seen.add(r.chunk_id)
     except Exception:
         pass  # Fall back to primary results only
 

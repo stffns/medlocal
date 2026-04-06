@@ -47,10 +47,10 @@ def score_confidence(sources: list[dict], results: list[SearchResult]) -> Confid
     count_relevant = sum(1 for r in results if r.score >= best * 0.7)
 
     # Multiple relevant chunks from same protocol = high confidence
-    # Thresholds calibrated: out-of-scope scores ~0.010-0.014, on-scope >0.020
-    if count_relevant >= 3 and best > 0.018:
+    # Thresholds: out-of-scope ~0.008-0.010, on-scope >0.014
+    if count_relevant >= 3 and best > 0.015:
         return Confidence.HIGH
-    elif count_relevant >= 1 and best > 0.016:
+    elif count_relevant >= 1 and best > 0.012:
         return Confidence.MEDIUM
     else:
         return Confidence.LOW
