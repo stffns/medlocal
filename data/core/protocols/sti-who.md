@@ -7,6 +7,26 @@
 4. **Ask about sexual history** — number of partners, condom use, partner symptoms
 5. **Offer HIV test** — STIs increase HIV risk
 
+## Etiologic Treatment — When Laboratory Confirms the Pathogen
+
+### Confirmed Gonorrhea (culture, Gram stain, or NAAT positive)
+- Ceftriaxone 500 mg IM single dose
+- PLUS Azithromycin 1g oral single dose (dual therapy even if only GC confirmed)
+- Treat all sexual partners in last 60 days
+
+### Confirmed Chlamydia (NAAT positive)
+- **First-line:** Azithromycin 1g oral single dose
+- **Alternative:** Doxycycline 100 mg twice daily for 7 days
+- In pregnancy: Azithromycin 1g oral single dose (doxycycline contraindicated)
+- Treat all sexual partners in last 60 days
+- Test of cure: repeat NAAT 3-4 weeks after treatment if pregnant
+
+### Confirmed Syphilis (RPR/VDRL + TPHA positive)
+- Early syphilis (<2 years): Benzathine penicillin 2.4 million units IM single dose
+- Late/unknown duration: Benzathine penicillin 2.4 million units IM weekly x 3 weeks
+- Penicillin allergy: Doxycycline 100 mg twice daily for 14-28 days (NOT in pregnancy)
+- In pregnancy with penicillin allergy: REFER for desensitization
+
 ## Syndromic Management — Treat Based on Symptoms
 
 ### Urethral Discharge (men)
