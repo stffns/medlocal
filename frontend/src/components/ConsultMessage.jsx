@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, FileText, AlertTriangle, Activity, ClipboardList, BookOpen, Eye } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, AlertTriangle, Activity, ClipboardList, BookOpen, Eye, RotateCcw } from 'lucide-react';
 import Badge from './Badge';
 import TriageQuestions from './TriageQuestions';
 import { cleanText, inlineMd } from '../lib/cleanText';
@@ -159,7 +159,7 @@ function StructuredResponse({ r }) {
   );
 }
 
-export default function ConsultMessage({ message, onTriageSubmit }) {
+export default function ConsultMessage({ message, onTriageSubmit, onRetry }) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -177,8 +177,17 @@ export default function ConsultMessage({ message, onTriageSubmit }) {
   if (!r) {
     return (
       <div className="flex justify-start">
-        <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-md bg-surface-2 border border-border text-sm text-text/90">
-          {message.content}
+        <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-md bg-surface-2 border border-border text-sm text-text/90 space-y-2">
+          <p>{message.content}</p>
+          {message.error && message.retryQuestion && onRetry && (
+            <button
+              onClick={() => onRetry(message)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition"
+            >
+              <RotateCcw size={12} />
+              Retry
+            </button>
+          )}
         </div>
       </div>
     );

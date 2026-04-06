@@ -67,6 +67,9 @@ export default function ConsultView() {
         role: 'assistant',
         content: `Error: ${e.message}`,
         error: true,
+        retryQuestion: question,
+        retryImage: img,
+        retrySilent: silent,
       }]);
     }
     setLoading(false);
@@ -83,6 +86,15 @@ export default function ConsultView() {
       : '';
     const fullQ = `${originalQ}${visualCtx}. [${screening}]`;
     await sendQuestion(fullQ, { silent: true });
+  };
+
+  const handleRetry = (errorMsg) => {
+    // Remove the error message and retry
+    setMessages(prev => prev.filter(m => m !== errorMsg));
+    sendQuestion(errorMsg.retryQuestion, {
+      silent: errorMsg.retrySilent,
+      image: errorMsg.retryImage,
+    });
   };
 
   const handleReset = () => {
@@ -133,6 +145,7 @@ export default function ConsultView() {
             key={i}
             message={msg}
             onTriageSubmit={handleTriageSubmit}
+            onRetry={handleRetry}
           />
         ))}
 

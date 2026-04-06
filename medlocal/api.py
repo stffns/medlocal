@@ -147,7 +147,26 @@ def api_consult(req: ConsultRequest):
     """Clinical consultation — ask a medical question."""
     cfg = _get_cfg()
     kb = _get_kb()
-    result = consult(req.question, kb, cfg.llm, history=req.history, language=cfg.language)
+    try:
+        result = consult(req.question, kb, cfg.llm, history=req.history, language=cfg.language)
+    except Exception as exc:
+        # Context overflow or LLM failure — return a safe degraded response
+        # rather than 500, so the CHW still gets actionable guidance.
+        import logging
+        logging.getLogger(__name__).warning("Consult failed: %s", exc)
+        return ConsultResponse(
+            answer=(
+                "The system could not process this request (model overloaded). "
+                "If this is an emergency, **refer the patient immediately** to the nearest health facility. "
+                "Try again with a shorter question or start a new conversation."
+            ),
+            sources=[],
+            confidence="LOW",
+            safety_flags=["LOW_CONFIDENCE"],
+            emergency=False,
+            urgency="routine",
+            mode="guidance",
+        )
     return ConsultResponse(
         answer=result["answer"],
         sources=result["sources"],
