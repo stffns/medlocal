@@ -77,13 +77,21 @@ def consult(
     # --- Separate clinical query from triage context for retrieval ---
     search_query = _extract_search_query(question)
 
-    # --- Emergency detection on clinical query only (not triage answers) ---
+    # --- Emergency detection on clinical query (not triage answers) ---
     is_emergency, emergency_patterns = detect_emergency(search_query)
     if is_emergency:
         safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
 
     # --- Retrieval (use clean query, not triage answers) ---
-    results = _multi_query_search(kb, search_query, llm_cfg)
+    results, english_keywords = _multi_query_search(kb, search_query, llm_cfg)
+
+    # --- Cross-lingual emergency detection via English keywords ---
+    # The keyword expansion translates any language to English clinical terms,
+    # so we can catch danger signs that regex missed in the original language.
+    if not is_emergency and english_keywords:
+        is_emergency, emergency_patterns = detect_emergency(english_keywords)
+        if is_emergency:
+            safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
 
     if not results:
         result = {
@@ -673,18 +681,25 @@ Question: """
 
 def _multi_query_search(
     kb: KnowledgeBase, question: str, llm_cfg: LLMConfig,
-) -> list[SearchResult]:
-    """Search with original question + LLM-expanded clinical terms."""
+) -> tuple[list[SearchResult], str]:
+    """Search with original question + LLM-expanded clinical terms.
+
+    Returns:
+        Tuple of (results, english_keywords). Keywords are the English clinical
+        terms generated for secondary search (useful for language-independent
+        emergency detection).
+    """
     # Primary search — cast wide net
     results = kb.search(question, top_k=10)
+    english_keywords = ""
 
     # Generate clinical keywords for secondary search
     try:
-        keywords = chat(
+        english_keywords = chat(
             [{"role": "user", "content": _KEYWORDS_PROMPT + question}],
             llm_cfg,
         ).strip()
-        secondary = kb.search(keywords, top_k=10)
+        secondary = kb.search(english_keywords, top_k=10)
 
         # Merge: deduplicate by chunk_id, keep higher score
         seen = {r.chunk_id: i for i, r in enumerate(results)}
@@ -700,4 +715,4 @@ def _multi_query_search(
         pass  # Fall back to primary results only
 
     results.sort(key=lambda r: r.score, reverse=True)
-    return results[:7]
+    return results[:7], english_keywords

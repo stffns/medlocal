@@ -115,19 +115,32 @@ def verify_grounding(
 # ------------------------------------------------------------------ #
 
 _EMERGENCY_PATTERNS = [
-    r"(?i)\bunable to (drink|breastfeed|eat)\b",
+    # IMCI general danger signs
+    r"(?i)\bunable to (drink|breastfeed|eat|feed|suck|swallow)\b",
+    r"(?i)\bcannot (drink|breastfeed|eat|feed|suck|swallow)\b",
+    r"(?i)\bdysphagia\b",
     r"(?i)\bvomit(s|ing) everything\b",
+    r"(?i)\bintractable (vomiting|emesis)\b",
+    r"(?i)\bpersistent (vomiting|emesis)\b",
     r"(?i)\bconvulsion",
     r"(?i)\bletharg(ic|y)\b",
     r"(?i)\bunconscious",
     r"(?i)\bnot breathing\b",
+    # Respiratory emergency (IMCI: chest indrawing = severe pneumonia in infants)
+    r"(?i)\bchest (in)?drawing\b",
+    r"(?i)\b(costal|intercostal|subcostal)\s*(retraction|recession)s?\b",
+    r"(?i)\bsevere.{0,10}(respiratory|breathing) distress\b",
+    r"(?i)\bstridor\b",
+    # Circulatory/bleeding
     r"(?i)\bsevere (bleeding|hemorrhage)\b",
+    r"(?i)\bshock\b",
+    # Obstetric
     r"(?i)\bBP\s*(≥|>=?|>)\s*160",
     r"(?i)\bblood pressure\s*(≥|>=?|>)\s*160",
     r"(?i)\beclampsia\b",
+    # Nutrition
     r"(?i)\bsevere dehydration\b",
     r"(?i)\bsevere (acute )?malnutrition\b",
-    r"(?i)\bshock\b",
     r"(?i)\bMUAC\s*(<|<=?|<)\s*11\.5",
     r"(?i)\bbilateral.{0,20}edema\b",
 ]

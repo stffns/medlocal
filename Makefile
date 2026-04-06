@@ -1,4 +1,4 @@
-.PHONY: serve dev stop build
+.PHONY: serve dev stop build test-es
 
 # Start backend only (production)
 serve:
@@ -22,3 +22,11 @@ stop:
 # Build frontend for production
 build:
 	cd frontend && npm run build
+
+# Quick smoke test — Spanish config
+test-es:
+	@echo "--- Consulta en español (language=Spanish en config) ---"
+	@curl -s http://localhost:8765/api/consult \
+		-H 'Content-Type: application/json' \
+		-d '{"question":"Niño de 2 años con fiebre y sarpullido"}' \
+		| python -m json.tool | head -20
