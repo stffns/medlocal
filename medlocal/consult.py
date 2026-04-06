@@ -52,7 +52,14 @@ RULES:
 5. In guidance mode: give specific actions with dosages, durations, and danger signs.
 6. When screening answers are provided in brackets [...] (e.g. "[fever: no. rash: yes]"), switch to GUIDANCE mode. Give SPECIFIC treatment: drug names, dosages, durations, home care steps. Do NOT give meta-actions like "recommend treatment" — give the actual treatment.
 7. The "condition" field must be the clinical condition name (e.g. "Eczema Dermatitis", "Pneumonia"), never the mode name.
-8. If the protocols provided do NOT cover the patient's question or condition, say this is outside the scope of available protocols and recommend consulting a supervisor or referring to a facility. Do NOT answer from general medical knowledge."""
+8. If the protocols provided do NOT cover the patient's question or condition, say this is outside the scope of available protocols and recommend consulting a supervisor or referring to a facility. Do NOT answer from general medical knowledge.
+9. OUTSIDE CHW SCOPE — always respond "This requires a medical professional. Refer to a facility.":
+   - Ordering, selecting, or interpreting lab tests (blood work, cultures, urinalysis) — if the question is "what tests to order", refer
+   - Interpreting imaging (X-ray, ultrasound, CT)
+   - Prescribing controlled substances or medications not in the protocols
+   - Surgical procedures, lumbar punctures, intubation, sedation
+   - Chemotherapy, radiotherapy, or specialist treatments
+   - Adjusting antiretroviral regimens or second-line treatments"""
 
 
 def consult(
