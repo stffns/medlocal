@@ -135,6 +135,14 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\b(ingestion|ingest(ed)?|swallow(ed)?|drink|drank)\b.{0,30}\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b",
     r"(?i)\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b.{0,30}\b(ingestion|ingest(ed)?|swallow(ed)?)\b",
     r"(?i)\bpoisoning\b",
+    # Anaphylaxis / severe allergic reaction
+    r"(?i)\banaphyla",
+    r"(?i)\bangioedema\b",
+    r"(?i)\b(facial|face|lip|tongue|throat)\s*(edema|swelling)\b",
+    r"(?i)\b(edema|swelling)\s*(facial|face|lip|tongue|throat)\b",
+    r"(?i)\bdyspnea\b",
+    r"(?i)\b(bee|wasp|insect)\s*sting.{0,30}(swelling|edema|breathing|dyspnea)\b",
+    r"(?i)\b(swelling|edema|breathing|dyspnea).{0,30}(bee|wasp|insect)\s*sting\b",
     # Head trauma / altered consciousness
     r"(?i)\baltered mental status\b",
     r"(?i)\bhead (trauma|injury|contusion)\b",
