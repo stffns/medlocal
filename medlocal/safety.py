@@ -141,8 +141,8 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\b(facial|face|lip|tongue|throat)\s*(edema|swelling)\b",
     r"(?i)\b(edema|swelling)\s*(facial|face|lip|tongue|throat)\b",
     r"(?i)\bdyspnea\b",
-    r"(?i)\b(bee|wasp|insect)\s*sting.{0,30}(swelling|edema|breathing|dyspnea)\b",
-    r"(?i)\b(swelling|edema|breathing|dyspnea).{0,30}(bee|wasp|insect)\s*sting\b",
+    r"(?i)\b(bee|wasp|insect)\s*sting.{0,30}(breathing|dyspnea|anaphyla)\b",
+    r"(?i)\b(breathing|dyspnea|anaphyla).{0,30}(bee|wasp|insect)\s*sting\b",
     # Self-harm / suicide
     r"(?i)\bsuicid(e|al|ality)\b",
     r"(?i)\bself[- ]?harm\b",
@@ -160,6 +160,9 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\bBP\s*(≥|>=?|>)\s*160",
     r"(?i)\bblood pressure\s*(≥|>=?|>)\s*160",
     r"(?i)\beclampsia\b",
+    r"(?i)\bpostpartum.{0,15}(hemorrhage|bleeding|haemorrhage)\b",
+    r"(?i)\b(hemorrhage|bleeding|haemorrhage).{0,15}postpartum\b",
+    r"(?i)\bheavy (bleeding|hemorrhage).{0,20}(delivery|birth|postpartum|after birth)\b",
     # Nutrition
     r"(?i)\bsevere dehydration\b",
     r"(?i)\bsevere (acute )?malnutrition\b",
