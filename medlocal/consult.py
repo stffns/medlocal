@@ -570,15 +570,50 @@ def _generate_triage_questions(
         except Exception:
             logger.debug("Triage question generation failed, using fallback")
 
-    # Fallback: basic danger sign questions (English, works for any case)
+    # Fallback: basic IMCI danger sign questions in the configured language
+    return _fallback_triage(source, question_language)
+
+
+# Pre-translated IMCI danger sign questions for fallback
+_FALLBACK_TRIAGE = {
+    "English": [
+        ("What is the patient's age?", "short_answer"),
+        ("Can the patient drink or breastfeed?", "yes_no"),
+        ("Any convulsions or loss of consciousness?", "yes_no"),
+        ("Any signs of severe illness (unable to eat, persistent vomiting)?", "yes_no"),
+    ],
+    "Spanish": [
+        ("¿Cuál es la edad del paciente?", "short_answer"),
+        ("¿Puede el paciente beber o amamantar?", "yes_no"),
+        ("¿Ha tenido convulsiones o pérdida de conciencia?", "yes_no"),
+        ("¿Presenta signos de enfermedad grave (no puede comer, vómitos persistentes)?", "yes_no"),
+    ],
+    "Portuguese": [
+        ("Qual é a idade do paciente?", "short_answer"),
+        ("O paciente consegue beber ou amamentar?", "yes_no"),
+        ("Houve convulsões ou perda de consciência?", "yes_no"),
+        ("Apresenta sinais de doença grave (não consegue comer, vômitos persistentes)?", "yes_no"),
+    ],
+    "French": [
+        ("Quel est l'âge du patient?", "short_answer"),
+        ("Le patient peut-il boire ou allaiter?", "yes_no"),
+        ("Y a-t-il eu des convulsions ou une perte de conscience?", "yes_no"),
+        ("Y a-t-il des signes de maladie grave (incapable de manger, vomissements persistants)?", "yes_no"),
+    ],
+    "Swahili": [
+        ("Mgonjwa ana umri gani?", "short_answer"),
+        ("Mgonjwa anaweza kunywa au kunyonya?", "yes_no"),
+        ("Kuna degedege au kupoteza fahamu?", "yes_no"),
+        ("Kuna dalili za ugonjwa mkubwa (hawezi kula, kutapika sana)?", "yes_no"),
+    ],
+}
+
+
+def _fallback_triage(source: str, language: str) -> list[dict]:
+    questions = _FALLBACK_TRIAGE.get(language, _FALLBACK_TRIAGE["English"])
     return [
-        {"text": "What is the patient's age?", "type": "short_answer", "source": source},
-        {"text": "Can the patient drink or breastfeed?", "type": "yes_no",
-         "if_yes": "Good sign", "if_no": "Danger sign — refer", "source": source},
-        {"text": "Any convulsions or loss of consciousness?", "type": "yes_no",
-         "if_yes": "Danger sign — refer urgently", "if_no": "Continue", "source": source},
-        {"text": "Any signs of severe illness (unable to eat, persistent vomiting)?", "type": "yes_no",
-         "if_yes": "Danger sign — refer", "if_no": "Continue assessment", "source": source},
+        {"text": text, "type": qtype, "source": source}
+        for text, qtype in questions
     ]
 
 

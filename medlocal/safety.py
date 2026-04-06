@@ -143,6 +143,12 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\bdyspnea\b",
     r"(?i)\b(bee|wasp|insect)\s*sting.{0,30}(swelling|edema|breathing|dyspnea)\b",
     r"(?i)\b(swelling|edema|breathing|dyspnea).{0,30}(bee|wasp|insect)\s*sting\b",
+    # Self-harm / suicide
+    r"(?i)\bsuicid(e|al|ality)\b",
+    r"(?i)\bself[- ]?harm\b",
+    r"(?i)\bkill (my|him|her)self\b",
+    r"(?i)\boverdose\b",
+    r"(?i)\bdeliberate\s+(ingestion|poisoning)\b",
     # Head trauma / altered consciousness
     r"(?i)\baltered mental status\b",
     r"(?i)\bhead (trauma|injury|contusion)\b",
