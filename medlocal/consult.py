@@ -226,10 +226,8 @@ def consult(
             safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
 
     # In assessment mode, generate triage questions in the user's language
+    # Reuse q_lang already resolved from config/detection above
     if structured.get("mode") == "assessment":
-        # Combine answer + question for more language signal
-        lang_sample = (structured.get("answer", "") + " " + question).strip()
-        q_lang = _detect_language(lang_sample)
         structured["triage_questions"] = _generate_triage_questions(
             structured, llm_cfg, question_language=q_lang,
         )
