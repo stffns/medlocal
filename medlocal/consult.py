@@ -166,6 +166,10 @@ def consult(
     if is_emergency:
         system = _EMERGENCY_PREFIX + system
 
+    # Anchor the answer language explicitly — schema descriptions are too weak
+    q_lang = _detect_language(question)
+    system += f"\n\nLANGUAGE: The \"answer\" field MUST be written in {q_lang}. Protocols are in English — translate for the answer only."
+
     # Detect triage answers — force guidance mode via context injection
     has_triage = bool(_re.search(r'\[.+\]\s*$', question))
     if has_triage:
@@ -176,7 +180,7 @@ def consult(
         messages.extend(history)
     messages.append({
         "role": "user",
-        "content": f"{context}\n\n{question}",
+        "content": f"{context}\n\n[Respond in {q_lang}]\n{question}",
     })
 
     schema = _CONSULT_SCHEMA_GUIDANCE if has_triage else _CONSULT_SCHEMA
