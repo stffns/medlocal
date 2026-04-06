@@ -47,11 +47,12 @@ Use guidance mode when you can identify the condition AND give specific actions.
 RULES:
 1. ONLY use information from the protocols. Never invent.
 2. NEVER recommend a drug the patient is allergic to.
-3. Respond in the SAME LANGUAGE as the question. ALL fields (condition, assessment, actions, refer_if) must be in the same language. Translate protocol content if needed.
-4. In guidance mode: give specific actions with dosages, durations, and danger signs.
-5. When screening answers are provided in brackets [...] (e.g. "[fever: no. rash: yes]"), switch to GUIDANCE mode. Give SPECIFIC treatment: drug names, dosages, durations, home care steps. Do NOT give meta-actions like "recommend treatment" — give the actual treatment.
-6. The "condition" field must be the clinical condition name (e.g. "Eczema Dermatitis", "Pneumonia"), never the mode name.
-7. If the protocols provided do NOT cover the patient's question or condition, say this is outside the scope of available protocols and recommend consulting a supervisor or referring to a facility. Do NOT answer from general medical knowledge."""
+3. INTERNAL FIELDS (condition, assessment, actions, refer_if, source) MUST be in ENGLISH regardless of the question language. These are for internal processing.
+4. The "answer" field is the ONLY user-facing text. Write it in the SAME LANGUAGE as the question. It must be a complete, formatted clinical response (assessment, actions, referral criteria, source).
+5. In guidance mode: give specific actions with dosages, durations, and danger signs.
+6. When screening answers are provided in brackets [...] (e.g. "[fever: no. rash: yes]"), switch to GUIDANCE mode. Give SPECIFIC treatment: drug names, dosages, durations, home care steps. Do NOT give meta-actions like "recommend treatment" — give the actual treatment.
+7. The "condition" field must be the clinical condition name in English (e.g. "Eczema Dermatitis", "Pneumonia"), never the mode name.
+8. If the protocols provided do NOT cover the patient's question or condition, say this is outside the scope of available protocols and recommend consulting a supervisor or referring to a facility. Do NOT answer from general medical knowledge."""
 
 
 def consult(
@@ -195,9 +196,14 @@ def consult(
             if _clean_protocol_refs(r).strip()
         ]
 
-    # In assessment mode, generate triage questions (LLM call for language matching)
+    # In assessment mode, generate triage questions in the user's language
     if structured.get("mode") == "assessment":
-        structured["triage_questions"] = _generate_triage_questions(structured, llm_cfg)
+        # Combine answer + question for more language signal
+        lang_sample = (structured.get("answer", "") + " " + question).strip()
+        q_lang = _detect_language(lang_sample)
+        structured["triage_questions"] = _generate_triage_questions(
+            structured, llm_cfg, question_language=q_lang,
+        )
 
     answer = _format_structured(structured)
 
@@ -302,28 +308,32 @@ _CONSULT_SCHEMA_GUIDANCE = {
         "urgency": _URGENCY_FIELD,
         "condition": {
             "type": "string",
-            "description": "The identified condition name (e.g. 'Eczema Dermatitis', 'Contact Dermatitis').",
+            "description": "IN ENGLISH. The identified condition name (e.g. 'Eczema Dermatitis', 'Contact Dermatitis').",
         },
         "assessment": {
             "type": "string",
-            "description": "Clinical reasoning: why you suspect this condition based on symptoms and screening.",
+            "description": "IN ENGLISH. Clinical reasoning: why you suspect this condition based on symptoms and screening.",
         },
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "MUST include specific drug name, dose, route, and duration from the protocols (e.g. 'Ceftriaxone 500mg IM single dose'). If treatment requires controlled medication not available at health post, include in refer_if instead. NEVER write meta-actions.",
+            "description": "IN ENGLISH. MUST include specific drug name, dose, route, and duration from the protocols (e.g. 'Ceftriaxone 500mg IM single dose'). If treatment requires controlled medication not available at health post, include in refer_if instead. NEVER write meta-actions.",
         },
         "refer_if": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Danger signs requiring immediate referral.",
+            "description": "IN ENGLISH. Danger signs requiring immediate referral.",
         },
         "source": {
             "type": "string",
-            "description": "Protocol names used",
+            "description": "IN ENGLISH. Protocol names used",
+        },
+        "answer": {
+            "type": "string",
+            "description": "User-facing response in the SAME LANGUAGE as the question. Complete formatted clinical response including assessment, treatment actions with dosages, referral criteria, and source protocol. This is what the user sees.",
         },
     },
-    "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source"],
+    "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source", "answer"],
 }
 
 
@@ -338,29 +348,66 @@ _CONSULT_SCHEMA = {
         "urgency": _URGENCY_FIELD,
         "condition": {
             "type": "string",
-            "description": "The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write the differential.",
+            "description": "IN ENGLISH. The suspected condition name (e.g. 'Measles', 'Pneumonia'). In assessment mode, write the differential.",
         },
         "assessment": {
             "type": "string",
-            "description": "In guidance mode: why you suspect this condition. In assessment mode: summarize what you know so far. Do NOT ask questions here — questions are handled separately.",
+            "description": "IN ENGLISH. In guidance mode: why you suspect this condition. In assessment mode: summarize what you know so far. Do NOT ask questions here — questions are handled separately.",
         },
         "actions": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Concrete clinical steps. In guidance mode: MUST include specific drug name, dose, route, and duration from protocols (e.g. 'Ceftriaxone 500mg IM single dose', 'ORS 200ml after each stool'). If treatment requires controlled medication, include in refer_if. NEVER write meta-actions. In assessment mode: what to do while waiting (e.g. 'Keep wound clean and dry').",
+            "description": "IN ENGLISH. Concrete clinical steps. In guidance mode: MUST include specific drug name, dose, route, and duration from protocols (e.g. 'Ceftriaxone 500mg IM single dose', 'ORS 200ml after each stool'). If treatment requires controlled medication, include in refer_if. NEVER write meta-actions. In assessment mode: what to do while waiting (e.g. 'Keep wound clean and dry').",
         },
         "refer_if": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Danger signs requiring immediate referral.",
+            "description": "IN ENGLISH. Danger signs requiring immediate referral.",
         },
         "source": {
             "type": "string",
-            "description": "Protocol names used",
+            "description": "IN ENGLISH. Protocol names used",
+        },
+        "answer": {
+            "type": "string",
+            "description": "User-facing response in the SAME LANGUAGE as the question. In assessment mode: explain what you're evaluating and ask the next question. In guidance mode: complete clinical response with assessment, treatment actions with dosages, referral criteria, and source. This is what the user sees.",
         },
     },
-    "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source"],
+    "required": ["mode", "urgency", "condition", "assessment", "actions", "refer_if", "source", "answer"],
 }
+
+
+def _detect_language(text: str) -> str:
+    """Detect language from text using word-boundary heuristics.
+
+    Returns a language name string for use in prompts (e.g. 'Spanish', 'Portuguese').
+    No LLM call — uses regex word-boundary matching to avoid substring false positives.
+    """
+    import re as _re
+    text_lower = text.lower()
+    # Discriminating function words — use words unique to each language
+    # Spanish vs Portuguese: avoid shared words (con/com, por, que, está)
+    _MARKERS = {
+        "Spanish": [r"\bel\b", r"\blos\b", r"\blas\b", r"\bdel\b", r"\bpero\b", r"\btiene\b", r"\bniño\b", r"\bniña\b", r"\bmuy\b", r"\btambién\b", r"\bhay\b", r"\bpuede\b", r"\bdebe\b"],
+        "Portuguese": [r"\bnão\b", r"\btem\b", r"\bdos\b", r"\bdas\b", r"\bmas\b", r"\bou\b", r"\bela\b", r"\bele\b", r"\bcriança\b", r"\bmuito\b", r"\btambém\b", r"\bpreciso\b", r"\bpode\b", r"\bdeve\b"],
+        "French": [r"\ble\b", r"\bles\b", r"\bdes\b", r"\bdu\b", r"\bavec\b", r"\bune\b", r"\best\b", r"\bpas\b", r"\benfant\b", r"\bfièvre\b", r"\bpour\b", r"\bdans\b"],
+        "Swahili": [r"\bna\b", r"\bya\b", r"\bwa\b", r"\bkwa\b", r"\bni\b", r"\bkatika\b", r"\bana\b", r"\bhana\b"],
+        "Hindi": ["है", "का", "के", "की", "में", "को", "से", "और"],
+        "Arabic": ["في", "من", "على", "إلى", "هذا", "هل"],
+    }
+    scores = {}
+    for lang, patterns in _MARKERS.items():
+        scores[lang] = sum(1 for p in patterns if _re.search(p, text_lower))
+    best = max(scores, key=scores.get)
+    if scores[best] == 0:
+        return "English"
+    # Accept score of 1 only if it's the sole winner (no ties)
+    if scores[best] == 1:
+        tied = [l for l, s in scores.items() if s == scores[best]]
+        if len(tied) == 1:
+            return best
+        return "English"
+    return best
 
 
 def _extract_search_query(question: str) -> str:
@@ -379,7 +426,8 @@ def _extract_search_query(question: str) -> str:
 
 
 _TRIAGE_PROMPT = """\
-Generate 3-4 screening questions for this clinical case. Write in the SAME LANGUAGE as the assessment.
+Generate 3-4 screening questions for this clinical case.
+Write the questions in {language}.
 
 Format each line as: [YN] or [TEXT] followed by the question.
 [YN] = yes/no question (danger signs, symptoms present/absent)
@@ -399,11 +447,12 @@ Questions:"""
 def _generate_triage_questions(
     data: dict,
     llm_cfg: "LLMConfig | None" = None,
+    question_language: str = "the same language as the patient's original question",
 ) -> list[dict]:
     """Generate triage questions via a fast LLM call.
 
-    Language-agnostic: the model generates in whatever language the assessment uses.
-    The LLM tags each question as [YN] or [TEXT] — no hardcoded keyword detection.
+    Internal fields (assessment, condition) are in English.
+    The LLM generates questions in the user's language via question_language param.
     Falls back to basic IMCI questions if the LLM call fails.
     """
     import re as _re
@@ -416,12 +465,16 @@ def _generate_triage_questions(
             prompt = _TRIAGE_PROMPT.format(
                 assessment=assessment[:300],
                 condition=condition,
+                language=question_language,
             )
             raw = chat([{"role": "user", "content": prompt}], llm_cfg).strip()
             questions = []
             for line in raw.split("\n"):
                 line = line.strip()
                 if not line or len(line) < 8:
+                    continue
+                # Skip preamble lines the LLM adds before actual questions
+                if _re.search(r'\b(?:here are|screening questions|based on the)\b', line, _re.IGNORECASE):
                     continue
                 # Parse [YN] or [TEXT] tag from the LLM output
                 tag_match = _re.match(r'\[?(YN|TEXT)\]?\s*(.+)', line, _re.IGNORECASE)
@@ -489,8 +542,19 @@ def _clean_protocol_refs(text: str) -> str:
 
 
 def _format_structured(data: dict) -> str:
-    """Format structured JSON response into readable markdown."""
+    """Format structured JSON response into readable markdown.
+
+    Prefers the LLM-generated 'answer' field (already in the user's language).
+    Falls back to formatting from internal English fields if 'answer' is missing.
+    """
     import re as _re
+
+    # Prefer LLM-generated answer in user's language
+    llm_answer = data.get("answer", "").strip()
+    if llm_answer:
+        return _clean_protocol_refs(llm_answer)
+
+    # Fallback: format from internal English fields
     mode = data.get("mode", "guidance")
     parts = []
 
@@ -498,18 +562,15 @@ def _format_structured(data: dict) -> str:
     assessment = _clean_protocol_refs(data.get("assessment", ""))
 
     if mode == "assessment":
-        # Guided assessment mode — asking questions
         if condition:
             parts.append(f"**Evaluating:** **{condition}**")
         if assessment:
             parts.append(f"{assessment}")
 
-        # The key question
         next_q = _clean_protocol_refs(data.get("next_question", ""))
         if next_q:
             parts.append(f"\n**Next question:**\n{next_q}")
 
-        # Immediate actions while assessing
         actions = data.get("actions", [])
         if actions:
             parts.append("\n**While assessing:**")
@@ -517,14 +578,12 @@ def _format_structured(data: dict) -> str:
                 cleaned = _re.sub(r"^\s*\d+[\.\)]\s*", "", a)
                 parts.append(f"{i}. {_clean_protocol_refs(cleaned)}")
 
-        # Always show danger signs
         refer = data.get("refer_if", [])
         if refer:
             parts.append("\n**Refer immediately if:** " + "; ".join(
                 _clean_protocol_refs(r) for r in refer))
 
     else:
-        # Guidance mode — full clinical response
         if condition:
             parts.append(f"**Assessment:** **{condition}** — {assessment}")
         else:
