@@ -501,7 +501,9 @@ def run_benchmark(model_id: str | None = None):
 
         try:
             t0 = time.time()
-            lang = cfg.language if hasattr(cfg, "language") else "auto"
+            # Use question's own language for evaluation (not config override)
+            # so benchmark results are consistent regardless of deployment config
+            lang = test.get("lang", "auto")
             result = consult(test["q"], kb, llm_cfg, language=lang)
             elapsed = time.time() - t0
             total_time += elapsed
@@ -512,7 +514,7 @@ def run_benchmark(model_id: str | None = None):
             if result.get("mode") == "assessment" and cat not in ("hallucination", "emergency_skip"):
                 follow_up = _simulate_triage_answers(result, test["q"])
                 t1 = time.time()
-                result2 = consult(follow_up, kb, llm_cfg, language=lang)
+                result2 = consult(follow_up, kb, llm_cfg, language=test.get("lang", "auto"))
                 t2 = time.time() - t1
                 elapsed += t2
                 total_time += t2
