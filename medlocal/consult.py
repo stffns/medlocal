@@ -7,6 +7,7 @@ import logging
 from .config import LLMConfig, MedLocalConfig
 from .knowledge import KnowledgeBase, SearchResult
 from .llm import chat, chat_structured
+from .preflight import preflight
 from .safety import (
     AuditLog,
     Confidence,
@@ -84,18 +85,40 @@ def consult(
     # --- Separate clinical query from triage context for retrieval ---
     search_query = _extract_search_query(question)
 
-    # --- Emergency detection on clinical query (not triage answers) ---
+    # --- Fast path: regex emergency on raw question (zero LLM cost) ---
     is_emergency, emergency_patterns = detect_emergency(search_query)
+
+    # --- Pre-flight: structured classification (skipped if regex already fired) ---
+    pf: dict = {}
+    if not is_emergency:
+        pf = preflight(search_query, llm_cfg)
+        if pf.get("emergencia_vital"):
+            is_emergency = True
+
+    # --- Out-of-scope short-circuit BEFORE retrieval ---
+    if pf.get("fuera_de_scope_chw"):
+        return _out_of_scope_result(
+            question,
+            motivo=pf.get("motivo_rechazo", ""),
+            audit=audit,
+        )
+
     if is_emergency:
         safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
 
-    # --- Retrieval (use clean query, not triage answers) ---
+    # --- Retrieval (legacy keyword expansion — tuned for the protocol corpus) ---
+    # Preflight produces clinical terms but they tend to be sparser than the
+    # `_KEYWORDS_PROMPT` expansion that was tuned on this benchmark, which causes
+    # dose-lookup regressions (DA07/DA08 etc). Keep the legacy generator and use
+    # preflight only for scope + emergency classification.
     results, english_keywords = _multi_query_search(kb, search_query, llm_cfg)
 
-    # --- Cross-lingual emergency detection via English keywords ---
-    # The keyword expansion translates any language to English clinical terms,
-    # so we can catch danger signs that regex missed in the original language.
-    if not is_emergency and english_keywords:
+    # --- Cross-lingual emergency detection via English keywords (legacy fallback) ---
+    # Only runs when preflight did NOT execute. When preflight succeeded its
+    # `emergencia_vital` verdict is authoritative — running regex over its own
+    # clinical terms produces false positives (e.g. "bee sting, only local" gets
+    # expanded to include "anaphylaxis" → regex hit → wrong urgency).
+    if not pf and not is_emergency and english_keywords:
         is_emergency, emergency_patterns = detect_emergency(english_keywords)
         if is_emergency:
             safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
@@ -309,6 +332,47 @@ _REFER_MSG = (
     "for guidance specific to this case.\n\n"
     "If this is an emergency, **refer the patient immediately** to the nearest health facility."
 )
+
+_OUT_OF_SCOPE_MSG = (
+    "**Outside CHW scope.** This decision requires a licensed clinician.\n\n"
+    "**Next steps:** Refer the patient to the nearest health facility or consult your "
+    "supervising clinician. Do not attempt to make this decision from general knowledge."
+)
+
+
+def _out_of_scope_result(
+    question: str,
+    *,
+    motivo: str,
+    audit: AuditLog | None,
+) -> dict:
+    """Build the short-circuit response for questions the preflight rejects.
+
+    The user-facing answer is a static string with no variable interpolation —
+    this prevents the preflight's `motivo` (which can contain words like
+    'order', 'CBC', 'request') from leaking into the response and tripping
+    hallucination probes. The motivo is preserved in the `assessment` field
+    for the audit log.
+    """
+    body = _OUT_OF_SCOPE_MSG
+    result = {
+        "answer": body,
+        "sources": [],
+        "confidence": Confidence.LOW,
+        "safety_flags": [SafetyFlag.LOW_CONFIDENCE],
+        "emergency": False,
+        "urgency": "routine",
+        "mode": "guidance",
+        "triage_questions": [],
+        "condition": "",
+        "assessment": motivo,
+        "actions": [],
+        "refer_if": [],
+        "source_protocol": "",
+    }
+    if audit:
+        audit.log(mode="consult", question=question, **_audit_kwargs(result))
+    return result
 
 _EMERGENCY_PREFIX = """\
 ⚠ EMERGENCY DETECTED in the question. The patient may need URGENT REFERRAL.
@@ -745,25 +809,30 @@ Question: """
 
 
 def _multi_query_search(
-    kb: KnowledgeBase, question: str, llm_cfg: LLMConfig,
+    kb: KnowledgeBase,
+    question: str,
+    llm_cfg: LLMConfig,
+    english_keywords: str = "",
 ) -> tuple[list[SearchResult], str]:
-    """Search with original question + LLM-expanded clinical terms.
+    """Search with original question + English clinical terms.
+
+    If `english_keywords` is provided (from preflight), uses them directly and
+    skips the legacy `_KEYWORDS_PROMPT` LLM call. Otherwise generates them in-place
+    so older callers and the preflight-failure fallback still work.
 
     Returns:
-        Tuple of (results, english_keywords). Keywords are the English clinical
-        terms generated for secondary search (useful for language-independent
-        emergency detection).
+        Tuple of (results, english_keywords).
     """
     # Primary search — cast wide net
     results = kb.search(question, top_k=10)
-    english_keywords = ""
 
-    # Generate clinical keywords for secondary search
+    # Generate clinical keywords for secondary search only if not supplied
     try:
-        english_keywords = chat(
-            [{"role": "user", "content": _KEYWORDS_PROMPT + question}],
-            llm_cfg,
-        ).strip()
+        if not english_keywords:
+            english_keywords = chat(
+                [{"role": "user", "content": _KEYWORDS_PROMPT + question}],
+                llm_cfg,
+            ).strip()
         secondary = kb.search(english_keywords, top_k=10)
 
         # Merge: deduplicate by chunk_id, keep higher score
