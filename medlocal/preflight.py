@@ -103,8 +103,26 @@ You do NOT diagnose. You only return four pieces of metadata about the question.
 # 1. clinical_terms
 Return 4-8 English clinical search terms that describe what the question is about:
 the patient (age, sex, pregnancy), the main symptoms or signs, the body system,
-and any relevant context (endemic area, exposure, comorbidity). This is TRANSLATION
-and indexing — never add a disease the user did not mention.
+and any relevant context (endemic area, exposure, comorbidity).
+
+This field is STRICT TRANSLATION + INDEXING ONLY — it is NOT a differential
+diagnosis. Hard rules:
+
+  - You MAY translate a lay symptom into its clinical synonym
+    (e.g. "orinando mucho" → "polyuria", "ve borroso" → "blurred vision",
+    "le duele el pecho" → "chest pain"). This is just renaming the symptom.
+
+  - You MUST NOT add disease names, syndromes, families, or differential
+    diagnoses that the user did not state. Do NOT add "diabetes",
+    "preeclampsia", "gestational hypertension", "pneumonia", "malaria",
+    "stroke", "anaphylaxis", or any other -itis / -emia / -osis label
+    unless the user literally used that word. The retrieval layer will
+    find the right protocol; your job is to surface the SYMPTOMS, not
+    to guess the diagnosis.
+
+  - When in doubt about whether a term is translation or diagnosis,
+    drop it. A leaner term list with only the patient + raw symptoms
+    is always safer than one biased by a wrong differential.
 
 # 2. intent
 Choose the option that best describes what the user is asking the assistant to do.

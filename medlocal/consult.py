@@ -197,12 +197,17 @@ def consult(
     if is_emergency:
         safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
 
-    # --- Retrieval (legacy keyword expansion — tuned for the protocol corpus) ---
-    # Preflight produces clinical terms but they tend to be sparser than the
-    # `_KEYWORDS_PROMPT` expansion that was tuned on this benchmark, which causes
-    # dose-lookup regressions (DA07/DA08 etc). Keep the legacy generator and use
-    # preflight only for scope + emergency classification.
-    results, english_keywords = _multi_query_search(kb, search_query, llm_cfg)
+    # --- Retrieval (legacy keyword expansion + preflight terms when available) ---
+    # The legacy `_KEYWORDS_PROMPT` is well-tuned for this corpus and is the
+    # PRIMARY secondary search. The preflight clinical_terms are an OPTIONAL
+    # tertiary supplement that helps surface protocols the legacy expansion
+    # misses (e.g. lay-language diabetes triad → polyuria/polydipsia →
+    # Gestational Diabetes). Sending both is strictly better than either alone
+    # because the merge keeps max score per chunk.
+    preflight_terms = " ".join(pf.get("clinical_terms", []))
+    results, english_keywords = _multi_query_search(
+        kb, search_query, llm_cfg, preflight_terms=preflight_terms,
+    )
 
     # --- Cross-lingual emergency detection via English keywords (legacy fallback) ---
     # Only runs when preflight did NOT execute. When preflight succeeded its
@@ -229,7 +234,7 @@ def consult(
     # --- Filter by relevance but keep diverse results ---
     best_score = max(r.score for r in results)
     threshold = best_score * 0.03  # low threshold to include differential diagnoses
-    relevant = [r for r in results if r.score >= threshold][:4]  # max 4 — less noise for small models
+    relevant = [r for r in results if r.score >= threshold][:6]  # max 6 — wider differential, fits in 8192 ctx
     if not relevant:
         result = {
             "answer": _REFER_MSG,
@@ -942,41 +947,56 @@ def _multi_query_search(
     kb: KnowledgeBase,
     question: str,
     llm_cfg: LLMConfig,
-    english_keywords: str = "",
+    preflight_terms: str = "",
 ) -> tuple[list[SearchResult], str]:
-    """Search with original question + English clinical terms.
+    """Search with up to three queries and merge by chunk id.
 
-    If `english_keywords` is provided (from preflight), uses them directly and
-    skips the legacy `_KEYWORDS_PROMPT` LLM call. Otherwise generates them in-place
-    so older callers and the preflight-failure fallback still work.
+    1. Primary  — raw question (catches the user's exact wording)
+    2. Secondary — legacy `_KEYWORDS_PROMPT` LLM expansion (well-tuned for
+       this corpus)
+    3. Tertiary — preflight clinical_terms when available (per-case clinical
+       translation that can surface protocols the legacy expansion misses,
+       e.g. lay diabetes triad → "polyuria polydipsia" → Gestational Diabetes)
+
+    All three results are merged by chunk id, keeping the highest score per
+    chunk. Failures in any single source are non-fatal.
 
     Returns:
-        Tuple of (results, english_keywords).
+        Tuple of (top results, secondary english_keywords used by callers
+        for downstream emergency regex fallbacks).
     """
-    # Primary search — cast wide net
+    # 1. Primary search — cast wide net on the raw question
     results = kb.search(question, top_k=10)
 
-    # Generate clinical keywords for secondary search only if not supplied
-    try:
-        if not english_keywords:
-            english_keywords = chat(
-                [{"role": "user", "content": _KEYWORDS_PROMPT + question}],
-                llm_cfg,
-            ).strip()
-        secondary = kb.search(english_keywords, top_k=10)
-
-        # Merge: deduplicate by chunk_id, keep higher score
+    def _merge(extra: list[SearchResult]) -> None:
         seen = {r.chunk_id: i for i, r in enumerate(results)}
-        for r in secondary:
+        for r in extra:
             if r.chunk_id in seen:
                 idx = seen[r.chunk_id]
                 if r.score > results[idx].score:
-                    results[idx] = r  # upgrade score
+                    results[idx] = r
             else:
                 seen[r.chunk_id] = len(results)
                 results.append(r)
+
+    # 2. Secondary search — legacy English keyword expansion
+    english_keywords = ""
+    try:
+        english_keywords = chat(
+            [{"role": "user", "content": _KEYWORDS_PROMPT + question}],
+            llm_cfg,
+        ).strip()
+        if english_keywords:
+            _merge(kb.search(english_keywords, top_k=10))
     except Exception:
-        pass  # Fall back to primary results only
+        pass
+
+    # 3. Tertiary search — preflight clinical_terms (when supplied)
+    if preflight_terms:
+        try:
+            _merge(kb.search(preflight_terms, top_k=10))
+        except Exception:
+            pass
 
     results.sort(key=lambda r: r.score, reverse=True)
-    return results[:7], english_keywords
+    return results[:12], english_keywords
