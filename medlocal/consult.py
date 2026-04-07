@@ -92,14 +92,14 @@ def consult(
     pf: dict = {}
     if not is_emergency:
         pf = preflight(search_query, llm_cfg)
-        if pf.get("emergencia_vital"):
+        if pf.get("vital_emergency"):
             is_emergency = True
 
     # --- Out-of-scope short-circuit BEFORE retrieval ---
-    if pf.get("fuera_de_scope_chw"):
+    if pf.get("out_of_scope"):
         return _out_of_scope_result(
             question,
-            motivo=pf.get("motivo_rechazo", ""),
+            reason=pf.get("rejection_reason", ""),
             audit=audit,
         )
 
@@ -115,7 +115,7 @@ def consult(
 
     # --- Cross-lingual emergency detection via English keywords (legacy fallback) ---
     # Only runs when preflight did NOT execute. When preflight succeeded its
-    # `emergencia_vital` verdict is authoritative — running regex over its own
+    # `vital_emergency` verdict is authoritative — running regex over its own
     # clinical terms produces false positives (e.g. "bee sting, only local" gets
     # expanded to include "anaphylaxis" → regex hit → wrong urgency).
     if not pf and not is_emergency and english_keywords:
@@ -343,15 +343,15 @@ _OUT_OF_SCOPE_MSG = (
 def _out_of_scope_result(
     question: str,
     *,
-    motivo: str,
+    reason: str,
     audit: AuditLog | None,
 ) -> dict:
     """Build the short-circuit response for questions the preflight rejects.
 
     The user-facing answer is a static string with no variable interpolation —
-    this prevents the preflight's `motivo` (which can contain words like
+    this prevents the preflight's `reason` (which can contain words like
     'order', 'CBC', 'request') from leaking into the response and tripping
-    hallucination probes. The motivo is preserved in the `assessment` field
+    hallucination probes. The reason is preserved in the `assessment` field
     for the audit log.
     """
     body = _OUT_OF_SCOPE_MSG
@@ -365,7 +365,7 @@ def _out_of_scope_result(
         "mode": "guidance",
         "triage_questions": [],
         "condition": "",
-        "assessment": motivo,
+        "assessment": reason,
         "actions": [],
         "refer_if": [],
         "source_protocol": "",

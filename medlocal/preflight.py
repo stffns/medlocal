@@ -2,11 +2,11 @@
 question before retrieval.
 
 Returns:
-- terminos_clinicos_limpios: English clinical search terms (translation only)
-- intencion: nature of the question (protocol execution vs open diagnosis)
-- fuera_de_scope_chw: True if the question requires a medical professional
-- motivo_rechazo: short explanation when out of scope
-- emergencia_vital: True if life-threatening danger signs are present
+- clinical_terms: English clinical search terms (translation only)
+- intent: nature of the question (protocol execution vs open diagnosis)
+- out_of_scope: True if the question requires a licensed medical professional
+- rejection_reason: short explanation when out of scope
+- vital_emergency: True if life-threatening danger signs are present
 
 The CHW scope boundary is reasoning-based, not keyword-based:
   IN SCOPE  — applying a known protocol/test to specific symptoms
@@ -15,9 +15,10 @@ The CHW scope boundary is reasoning-based, not keyword-based:
               require a license ("what tests should I order?", "which antibiotic?",
               "what's wrong with this patient?")
 
-This replaces the older `_KEYWORDS_PROMPT` plain-text translation and unifies it
-with emergency classification. The regex `detect_emergency()` in safety.py is
-kept as a zero-cost fast path before this function is called.
+This sits ahead of the legacy `_KEYWORDS_PROMPT` retrieval keyword expansion and
+unifies what was previously a separate emergency regex pass. The regex
+`detect_emergency()` in safety.py is kept as a zero-cost fast path before this
+function is called.
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 _PREFLIGHT_SCHEMA = {
     "type": "object",
     "properties": {
-        "terminos_clinicos_limpios": {
+        "clinical_terms": {
             "type": "array",
             "items": {"type": "string"},
             "description": (
@@ -42,24 +43,24 @@ _PREFLIGHT_SCHEMA = {
                 "'niño con fiebre y sarpullido' -> ['pediatric', 'fever', 'rash', 'exanthem']."
             ),
         },
-        "intencion": {
+        "intent": {
             "type": "string",
             "enum": [
-                "ejecucion_protocolo",
-                "diagnostico_abierto",
-                "tratamiento_especifico",
-                "informacion_general",
-                "fuera_dominio",
+                "protocol_execution",
+                "open_diagnosis",
+                "specific_treatment",
+                "general_information",
+                "out_of_domain",
             ],
             "description": (
-                "ejecucion_protocolo = applying a known protocol/test to symptoms. "
-                "diagnostico_abierto = open-ended 'what's wrong / what tests / what to order'. "
-                "tratamiento_especifico = asking for a specific drug/dose for a stated condition. "
-                "informacion_general = general health education. "
-                "fuera_dominio = unrelated to clinical care."
+                "protocol_execution = applying a known protocol/test to symptoms. "
+                "open_diagnosis = open-ended 'what's wrong / what tests / what to order'. "
+                "specific_treatment = asking for a specific drug/dose for a stated condition. "
+                "general_information = general health education. "
+                "out_of_domain = unrelated to clinical care."
             ),
         },
-        "fuera_de_scope_chw": {
+        "out_of_scope": {
             "type": "boolean",
             "description": (
                 "True if the question requires a licensed medical professional. "
@@ -69,14 +70,14 @@ _PREFLIGHT_SCHEMA = {
                 "Set FALSE if the CHW just needs to apply a documented protocol or POC test."
             ),
         },
-        "motivo_rechazo": {
+        "rejection_reason": {
             "type": "string",
             "description": (
-                "Short reason (one sentence) when fuera_de_scope_chw is true. "
+                "Short reason (one sentence) when out_of_scope is true. "
                 "Empty string when in scope."
             ),
         },
-        "emergencia_vital": {
+        "vital_emergency": {
             "type": "boolean",
             "description": (
                 "True if the question describes life-threatening danger signs: "
@@ -86,11 +87,11 @@ _PREFLIGHT_SCHEMA = {
         },
     },
     "required": [
-        "terminos_clinicos_limpios",
-        "intencion",
-        "fuera_de_scope_chw",
-        "motivo_rechazo",
-        "emergencia_vital",
+        "clinical_terms",
+        "intent",
+        "out_of_scope",
+        "rejection_reason",
+        "vital_emergency",
     ],
 }
 
@@ -99,18 +100,18 @@ _PREFLIGHT_SYSTEM = """\
 You classify a clinical question for a community health worker (CHW) assistant.
 You do NOT diagnose. You only return four pieces of metadata about the question.
 
-# 1. terminos_clinicos_limpios
+# 1. clinical_terms
 Return 4-8 English clinical search terms that describe what the question is about:
 the patient (age, sex, pregnancy), the main symptoms or signs, the body system,
 and any relevant context (endemic area, exposure, comorbidity). This is TRANSLATION
 and indexing — never add a disease the user did not mention.
 
-# 2. intencion
+# 2. intent
 Choose the option that best describes what the user is asking the assistant to do.
 
-# 3. fuera_de_scope_chw  (default: false — be permissive)
+# 3. out_of_scope  (default: false — be permissive)
 A community health worker is trained on a broad set of documented protocols.
-The default answer is fuera_de_scope_chw = FALSE. Only mark TRUE in the narrow
+The default answer is out_of_scope = FALSE. Only mark TRUE in the narrow
 cases at the bottom of this section.
 
 The CHW's job covers, among many things:
@@ -132,7 +133,7 @@ A "what is X?" educational question is IN SCOPE if X is something a CHW must
 recognise or perform — even if it sounds technical. The assistant downstream will
 either find a matching protocol or refer; do not pre-reject the question.
 
-Mark fuera_de_scope_chw = TRUE only when one of these specific conditions is met:
+Mark out_of_scope = TRUE only when one of these specific conditions is met:
 
   1. The user asks the CHW to DESIGN a laboratory workup from scratch — i.e.
      pick which tests to order without reference to a protocol
@@ -149,7 +150,7 @@ Mark fuera_de_scope_chw = TRUE only when one of these specific conditions is met
      drug-drug interactions of common OTC medicines, pre-referral injectable
      antibiotics (e.g. ceftriaxone, gentamicin, ampicillin), antimalarials,
      antiepileptics for status, and dose lookups for ANY drug a CHW might
-     give — leave fuera_de_scope_chw = FALSE. The downstream assistant has
+     give — leave out_of_scope = FALSE. The downstream assistant has
      the protocols and will check whether a documented answer exists.
 
   4. The user asks the CHW to PERFORM an invasive specialist procedure
@@ -167,11 +168,11 @@ are IN SCOPE and must NOT be rejected:
   - Any question whose answer might plausibly live in a CHW protocol —
     let the downstream retrieval decide.
 
-When in doubt, leave fuera_de_scope_chw = FALSE. The assistant has its own
+When in doubt, leave out_of_scope = FALSE. The assistant has its own
 "out of scope of available protocols" fallback for retrieval misses; your job
 is only to catch the obviously-unanswerable questions before retrieval.
 
-# 4. emergencia_vital  (default: false)
+# 4. vital_emergency  (default: false)
 Mark TRUE only when the question explicitly describes signs that meet IMCI / IMNCI
 general danger signs or other clearly life-threatening features. Use clinical
 reasoning, not keyword matching:
@@ -201,7 +202,7 @@ Critical reasoning rule — READ THE QUALIFIERS in the question:
     "convulsiones", "no puede tomar"), apply the same reasoning as if it were in
     English. The classifier must be language-agnostic.
 
-When in doubt about emergencia_vital, prefer FALSE — the downstream assistant has
+When in doubt about vital_emergency, prefer FALSE — the downstream assistant has
 its own danger-sign logic and a separate emergency regex catches the obvious cases.
 Your job is the borderline reasoning the regex cannot do.
 
@@ -216,34 +217,34 @@ Apply the same reasoning to any new question regardless of language or wording.
 # Example A — typical CHW symptom presentation, in scope, NOT an emergency.
 # Reasoning: the qualifier "estable y bebe líquidos" downgrades urgency to routine.
 Q: "Niño de 2 años con diarrea desde ayer, está estable y bebe líquidos"
-A: {"terminos_clinicos_limpios": ["pediatric", "diarrhea", "stable", "drinking",
+A: {"clinical_terms": ["pediatric", "diarrhea", "stable", "drinking",
        "hydration", "ORS"],
-    "intencion": "ejecucion_protocolo",
-    "fuera_de_scope_chw": false,
-    "motivo_rechazo": "",
-    "emergencia_vital": false}
+    "intent": "protocol_execution",
+    "out_of_scope": false,
+    "rejection_reason": "",
+    "vital_emergency": false}
 
 # Example B — explicit IMCI danger sign, in scope, IS an emergency.
 # Reasoning: chest indrawing is an IMCI severe-pneumonia danger sign regardless of
 # what language it is written in. The classifier reasons about the SIGN, not the words.
 Q: "Bebé respira muy rápido y se le hunden las costillas al respirar"
-A: {"terminos_clinicos_limpios": ["infant", "fast breathing", "chest indrawing",
+A: {"clinical_terms": ["infant", "fast breathing", "chest indrawing",
        "respiratory distress", "severe pneumonia"],
-    "intencion": "ejecucion_protocolo",
-    "fuera_de_scope_chw": false,
-    "motivo_rechazo": "",
-    "emergencia_vital": true}
+    "intent": "protocol_execution",
+    "out_of_scope": false,
+    "rejection_reason": "",
+    "vital_emergency": true}
 
 # Example C — open diagnostic planning, requires clinician judgement, OUT of scope.
 # Reasoning: the user is asking the CHW to design a workup; no protocol can decide
 # which lab panels to order from a blank slate.
 Q: "What blood tests should I order for this patient?"
-A: {"terminos_clinicos_limpios": ["laboratory workup", "diagnostic planning"],
-    "intencion": "diagnostico_abierto",
-    "fuera_de_scope_chw": true,
-    "motivo_rechazo": "Designing a laboratory panel requires clinician-level judgement;
+A: {"clinical_terms": ["laboratory workup", "diagnostic planning"],
+    "intent": "open_diagnosis",
+    "out_of_scope": true,
+    "rejection_reason": "Designing a laboratory panel requires clinician-level judgement;
        CHWs run only protocol-defined point-of-care tests.",
-    "emergencia_vital": false}
+    "vital_emergency": false}
 """
 
 
@@ -263,12 +264,12 @@ def preflight(question: str, llm_cfg: LLMConfig) -> dict:
         logger.warning("Preflight call failed: %s", exc)
         return {}
 
-    if not isinstance(result, dict) or "intencion" not in result:
+    if not isinstance(result, dict) or "intent" not in result:
         return {}
 
     # Defensive defaults
-    result.setdefault("terminos_clinicos_limpios", [])
-    result.setdefault("fuera_de_scope_chw", False)
-    result.setdefault("motivo_rechazo", "")
-    result.setdefault("emergencia_vital", False)
+    result.setdefault("clinical_terms", [])
+    result.setdefault("out_of_scope", False)
+    result.setdefault("rejection_reason", "")
+    result.setdefault("vital_emergency", False)
     return result
