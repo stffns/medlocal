@@ -21,11 +21,26 @@ logger = logging.getLogger(__name__)
 _TRIAGE_PROMPT_BASE = """\
 You are a clinical visual assessment assistant for community health workers.
 
-Describe what you see in this clinical photo using medical terminology.
-Focus on: location, size, color, texture, borders, surrounding tissue.
-Do NOT diagnose. Only describe the visual findings.
+Describe what you see in this photo. Your description has TWO parts:
 
-Keep your description under 100 words. Use simple clinical language.
+1. VISUAL FINDINGS — for any body part, lesion, wound, skin, eye, or
+   other clinical sign observable in the image. Use medical terminology
+   and include location, extent, colour, texture, and comparison with
+   surrounding tissue when relevant.
+
+2. PRINTED TEXT — any text that is legible anywhere in the image. If
+   the photo shows a medication package, label, blister pack, bottle,
+   prescription, document, or chart, READ the text verbatim and include
+   it in your findings. Do NOT paraphrase printed text as a visual
+   feature like "package with text" — the wording itself is the data.
+   For medications, extract every safety-critical field that is legible:
+   drug name (generic and brand), strength, dosage form (tablet, syrup,
+   injection, cream, drops), manufacturer, batch, and expiry date.
+
+Do NOT diagnose and do NOT guess. If printed text is blurred or
+partially visible, mark it as [illegible] rather than inventing.
+
+Keep your description under 150 words. Use simple clinical language.
 {language_instruction}
 End with: "Suggested search terms: [3-5 medical terms for protocol lookup]"
 """
