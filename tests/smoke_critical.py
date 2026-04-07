@@ -38,8 +38,8 @@ SMOKE_IDS = [
     "ST06", "ST03",
     # emergency — IMCI eclampsia + newborn-not-breathing
     "EM01", "EM04",
-    # clinical — typhoid presentation + dehydration triage
-    "CA15", "CA01",
+    # clinical — typhoid presentation + dehydration + snake envenomation
+    "CA15", "CA01", "CA07",
     # dosage — pre-referral injectable that the preflight previously rejected
     "DA08",
     # hallucination — the original known failure

@@ -192,6 +192,13 @@ reasoning, not keyword matching:
     of the parent-reported amount ("a little", "un poco", "a sip"). Severity of
     caustic or chemical exposure cannot be assessed remotely; treat as emergency.
     Adult intentional overdose or large accidental overdose is also vital_emergency.
+  - Envenomation and bites with PROGRESSION: snake, scorpion, or spider bite with
+    swelling that is spreading, ascending, or accompanied by systemic signs
+    (bleeding, weakness, numbness, altered consciousness); any bite or wound with
+    red streaks spreading from it (ascending lymphangitis); severe burn covering
+    a large area or involving face/airway/hands/genitals. A local-only reaction
+    ("bee sting, only localized swelling") is NOT this — the key word is
+    PROGRESSION or SYSTEMIC involvement.
   - Mental health: active suicide intent or self-harm
 
 Critical reasoning rule — READ THE QUALIFIERS in the question:

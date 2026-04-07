@@ -392,10 +392,15 @@ def _check_absent(text: str, patterns: list[str]) -> bool:
 
     'give aspirin' fails UNLESS preceded by 'do not', 'never', 'avoid', 'no', 'not'.
     This prevents false positives when the model correctly says 'do NOT give aspirin'.
+
+    Markdown emphasis characters (* _ ~) are stripped before negation lookback so
+    "**DO NOT** give water" is correctly recognised as negated.
     """
     if not patterns:
         return True
-    lower = text.lower()
+    # Strip markdown emphasis so "**do not** give" → "do not give"
+    import re as _re
+    lower = _re.sub(r"[*_~`]+", "", text.lower())
     negation_words = ["not ", "no ", "never ", "avoid ", "don't ", "do not ",
                       "nunca ", "no dar ", "no administr", "evit"]
     for group in patterns:
