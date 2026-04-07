@@ -187,7 +187,11 @@ reasoning, not keyword matching:
     obstructed labour, ruptured uterus
   - Allergic: anaphylaxis with airway, breathing or systemic involvement
   - Dehydration: severe dehydration with sunken eyes AND unable to drink
-  - Toxicology: child poisoning, large overdose
+  - Toxicology: ANY pediatric ingestion of household chemicals, cleaning products,
+    pesticides, kerosene, caustics, button batteries, or medications — regardless
+    of the parent-reported amount ("a little", "un poco", "a sip"). Severity of
+    caustic or chemical exposure cannot be assessed remotely; treat as emergency.
+    Adult intentional overdose or large accidental overdose is also vital_emergency.
   - Mental health: active suicide intent or self-harm
 
 Critical reasoning rule — READ THE QUALIFIERS in the question:
