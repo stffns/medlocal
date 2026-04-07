@@ -44,8 +44,8 @@ SMOKE_IDS = [
     "DA08",
     # hallucination — the original known failure
     "HP03",
-    # protocol — anaphylaxis steps + dog bite first aid
-    "PA06", "PA10",
+    # protocol — anaphylaxis + dog bite + foreign body vs asthma differential
+    "PA06", "PA10", "PA13",
     # contraindication — aspirin + ibuprofen interaction
     "CC04",
     # multilingual — Portuguese pediatric diarrhea

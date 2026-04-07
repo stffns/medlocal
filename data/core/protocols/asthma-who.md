@@ -1,5 +1,24 @@
 # WHO: Asthma Management for Community Health Workers
 
+## ⚠ Before Treating Wheezing as Asthma — Rule Out Foreign Body Aspiration
+
+Wheezing in a child is NOT always asthma. Before giving salbutamol,
+check for these red flags that point to a retained foreign body:
+
+- **Sudden onset** while eating small food (peanuts, corn, seeds,
+  grapes) or playing with small objects (beads, coins, batteries)
+- **History of a choking episode** (coughing fit, gagging, turned
+  blue) at the moment of onset
+- **Unilateral wheeze** — wheezing heard on only ONE side of the chest
+- **Unilateral decreased breath sounds** or asymmetric chest movement
+- **No prior history** of asthma in the child
+- **No fever, no runny nose**
+- Peak age 6 months to 3 years
+
+If ANY of these are present, see the Retained Foreign Body Aspiration
+protocol. Salbutamol will not help a mechanical obstruction and delays
+definitive care (rigid bronchoscopy). Refer urgently instead.
+
 ## When to Suspect Asthma
 - Recurrent episodes of: wheezing, shortness of breath, chest tightness, cough
 - Symptoms worse at night or early morning
