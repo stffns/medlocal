@@ -292,6 +292,7 @@ def consult(
     if structured.get("mode") == "assessment":
         structured["triage_questions"] = _generate_triage_questions(
             structured, llm_cfg, question_language=q_lang,
+            original_question=question,
         )
 
     answer = _format_structured(structured)
@@ -598,33 +599,58 @@ def _extract_search_query(question: str) -> str:
 
 
 _TRIAGE_PROMPT = """\
-Generate 3-4 screening questions for this clinical case.
+You generate screening questions for a community health worker.
 Write the questions in {language}.
 
-Format each line as: [YN] or [TEXT] followed by the question.
-[YN] = yes/no question (danger signs, symptoms present/absent)
-[TEXT] = needs a typed answer (age, duration, weight, description)
+Format each line as a tag followed by the question:
+[YN]   for a yes/no question (presence or absence of a sign or symptom)
+[TEXT] for a question that needs a typed answer (duration, weight, description)
 
-Example:
-[TEXT] What is the patient's age?
-[YN] Does the patient have fever?
-[YN] Can the patient drink fluids?
-[TEXT] How long has the rash been present?
+STRICT RULES — read carefully before generating:
 
-Assessment: {assessment}
-Condition: {condition}
-Questions:"""
+1. Read the ORIGINAL CHW question below, and any PHOTO CONTEXT if present,
+   word by word. Build an internal list of every fact the user has already
+   stated — including age, weight, sex, pregnancy, symptom duration, symptom
+   laterality, presence or absence of specific danger signs, any medication
+   visible in a photo, and anything else relevant. Treat paraphrases and
+   colloquial wording as facts (they are facts even if the clinical term
+   is not used).
+
+2. You MUST NOT generate a question whose answer is already present in the
+   original question or photo context. Re-asking a known fact is a failure.
+
+3. Generate 3-4 screening questions that target genuinely missing facts
+   needed to classify or treat the condition.
+
+4. Do not number the questions. Do not add preamble, apology, or commentary.
+   Do not emit lines like "here are the questions" or "if you provide more
+   context". Output ONLY the question lines themselves, one per line.
+
+5. If you find that all critical facts are already present and no screening
+   question is genuinely needed, return the single line:
+       [YN] NONE
+
+ORIGINAL CHW QUESTION:
+{original_question}
+
+Condition under consideration: {condition}
+Assessment so far: {assessment}
+
+Now output 3-4 tagged questions (or `[YN] NONE` if nothing is missing):"""
 
 
 def _generate_triage_questions(
     data: dict,
     llm_cfg: "LLMConfig | None" = None,
     question_language: str = "the same language as the patient's original question",
+    original_question: str = "",
 ) -> list[dict]:
     """Generate triage questions via a fast LLM call.
 
     Internal fields (assessment, condition) are in English.
     The LLM generates questions in the user's language via question_language param.
+    `original_question` is the raw user input (including any photo context) so
+    the generator can avoid re-asking facts the user already provided.
     Falls back to basic IMCI questions if the LLM call fails.
     """
     import re as _re
@@ -638,15 +664,24 @@ def _generate_triage_questions(
                 assessment=assessment[:300],
                 condition=condition,
                 language=question_language,
+                original_question=original_question[:800] or "(not provided)",
             )
             raw = chat([{"role": "user", "content": prompt}], llm_cfg).strip()
+            # Explicit "nothing missing" signal from the model → no triage questions
+            if _re.search(r'\[?\s*YN\s*\]?\s*NONE\b', raw, _re.IGNORECASE):
+                return []
             questions = []
             for line in raw.split("\n"):
                 line = line.strip()
                 if not line or len(line) < 8:
                     continue
-                # Skip preamble lines the LLM adds before actual questions
-                if _re.search(r'\b(?:here are|screening questions|based on the)\b', line, _re.IGNORECASE):
+                # Skip preamble / meta-commentary lines the LLM may still emit
+                if _re.search(
+                    r'\b(?:here are|here is|these are|screening questions|based on the|'
+                    r'if you provide|i can (?:make|generate|help)|specific and relevant|'
+                    r'let me know|clinical case)\b',
+                    line, _re.IGNORECASE,
+                ):
                     continue
                 # Parse [YN] or [TEXT] tag from the LLM output
                 tag_match = _re.match(r'\[?(YN|TEXT)\]?\s*(.+)', line, _re.IGNORECASE)
@@ -659,8 +694,12 @@ def _generate_triage_questions(
                     q_type = "yes_no"
                 if len(q_text) < 5:
                     continue
+                # A real triage question must end with a question mark — lines
+                # that don't even look like a question are meta-commentary
+                if "?" not in q_text:
+                    continue
                 questions.append({
-                    "text": q_text if q_text.endswith("?") else q_text + "?",
+                    "text": q_text,
                     "type": q_type,
                     "source": source,
                 })

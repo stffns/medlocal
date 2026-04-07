@@ -189,9 +189,16 @@ def triage_and_consult(
     else:
         query = search_terms or description[:100]
 
-    # Step 4: Consult with visual description injected as additional context
+    # Step 4: Consult with visual description injected as first-class context.
+    # Put the visual observations BEFORE the user's question so the downstream
+    # assistant treats them as premises of the question, not as optional
+    # decoration. If the user asks "cuánto le doy" and a medication was read
+    # from the photo, the drug must be resolved via the visual context.
     visual_ctx = description.replace(search_terms, "").strip() if search_terms else description
-    enriched_query = f"{query}\n\n[Visual examination: {visual_ctx}]"
+    enriched_query = (
+        f"PHOTO CONTEXT (observed by CHW before asking): {visual_ctx}\n\n"
+        f"CHW QUESTION: {query}"
+    )
     result = consult(enriched_query, kb, cfg.llm)
     result["description"] = description
 
