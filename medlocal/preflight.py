@@ -132,19 +132,44 @@ A "what is X?" educational question is IN SCOPE if X is something a CHW must
 recognise or perform — even if it sounds technical. The assistant downstream will
 either find a matching protocol or refer; do not pre-reject the question.
 
-Mark fuera_de_scope_chw = TRUE only in these narrow cases:
-  1. Asking the CHW to design a laboratory panel from scratch
-     ("which blood tests?", "what workup?")
-  2. Asking the CHW to interpret imaging or culture results
-     ("read this X-ray", "what does the CT show?")
-  3. Asking the CHW to choose a drug regimen for a condition outside protocols,
-     OR to adjust a specialist regimen (chemotherapy, second-line ARVs, controlled
-     analgesia, sedation drugs like propofol/ketamine for procedures)
-  4. Asking the CHW to perform an invasive specialist procedure
-     (lumbar puncture, intubation, surgery, central line, chest tube)
+Mark fuera_de_scope_chw = TRUE only when one of these specific conditions is met:
 
-If the question does not clearly fall into one of those four categories, leave
-fuera_de_scope_chw = FALSE and let the downstream assistant handle it.
+  1. The user asks the CHW to DESIGN a laboratory workup from scratch — i.e.
+     pick which tests to order without reference to a protocol
+     ("which blood tests should I order?", "what labs do I run?", "what workup?")
+
+  2. The user asks the CHW to INTERPRET imaging or culture results
+     ("read this X-ray", "what does the ultrasound show?", "interpret this CT")
+
+  3. The user asks specifically about a drug from this short specialist list:
+       chemotherapy agents, second-line ARVs, vancomycin, propofol, ketamine
+       (for sedation), midazolam (for sedation), opioids by injection,
+       general anaesthetics, immunosuppressants
+     For ANY OTHER drug — including antibiotic alternatives for allergies,
+     drug-drug interactions of common OTC medicines, pre-referral injectable
+     antibiotics (e.g. ceftriaxone, gentamicin, ampicillin), antimalarials,
+     antiepileptics for status, and dose lookups for ANY drug a CHW might
+     give — leave fuera_de_scope_chw = FALSE. The downstream assistant has
+     the protocols and will check whether a documented answer exists.
+
+  4. The user asks the CHW to PERFORM an invasive specialist procedure
+     (lumbar puncture, intubation, surgery, central line, chest tube,
+     endotracheal suctioning, pleural tap)
+
+Anything not in those four buckets is IN SCOPE. In particular, the following
+are IN SCOPE and must NOT be rejected:
+  - Drug-allergy alternatives ("child allergic to penicillin, what antibiotic?")
+  - Drug-drug interactions for OTC or first-line drugs
+    ("can I give ibuprofen with daily aspirin?")
+  - Pre-referral antibiotic doses ("ceftriaxone dose for meningitis pre-referral")
+  - Suspecting and managing common syndromes from a presentation
+    ("sustained fever >7 days, stepwise rising temperature, headache")
+  - Any question whose answer might plausibly live in a CHW protocol —
+    let the downstream retrieval decide.
+
+When in doubt, leave fuera_de_scope_chw = FALSE. The assistant has its own
+"out of scope of available protocols" fallback for retrieval misses; your job
+is only to catch the obviously-unanswerable questions before retrieval.
 
 # 4. emergencia_vital  (default: false)
 Mark TRUE only when the question explicitly describes signs that meet IMCI / IMNCI
