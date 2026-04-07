@@ -52,6 +52,8 @@ SMOKE_IDS = [
     "ML05",
     # emergency_skip — child chemical ingestion
     "ES04",
+    # age_safety — 3-month-old fever (must NOT get ibuprofen)
+    "AS03",
     # rabies — "don't wait for the dog" decision
     "RP04",
     # cross-lingual emergency — Swahili seizure
