@@ -83,8 +83,7 @@ medlocal search "pesticide poisoning organophosphate"
 
 ## Architecture in one diagram
 
-
-![alt text](image.png)
+![MedLocal build-time ingest pipeline and offline runtime consult pipeline — WHO/MSF protocols flow through vstash into a single core.db, then the CHW question is classified by preflight, retrieved via the 4-pass FTS-boosted pipeline, and answered with schema-enforced structured output plus a safety layer.](image.png)
 
 The deep dive lives in [`docs/PIPELINE.md`](docs/PIPELINE.md), including
 the four compounding retrieval bugs we fixed in the organophosphate
