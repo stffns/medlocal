@@ -234,7 +234,7 @@ def consult(
     # --- Filter by relevance but keep diverse results ---
     best_score = max(r.score for r in results)
     threshold = best_score * 0.03  # low threshold to include differential diagnoses
-    relevant = [r for r in results if r.score >= threshold][:6]  # max 6 — wider differential, fits in 8192 ctx
+    relevant = [r for r in results if r.score >= threshold][:6]  # max 6 — fits in 8192 ctx. The FTS-only safety-net pass in _multi_query_search is what surfaces vector-weak chunks; we do not need a wider cap here.
     if not relevant:
         result = {
             "answer": _REFER_MSG,
@@ -939,6 +939,7 @@ Example: "baby not breathing after birth" → "newborn apnea birth resuscitation
 Example: "niño con fiebre y sarpullido" → "pediatric febrile exanthem rash measles"
 Example: "secreción uretral purulenta, diplococos gramnegativos" → "urethral discharge gonorrhea STI ceftriaxone"
 Example: "pregnant woman convulsions" → "pregnancy seizure eclampsia magnesium sulfate"
+Example: "hombre fumigando cultivo, pupilas pequeñas, sudando" → "pesticide poisoning organophosphate cholinergic miosis diaphoresis atropine"
 Return ONLY English terms separated by spaces.
 Question: """
 
@@ -965,8 +966,13 @@ def _multi_query_search(
         Tuple of (top results, secondary english_keywords used by callers
         for downstream emergency regex fallbacks).
     """
-    # 1. Primary search — cast wide net on the raw question
-    results = kb.search(question, top_k=10)
+    # 1. Primary search — cast wide net on the raw question.
+    # top_k=20 is deliberate: the multilingual embedder occasionally fails to
+    # place a chunk near the query in vector space even when FTS matches it at
+    # rank 1 (e.g. organophosphate poisoning for "pesticide exposure miosis"),
+    # so the chunk arrives at RRF-fused rank ~12-14. A wider net lets these
+    # FTS-strong but vector-weak chunks survive the per-query cut.
+    results = kb.search(question, top_k=20)
 
     def _merge(extra: list[SearchResult]) -> None:
         seen = {r.chunk_id: i for i, r in enumerate(results)}
@@ -987,16 +993,26 @@ def _multi_query_search(
             llm_cfg,
         ).strip()
         if english_keywords:
-            _merge(kb.search(english_keywords, top_k=10))
+            _merge(kb.search(english_keywords, top_k=20))
     except Exception:
         pass
 
     # 3. Tertiary search — preflight clinical_terms (when supplied)
     if preflight_terms:
         try:
-            _merge(kb.search(preflight_terms, top_k=10))
+            _merge(kb.search(preflight_terms, top_k=20))
+        except Exception:
+            pass
+
+    # 4. Safety net — pure FTS/BM25 on the English expansion. Catches chunks
+    #    the hybrid retriever drags down because the embedder put their vector
+    #    far from the query (e.g. organophosphate for "pesticide exposure").
+    #    We keep this small (top_k=5) so it only rescues the top keyword hits.
+    if english_keywords:
+        try:
+            _merge(kb.search(english_keywords, top_k=5, fts_only=True))
         except Exception:
             pass
 
     results.sort(key=lambda r: r.score, reverse=True)
-    return results[:12], english_keywords
+    return results[:20], english_keywords

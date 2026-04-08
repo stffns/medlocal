@@ -50,8 +50,8 @@ SMOKE_IDS = [
     "CC04",
     # multilingual — Portuguese pediatric diarrhea
     "ML05",
-    # emergency_skip — child chemical ingestion
-    "ES04",
+    # emergency_skip — child chemical ingestion + adult organophosphate exposure
+    "ES04", "ES07",
     # age_safety — 3-month-old fever (must NOT get ibuprofen)
     "AS03",
     # rabies — "don't wait for the dog" decision
