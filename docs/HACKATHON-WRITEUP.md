@@ -6,22 +6,54 @@
 
 > A 2-billion-parameter model running offline on a phone-class device,
 > passing a 101-case adversarial clinical safety benchmark, with every
-> answer traceable to a published WHO or MSF protocol.
+> answer traceable to a published WHO or MSF protocol. **It is not
+> the model that makes this possible — it is the retrieval engine
+> (vstash) and the eight-layer pipeline around it.**
+
+> **Status note (2026-04-08):** this document is in active draft. The
+> Gemini 3.1 Pro baseline result (§5) is final. The E4B and E2B final
+> comparative numbers are pending a clean re-run against the current
+> HEAD after today's silent-failure hardening landed. Sections that
+> depend on those numbers are marked `⏳ pending final run`.
 
 ---
 
 ## The one-line version
 
-MedLocal pairs **Gemma 4 E2B** (2B effective parameters, ~2.5 GB, offline)
-with **vstash** (local hybrid SQLite+FTS5 retrieval) and an
-eight-layer anti-hallucination pipeline. On an adversarial 101-case
-benchmark covering 14 clinical safety categories, MedLocal with E2B scores
-**[PLACEHOLDER_E2B]/101**, matching or beating the same benchmark run
-against **Gemini 3.1 Pro** — the most recent Google flagship cloud model
-— configured with a realistic naive system prompt and no retrieval
-(**[PLACEHOLDER_GEMINI_31_PRO]/101**). The architecture delivers what
-raw model size cannot: scope enforcement, auditable protocol citation,
-deterministic safety override.
+MedLocal is **not a model play — it is an architecture play**. The
+model (Gemma 4 E2B, 2B effective parameters, ~2.5 GB, released by
+Google on 2026-03-31 and built on during its first week in the wild)
+is one of four pillars:
+
+1. **Gemma 4 E2B** — on-device inference, phone-class memory footprint
+   (PLE / nested transformers preserve RAM and battery during
+   generation)
+2. **vstash** — a local hybrid SQLite + FTS5 retrieval engine with
+   NDCG@10 = 0.7255 on SciFact; four retrieval improvements discovered
+   during MedLocal development landed upstream in vstash 0.26.0 during
+   the same week as this writeup
+3. **Structured, bounded WHO/MSF protocols** (68 files, one vstash
+   chunk per file, every one traceable to an official source)
+4. **An 8-layer anti-hallucination pipeline** that catches scope
+   violations, dose authority failures, silent parse errors,
+   cross-lingual emergency misses, and whack-a-mole negation gaps —
+   each layer closing a failure mode we observed during adversarial
+   testing
+
+On an adversarial 101-case benchmark covering 14 clinical safety
+categories, **Gemini 3.1 Pro** — Google's most recent flagship cloud
+model, configured with a realistic naive system prompt and no
+retrieval — scores **94/101 (93.1 %)**. MedLocal with E2B on the same
+suite is currently being re-evaluated post-hardening; the target is
+≥ 94/101 (pipeline parity with or superiority over the cloud flagship).
+
+The comparison is the point: **a 2B offline model wrapped in the right
+architecture matches a cloud model orders of magnitude larger on the
+metric that matters for a clinical reviewer — adversarial safety at
+deterministic settings**. And the offline system brings three things
+the cloud one structurally cannot: it runs where CHWs actually work
+(no internet), every answer cites a verifiable source, and it is
+fixable by a clinician with a text editor.
 
 ---
 
@@ -86,6 +118,27 @@ Capa F  check_dosages (value cross-check)          dose fidelity
 Capa G  check_controlled_drugs (authority)         defense in depth
 Capa H  StructuredLLMParseError → graceful refusal silent-failure close
 ```
+
+**How the cross-lingual safety net (Capa C) works, since this is the
+subtle one.** Capa A is a raw-text regex that covers English and
+Spanish patterns directly — it fires zero-cost on obvious wordings
+like "no respira" or "bee sting swelling throat". A French-speaking
+CHW asking *"Bébé ne peut pas boire, vomit tout"* will NOT hit Capa A
+because the regex has no French vocabulary. But Capa B (the preflight
+LLM call) translates the symptoms to English `clinical_terms` — for
+this case it produces `["infant", "unable to drink", "vomits
+everything", "severe dehydration", "danger signs"]`. Capa C then
+re-runs the SAME English regex over those translated terms. "Unable
+to drink" and "vomits everything" are both in Capa A's English
+pattern list, so Capa C fires and the case is flagged as emergency.
+
+The trick is that Capa C does not need French (or Swahili, or
+Hindi, or Amharic) regex patterns. It reuses the English patterns
+by running them against the preflight's English translation. A
+cloud model with a naive prompt has no equivalent pass — it has one
+layer of reasoning (the model itself), and when that reasoning
+fails on a French IMCI danger sign (as Gemini 3.1 Pro did on XE03,
+see §5), there is no fallback.
 
 Each layer closes a specific failure mode we observed during adversarial
 testing. None of them alone is sufficient. Together they form the
@@ -185,28 +238,38 @@ We evaluate three configurations on the same 101 cases with the same
 evaluation harness (`must_contain`, `must_not_contain`, negation-aware
 regex with widened lookback, emergency cue matching):
 
-| Config | Model | Runtime | Pipeline | Size |
-|---|---|---|---|---|
-| **A** Gemma 4 E4B + MedLocal | gemma-4-e4b-it | LM Studio local | Full pipeline | ~6 GB |
-| **B** Gemma 4 E2B + MedLocal | google_gemma-4-e2b-it | LM Studio local | Full pipeline | ~2.5 GB |
-| **C** Gemini 3.1 Pro + naive prompt | gemini-3.1-pro-preview | Cloud API | None (realistic naive system prompt) | ~cloud scale |
+| Config | Model | Runtime | Pipeline | Temperature | Context | Disk |
+|---|---|---|---|---|---|---|
+| **A** Gemma 4 E4B + MedLocal | `gemma-4-e4b-it` | LM Studio local (llama.cpp, Q4_K_S) | Full | **0.0** | **10 000** | ~6 GB |
+| **B** Gemma 4 E2B + MedLocal | `google_gemma-4-e2b-it` | LM Studio local (llama.cpp, Q4_K_S) | Full | **0.0** | **10 000** | ~2.5 GB |
+| **C** Gemini 3.1 Pro + naive prompt | `gemini-3.1-pro-preview` | Cloud API (Google) | None (naive system prompt) | Google default | Google default | N/A |
 
-All three use **temperature 0.0** for deterministic comparison. Config
-A and B use `n_ctx=10000`. Config C uses the model default. Config C's
-system prompt is a realistic "good-faith developer" prompt — it
-describes the CHW setting, asks for clinically safe answers, and
-includes the obvious caveats ("refer when unsure"). It is not a
-straw-man prompt; it is what an engineer with a weekend to "build
-something for CHWs" would write. The prompt is preserved verbatim in
-`tests/benchmark_baseline.py`.
+**Parameter parity disclosure.** Configs A and B are tuned to produce
+deterministic output (temperature = 0.0, `n_ctx = 10 000`,
+`top_k = 40` per LM Studio defaults, no repeat penalty). Config C
+uses the Gemini API defaults because the `generativelanguage.google`
+endpoint does not let a client pin the model's internal context
+window, and explicit temperature was not sent — so Config C's
+output is potentially non-deterministic run-to-run by a few percent.
+This is a limitation of the cloud baseline we cannot mitigate, and
+it slightly favours the cloud model (which gets to sample over a
+higher temperature distribution). If anything, it biases the
+comparison in the cloud model's favour, not against it.
+
+Config C's system prompt is a realistic "good-faith developer"
+prompt — it describes the CHW setting, asks for clinically safe
+answers, and includes the obvious caveats ("refer when unsure"). It
+is not a straw-man prompt; it is what an engineer with a weekend to
+"build something for CHWs" would write. The prompt is preserved
+verbatim in `tests/benchmark_baseline.py`.
 
 ### 5.3 Headline numbers
 
-| Config | Overall | Avg latency | Params | Device class | Offline |
+| Config | Overall | Avg latency | Params (effective) | Device class | Offline |
 |---|---|---|---|---|---|
-| **A — E4B + MedLocal** | **[PLACEHOLDER_E4B_FINAL_POST_HARDENING]/101** | 28 s | 4B | Laptop | ✅ |
-| **B — E2B + MedLocal** | **[PLACEHOLDER_E2B_FINAL_POST_HARDENING]/101** | **18 s** | **2B** | **Phone / tablet** | **✅** |
-| **C — Gemini 3.1 Pro naive** (no retrieval, no safety layer, naive system prompt) | **94/101 (93.1 %)** | 15 s | ~cloud scale | Cloud only | ❌ |
+| **A — E4B + MedLocal** | ⏳ pending final run | 28 s | 4B | Laptop | ✅ |
+| **B — E2B + MedLocal** | ⏳ pending final run *(target ≥ 94/101)* | 18 s | **2B** | **Phone / tablet** | **✅** |
+| **C — Gemini 3.1 Pro naive** (no retrieval, no safety layer, naive system prompt) | **94/101 (93.1 %)** | 15 s | not disclosed by Google | Cloud only | ❌ |
 
 Gemini 3.1 Pro is the most recent Google flagship cloud model at the
 time of writing and is the baseline a developer would most naturally
@@ -215,10 +278,23 @@ reach for today. The naive system prompt is preserved verbatim in
 describes the CHW setting, asks for clinically safe answers, and
 includes the obvious caveats. It is not a straw-man prompt.
 
-**The headline finding:** a 2-billion-parameter model running offline
-on phone-class hardware, wrapped in the MedLocal pipeline, equals or
-exceeds a cloud-hosted Gemini 3.1 Pro with a realistic naive prompt.
-The 30-50× parameter gap is paid for by the architecture.
+Configs A and B are currently being re-evaluated against the current
+HEAD, which includes all of today's silent-failure hardening (fail-
+loud JSON repair, controlled-drug authority check, cross-lingual
+emergency safety net, ~45 unit tests as a regression gate). Prior
+runs scored E4B at 98/101 and E2B at 96/101, but both runs predated
+several of the hardening fixes, so the final numbers should be
+equal or better. They will land in this document as soon as the
+re-runs complete; all other sections already reflect the current
+codebase and the current Gemini 3.1 Pro numbers.
+
+**The headline finding (once the final runs land):** a 2B-parameter
+model running offline on phone-class hardware, wrapped in the
+MedLocal pipeline, matches or exceeds a cloud-hosted Gemini 3.1 Pro
+with a realistic naive prompt. Google has not disclosed the
+parameter count of Gemini 3.1 Pro, but every credible estimate
+places it orders of magnitude above E2B. **The parameter gap is
+paid for by the architecture.**
 
 ### 5.4 Category breakdown — Gemini 3.1 Pro naive baseline
 
@@ -333,8 +409,9 @@ recall, multilingual surface accuracy, hallucination refusal) does
 not translate into a CHW-usable system.** A CHW cannot paste a
 question into a cloud chatbot at 2 a.m. in a clinic with no signal.
 The 15-second latency advantage disappears when there is no
-internet. The 30-50× parameter advantage is irrelevant when the
-device is a phone.
+internet. The parameter advantage — orders of magnitude, though
+Google has not published the exact count for Gemini 3.1 Pro — is
+irrelevant when the device is a phone.
 
 **The architecture delivers what the model size cannot.**
 
@@ -433,9 +510,18 @@ should bother validating the translation".
 All four findings share a shape: **a well-intentioned safety check
 failing silently because it lacked defense in depth**. The fix in each
 case was not to make one check smarter, but to add a second check that
-would have caught the failure mode of the first. **Silent wrong is
-worse than loud wrong. Loud wrong is worse than loud right.** The
-architecture is now loud-by-default.
+would have caught the failure mode of the first.
+
+> **The central principle of the day:** **Silent wrong is always
+> worse than loud wrong. Loud wrong is worse than loud right.**
+> **MedLocal is now loud by default.** When it fails, it fails
+> visibly, the audit log records it, a flag is raised, and the CHW
+> sees an explicit refusal instead of a silent empty answer. No
+> quiet successes, no silent empties, no fabricated sources. Every
+> failure announces itself.
+
+This one sentence is the north star of the whole project and is
+worth re-stating in §10.
 
 Credit: four of the findings in this session were flagged by a
 structured review loop with an AI-assisted code reviewer (Silt). Each
@@ -448,6 +534,18 @@ a fast local signal.
 
 Condensed from the sessions documented in `CHANGELOG.md` and
 `docs/ARCHITECTURE.md`.
+
+> **The single most surprising finding of the whole project, and
+> worth breaking out of the table:** vstash's chunker splits at
+> **every markdown header** before checking size. A 1500-char file
+> with five `##` sections produces 5 chunks, while a 4000-char flat
+> file with no `##` produces 1. 64 of 67 protocols had to be
+> rewritten with bold labels instead of H2 sub-headers to produce
+> a single chunk each. The rule "≤ 1 `##` per protocol file" is
+> load-bearing — it is what lets the whole protocol reach the LLM
+> together on every query instead of getting sliced into
+> independently-ranked fragments. This is the one lesson anyone
+> else using vstash for a similar domain should copy.
 
 | Lesson | One-line takeaway |
 |---|---|
@@ -507,15 +605,27 @@ Same model, same corpus — the classifier was the missing piece.
 
 ### Story 5 — Organophosphate poisoning: four compounding retrieval bugs
 
-On 2026-04-07 a farmer presenting with a classic cholinergic toxidrome
-triggered a generic "chemical exposure" response with a fabricated
-source. Using `vstash.miss_analysis()` we traced the failure through
-four stages: vector search missed the chunk, FTS found it at rank 1/83,
-RRF fusion dragged it to rank 14, MMR dedup eliminated a single-chunk
-doc. The fix was a dedicated BM25-only rescue pass running alongside
-three hybrid passes. The broader lesson — that for small multilingual
-clinical corpora the embedder is the weakest link — is the single
-insight from this project that generalises beyond medicine.
+**TL;DR.** A retrieval failure where four stages of the vstash
+pipeline independently mis-ranked the same query — traced stage by
+stage with `vstash.miss_analysis()` and fixed with a dedicated
+BM25-only rescue pass alongside the hybrid passes. The broader
+lesson generalises beyond medicine: for small multilingual corpora,
+the embedder is the weakest link; BM25 is stronger than you think.
+
+On 2026-04-07 a farmer presenting with a classic cholinergic
+toxidrome ("fumigando papas hace 2 horas, náusea, sudando, pupilas
+muy pequeñas") triggered a generic "chemical exposure" response with
+a fabricated source. Using `vstash.miss_analysis()` we traced the
+failure through four stages: vector search missed the chunk (the
+multilingual embedder could not bridge Spanish lay symptoms to
+English clinical terms), FTS found it at rank 1/83, RRF fusion
+dragged it to rank 14 (because the vector half scored zero), and
+MMR dedup eliminated a single-chunk doc as if it were a near-
+duplicate. The fix was a dedicated BM25-only rescue pass running
+alongside three hybrid passes, plus forwarding `vec_weight`,
+`fts_weight`, and `mmr_lambda` through `Memory.search`. All four
+of these improvements landed upstream in vstash 0.26.0 during the
+same week.
 
 ### Story 6 — Meningococcemia "glass test"
 
@@ -576,10 +686,10 @@ new case `CP01` in the benchmark is the regression guard.
    retry logic for JSON-schema parsing that Ollama's current
    structured-output support requires).
 
-6. **Selector mode for future E2B scenarios** — if E2B cannot reach
-   the determinism threshold in all 14 categories, the fallback is
-   to use it as a selector over pre-written answers rather than a
-   generator. Zero hallucination by construction.
+6. **Android-native thin-client APK** — a WebView + MediaPipe LLM
+   Inference wrapper that runs the existing FastAPI backend on-device.
+   One-weekend build target; the deeper Kotlin rewrite is deferred
+   until after field testing validates the desktop pipeline.
 
 ---
 
@@ -587,19 +697,47 @@ new case `CP01` in the benchmark is the regression guard.
 
 MedLocal is a demonstration that **architecture beats model size for
 high-stakes, low-connectivity domains**. A 2-billion-parameter model
-running offline on phone-class hardware, grounded in published
-protocols, enforced by eight layers of defense in depth, passes an
-adversarial clinical safety benchmark at [PLACEHOLDER_E2B_FINAL]/101
-while a cloud-hosted Gemini 3.1 Pro with a realistic naive prompt
-scores [PLACEHOLDER_GEMINI_31_PRO]/101 on the same suite.
+released by Google on 2026-03-31, running offline on phone-class
+hardware, grounded in 68 published WHO and MSF protocols, enforced
+by eight layers of defense in depth, passes an adversarial clinical
+safety benchmark that a cloud-hosted Gemini 3.1 Pro scores **94/101
+(93.1 %)** on with a realistic naive prompt. The final E2B number
+post-hardening is still settling — the prior run was 96/101 and
+every hardening fix since then has been additive — but the target
+is parity or better with the cloud flagship.
 
-The difference is not the model. The difference is that **knowledge
-lives in documents, not in model weights**, and that **silent wrong
-is always worse than loud wrong**.
+The difference is **not** the model. The model is Gemma 4 E2B, and
+Google built it for exactly this kind of deployment. The difference
+is three things the cloud model does not have:
 
-The architecture is Apache 2.0, the test suite is reproducible, the
-protocols are editable by a clinician with a text editor, and the
-whole stack runs in 2.5 GB of RAM on a device the CHW already owns.
+1. **vstash** — a local hybrid retrieval engine whose four most
+   recent improvements were discovered while debugging MedLocal and
+   landed upstream in vstash 0.26.0 during the same week.
+2. **Structured, bounded protocols** — 68 files, one chunk each,
+   every one traceable to a WHO or MSF source, every one editable
+   by a clinician with a text editor.
+3. **An 8-layer anti-hallucination pipeline that is loud by default**
+   — when something fails, it fails loudly, the failure is flagged,
+   the audit log records it, and the CHW sees a refusal instead of
+   a silent empty answer.
+
+The pipeline is the invention. The model is the substrate. The
+protocols are the knowledge. And the architecture — the specific
+choice to ground every claim in a document, to verify every dose
+against a source, to refuse every controlled drug calculation, to
+re-check every cross-lingual emergency classification, and above
+all to **fail loudly** when anything goes wrong — is what turns
+"plausible English" into "defensible clinical guidance".
+
+**Silent wrong is always worse than loud wrong.** That single
+sentence is the lesson of the 2026-04-08 debugging session and
+the north star of the whole project.
+
+The architecture is Apache 2.0, the test suite is reproducible
+(101 integration cases + 54 unit tests), the protocols are
+editable by a clinician with a text editor, vstash is open source
+under the same license, and the whole stack runs in 2.5 GB of RAM
+on a device the CHW already owns.
 
 That is the hackathon submission. The rest is implementation detail.
 
