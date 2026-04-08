@@ -28,6 +28,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from medlocal.llm import StructuredLLMParseError, _repair_json
+from medlocal.runtime_check import (
+    MIN_CTX_REQUIRED,
+    LoadedModelInfo,
+    RuntimePreconditionError,
+    check_runtime_or_raise,
+)
 from medlocal.safety import (
     check_controlled_drugs,
     check_dosages,
@@ -431,6 +437,49 @@ class TestDetectEmergency:
 # --------------------------------------------------------------------- #
 # 6. StructuredLLMParseError contract                                    #
 # --------------------------------------------------------------------- #
+
+class TestRuntimeCheck:
+    """`check_runtime_or_raise` is the precondition gate that fails
+    loud if LM Studio is loaded with the wrong context length. It is
+    the fix for the 2026-04-07 / 2026-04-08 gotcha where LM Studio's
+    default auto-load uses n_ctx=4096 which silently breaks the
+    benchmark around case 80."""
+
+    def test_skips_check_on_non_local_url(self):
+        """Cloud backends (Gemini, OpenAI, etc.) don't have the
+        LM Studio /api/v0 endpoint. The check must short-circuit
+        without raising."""
+        from medlocal.config import LLMConfig
+        cfg = LLMConfig(
+            provider="gemini",
+            model="gemini-2.5-flash",
+            api_key="fake",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            temperature=0.0,
+        )
+        result = check_runtime_or_raise(cfg)
+        assert result is None
+
+    def test_min_ctx_threshold_is_8192(self):
+        """Regression guard: the threshold below which we refuse to
+        run. Documented in docs/PIPELINE.md and CLAUDE.md as 8192."""
+        assert MIN_CTX_REQUIRED >= 8192
+
+    def test_loaded_model_info_dataclass(self):
+        info = LoadedModelInfo(
+            model_id="gemma-4-e4b-it",
+            loaded_context_length=10000,
+            max_context_length=131072,
+            quantization="Q4_K_S",
+            architecture="gemma4",
+        )
+        assert info.loaded_context_length == 10000
+        assert info.model_id == "gemma-4-e4b-it"
+
+    def test_runtime_precondition_error_carries_message(self):
+        err = RuntimePreconditionError("ctx too small, fix it")
+        assert "ctx too small" in str(err)
+
 
 class TestStructuredLLMParseError:
     def test_exception_carries_raw_and_repaired(self):

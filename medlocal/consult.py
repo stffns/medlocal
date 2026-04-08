@@ -8,6 +8,7 @@ from .config import LLMConfig, MedLocalConfig
 from .knowledge import KnowledgeBase, SearchResult
 from .llm import StructuredLLMParseError, chat, chat_structured
 from .preflight import preflight
+from .runtime_check import RuntimePreconditionError, check_runtime_or_raise
 from .safety import (
     AuditLog,
     Confidence,
@@ -18,6 +19,13 @@ from .safety import (
     score_confidence,
     verify_grounding,
 )
+
+# Process-level flag: run the LM Studio runtime check once per Python
+# process (not once per query). The cost is one HTTP GET at startup
+# and zero thereafter. The check is zero-cost on non-LM-Studio
+# backends (Ollama, Gemini, OpenAI) because it short-circuits when
+# the base_url is not localhost.
+_runtime_checked: bool = False
 
 logger = logging.getLogger(__name__)
 
@@ -219,6 +227,29 @@ def consult(
         grounded (if verify=True), issues (if verify=True).
     """
     import re as _re
+
+    # --- Runtime precondition check (once per process) ---
+    # Verifies LM Studio is loaded with the required context length
+    # BEFORE any expensive LLM work. Catches the "n_ctx=4096 default
+    # auto-load" gotcha that burned hours on 2026-04-07 and 2026-04-08.
+    # Fails loud with an actionable error — no silent truncation
+    # at case 80 of the benchmark.
+    global _runtime_checked
+    if not _runtime_checked:
+        try:
+            info = check_runtime_or_raise(llm_cfg)
+            if info:
+                logger.info(
+                    "Runtime check OK: %s ctx=%d",
+                    info.model_id, info.loaded_context_length,
+                )
+        except RuntimePreconditionError as exc:
+            # Do NOT swallow — re-raise so the caller (CLI, bench,
+            # smoke, API) gets a clear message and exits cleanly.
+            logger.error("Runtime precondition failed:\n%s", exc)
+            raise
+        _runtime_checked = True
+
     safety_flags: list[SafetyFlag] = []
 
     def _flag(f: SafetyFlag) -> None:
