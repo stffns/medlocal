@@ -1,6 +1,6 @@
 # WHO: Heat-Related Illness for Community Health Workers
 
-## Heat Exhaustion
+**Heat Exhaustion.**
 - Heavy sweating
 - Weakness, fatigue, dizziness
 - Nausea, headache
@@ -8,7 +8,7 @@
 - Cool, pale, moist skin
 - Normal or slightly elevated temperature
 
-### Treatment
+**Treatment:**
 1. Move to shade or cool area
 2. Lay down, elevate legs
 3. Remove excess clothing
@@ -17,7 +17,7 @@
 6. Rest for 24 hours — avoid heat
 7. If not improving in 30 minutes: **REFER**
 
-## Heat Stroke — EMERGENCY
+**Heat Stroke — EMERGENCY.**
 - Temperature >40°C (104°F)
 - Hot, red, DRY skin (sweating has stopped)
 - Rapid strong pulse
@@ -25,7 +25,7 @@
 - Seizures possible
 - **Can be fatal within minutes**
 
-### Treatment — URGENT
+**Treatment — URGENT:**
 1. **REFER IMMEDIATELY** while cooling
 2. Move to shade, remove clothing
 3. **Cool aggressively:**
@@ -36,7 +36,7 @@
 5. If unconscious: recovery position, monitor airway
 6. Do NOT give aspirin or paracetamol (do not help, may worsen)
 
-## Prevention
+**Prevention.**
 - Drink water frequently — do not wait until thirsty
 - Avoid heavy work during peak heat (10am-4pm)
 - Wear light, loose clothing and hat
@@ -44,7 +44,7 @@
 - Never leave children in closed vehicles
 - Check on elderly and chronically ill during heat waves
 
-## Vulnerable Groups
+**Vulnerable Groups.**
 - Infants and young children
 - Elderly
 - Outdoor workers (farmers, construction)

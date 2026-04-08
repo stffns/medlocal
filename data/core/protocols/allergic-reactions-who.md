@@ -1,21 +1,21 @@
 # WHO: Allergic Reactions for Community Health Workers
 
-## Mild Allergic Reaction
+**Mild Allergic Reaction.**
 - Itchy skin, hives (raised red welts)
 - Localized swelling
 - Runny nose, sneezing
 - Itchy/watery eyes
 
-### Treatment
+**Treatment:**
 - **Cetirizine** 10 mg once daily (adults) or 5 mg (children 2-6 years)
 - OR **Chlorpheniramine** 4 mg every 6-8 hours (adults)
 - Remove trigger if known (food, insect, medication)
 - Cool compress on hives
 
-## Severe Allergic Reaction (Anaphylaxis) — EMERGENCY
+**Severe Allergic Reaction (Anaphylaxis) — EMERGENCY.**
 Can occur within minutes of exposure. **Can be fatal.**
 
-### Recognize:
+**Recognize:**
 - Difficulty breathing, wheezing, stridor
 - Swelling of lips, tongue, or throat
 - Widespread hives or flushing
@@ -24,14 +24,14 @@ Can occur within minutes of exposure. **Can be fatal.**
 - Nausea, vomiting, abdominal cramps
 - Feeling of doom
 
-### Common Triggers:
+**Common Triggers:**
 - Medications (penicillin, aspirin, NSAIDs)
 - Insect stings (bees, wasps)
 - Foods (peanuts, shellfish, eggs, milk)
 - Latex
 - Vaccines (rare)
 
-### Treatment — Act Immediately:
+**Treatment — Act Immediately:**
 1. **Epinephrine (adrenaline) IM** — FIRST and MOST IMPORTANT treatment:
    - Adult: 0.5 mg (0.5 mL of 1:1000) IM mid-outer thigh
    - Child 6-12 years: 0.3 mg
@@ -43,23 +43,23 @@ Can occur within minutes of exposure. **Can be fatal.**
 5. Repeat epinephrine every 5-15 minutes if no improvement (up to 3 doses)
 6. **REFER URGENTLY** — even if improving (can relapse after 4-8 hours)
 
-### After Epinephrine:
+**After Epinephrine:**
 - **Hydrocortisone** 200 mg IV/IM (adults) or 4 mg/kg (children) — prevents delayed reaction
 - **Cetirizine** or **chlorpheniramine** oral — reduces itching/hives
 - Monitor for at least 6 hours (24 hours if severe)
 
-## Insect Sting Allergy
+**Insect Sting Allergy.**
 - If known severe allergy: patient should carry epinephrine auto-injector
 - After first anaphylaxis to insect sting: **refer** for allergy assessment
 - Prevention: avoid walking barefoot outdoors, avoid bright clothing/perfume
 
-## Drug Allergy
+**Drug Allergy.**
 - If allergic reaction to a medication: STOP the medication immediately
 - Record the allergy clearly in patient records
 - Common: penicillin, sulfa drugs (cotrimoxazole), aspirin
 - If penicillin allergy: use erythromycin or azithromycin as alternative
 
-## Danger Signs — Refer Immediately
+**Danger Signs — Refer Immediately.**
 - Any difficulty breathing after exposure
 - Swelling of face, lips, or throat
 - Dizziness or fainting

@@ -1,29 +1,27 @@
 # WHO/IMCI: Ear Infections for Community Health Workers
 
-## Assessment
+**Assessment.**
 Ask: "Does the child have an ear problem?"
 Look and feel: pus draining from ear, ear pain, swelling behind ear
 
-## Classification
-
-### Acute Ear Infection
+**Classification.**
+**Acute Ear Infection:**
 - Ear pain (child pulls at ear, cries)
 - Pus draining from ear for LESS than 14 days
 - Red, bulging eardrum (if otoscope available)
 
-### Chronic Ear Infection
+**Chronic Ear Infection:**
 - Pus draining from ear for 14 DAYS OR MORE
 - Usually painless
 - Risk of permanent hearing loss
 
-### Mastoiditis — EMERGENCY
+**Mastoiditis — EMERGENCY:**
 - Tender swelling BEHIND the ear
 - Ear pushed forward
 - **REFER URGENTLY** — can be life-threatening
 
-## Treatment
-
-### Acute Ear Infection
+**Treatment.**
+**Acute Ear Infection:**
 1. **Amoxicillin** for 5 days:
    - 2-12 months: 250 mg twice daily
    - 1-5 years: 500 mg twice daily
@@ -32,7 +30,7 @@ Look and feel: pus draining from ear, ear pain, swelling behind ear
 4. Do NOT put oil, herbs, or drops in the ear
 5. Follow up in 5 days
 
-### Chronic Ear Infection
+**Chronic Ear Infection:**
 1. **Dry the ear** — this is the most important treatment:
    - Roll clean cloth into a wick
    - Insert gently, remove when wet, repeat until dry
@@ -42,19 +40,19 @@ Look and feel: pus draining from ear, ear pain, swelling behind ear
 4. Keep water out of the ear when bathing
 5. **Refer** if not improving in 2 weeks (may need specialist)
 
-## Hearing Loss Assessment
+**Hearing Loss Assessment.**
 - Child not responding to sounds
 - Speech delay in young child
 - Need to repeat or speak loudly
 - **Refer** for hearing assessment
 
-## Prevention
+**Prevention.**
 - Breastfeed exclusively for 6 months (protects against ear infections)
 - Keep ears dry — dry after bathing
 - Do not insert objects into ear canal
 - Treat upper respiratory infections promptly
 
-## Danger Signs — Refer Immediately
+**Danger Signs — Refer Immediately.**
 - Swelling behind the ear (mastoiditis)
 - Facial weakness on side of infected ear
 - Severe headache with ear infection

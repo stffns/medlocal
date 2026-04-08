@@ -73,7 +73,18 @@ Single tab with text + camera + follow-ups:
 - Config: `./medlocal.toml` or `~/.medlocal/config.toml`
 - `[llm]` = on-device model (Gemma), `[teacher_llm]` = large model (Gemini)
 - Protocols MUST cite WHO/MSF source with year
-- Protocols must be <=2000 chars or split into focused files
+- **Protocol authoring rule (load-bearing, 2026-04-08):** use AT MOST ONE
+  `##` header per file. Prefer `**bold labels**` for sub-sections.
+  vstash's chunker splits at EVERY markdown header before checking size,
+  so a file with four `##` produces four chunks and the LLM only sees
+  one of them per query. The `poisoning-organophosphate-who.md` file is
+  the template. Run `medlocal protocol validate <path>` before committing
+  any protocol change, and `medlocal protocol audit` before releases.
+- When content is genuinely too large for one flat file, split into
+  focused sibling files (e.g. `measles-who.md` alone, not
+  `measles-diagnosis-who.md` + `measles-treatment-who.md` — unless the
+  sub-topics are independent enough that only one is ever relevant to a
+  given query).
 - NEVER use LLM diagnosis in retrieval pipeline — only symptom translation
 - ALWAYS ask drug allergies before recommending medication
 - Response language MUST match question language

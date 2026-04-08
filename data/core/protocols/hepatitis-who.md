@@ -1,8 +1,7 @@
 # WHO: Hepatitis B and C for Community Health Workers
 
-## Hepatitis B
-
-### When to Suspect
+**Hepatitis B.**
+**When to Suspect:**
 - Jaundice (yellow skin and eyes)
 - Dark urine, pale stools
 - Nausea, vomiting, abdominal pain (right upper)
@@ -10,11 +9,11 @@
 - Fever
 - History of: unprotected sex, shared needles, blood transfusion, birth to HBV+ mother
 
-### Diagnosis
+**Diagnosis:**
 - HBsAg rapid test (result in 15-30 minutes)
 - If positive: refer for viral load and liver assessment
 
-### Treatment
+**Treatment:**
 - **Acute hepatitis B:** No specific treatment — supportive care, rest, fluids
   - 95% of adults recover completely
   - Avoid alcohol, paracetamol in high doses
@@ -23,7 +22,7 @@
   - Treatment is lifelong — do NOT stop without medical advice
   - Monitor liver function every 6-12 months
 
-### Prevention — CRITICAL
+**Prevention — CRITICAL:**
 - **Vaccination:** 3 doses (0, 1, 6 months) — nearly 100% effective
 - Birth dose within 24 hours for all newborns
 - Hepatitis B Immunoglobulin (HBIG) for infants of HBsAg+ mothers
@@ -31,23 +30,22 @@
 - Do NOT share needles, razors, or toothbrushes
 - Screen all pregnant women for HBsAg
 
-## Hepatitis C
-
-### When to Suspect
+**Hepatitis C.**
+**When to Suspect:**
 - Same symptoms as Hepatitis B (often asymptomatic for years)
 - Risk factors: shared needles, blood transfusion before screening, tattoo with unsterile equipment
 
-### Diagnosis
+**Diagnosis:**
 - Anti-HCV rapid test
 - If positive: refer for confirmatory test (HCV RNA)
 
-### Treatment
+**Treatment:**
 - **Curable!** Direct-Acting Antivirals (DAAs) cure >95% of cases
 - Sofosbuvir/Daclatasvir: 1 tablet daily for 12 weeks
 - **Refer** for treatment initiation and monitoring
 - No vaccine available — prevention is key
 
-## Jaundice Differential — Important
+**Jaundice Differential — Important.**
 Not all jaundice is hepatitis:
 | Cause | Clues |
 |-------|-------|
@@ -57,7 +55,7 @@ Not all jaundice is hepatitis:
 | Gallstones | Colicky pain right upper abdomen, no fever initially |
 | Neonatal jaundice | Common in first week, refer if <24 hours or severe |
 
-## Danger Signs — Refer Immediately
+**Danger Signs — Refer Immediately.**
 - Jaundice with confusion or drowsiness (liver failure)
 - Jaundice with severe abdominal pain
 - Jaundice in a newborn within first 24 hours

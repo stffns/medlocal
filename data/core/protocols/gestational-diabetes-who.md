@@ -12,8 +12,7 @@ giving sugary drinks to a hyperglycaemic patient.
 For diabetes outside pregnancy see the Diabetes protocol. For
 pre-eclampsia see the Pregnancy Danger Signs protocol.
 
-## When to Suspect Gestational Diabetes (Diabetes Gestacional)
-
+**When to Suspect Gestational Diabetes (Diabetes Gestacional).**
 Suspect GDM in any pregnant woman / embarazada, especially after 24
 weeks, when ANY of these are present:
 
@@ -34,8 +33,7 @@ weeks, when ANY of these are present:
 A pregnant woman who tells you she "drinks water all the time, eats a
 lot, and pees a lot" needs blood glucose testing today, not reassurance.
 
-## ⚠ Red Flags — Possible Hyperglycaemic Emergency / DKA
-
+**⚠ Red Flags — Possible Hyperglycaemic Emergency / DKA.**
 DKA in pregnancy is a life-threatening obstetric emergency that can
 develop at near-normal glucose levels and rapidly. Suspect it when ANY
 of these accompany the triad:
@@ -48,8 +46,7 @@ of these accompany the triad:
 
 If ANY red flag is present → treat as obstetric emergency.
 
-## Critical Rules — Do NOT
-
+**Critical Rules — Do NOT.**
 1. **Do NOT give sugary drinks, sweet tea, juice, honey, or food
    containing sugar** to a pregnant woman with the diabetic triad,
    even if she feels dizzy or weak. You cannot distinguish hypoglycaemia
@@ -61,8 +58,7 @@ If ANY red flag is present → treat as obstetric emergency.
 3. **Do NOT delay referral** to test blood glucose. Point-of-care
    glucose strips at the health post are the right test if available.
 
-## Immediate Actions (CHW)
-
+**Immediate Actions (CHW).**
 1. Measure blood pressure to rule out pre-eclampsia (BP ≥140/90 with
    the triad means BOTH may be present — still refer urgently).
 2. If a glucose strip is available, measure capillary blood glucose
@@ -78,8 +74,7 @@ If ANY red flag is present → treat as obstetric emergency.
 6. If no glucose strip available and the triad is present: refer
    same day regardless. Do not guess.
 
-## Refer Immediately If
-
+**Refer Immediately If.**
 - Any DKA red flag (drowsiness, vomiting, abdominal pain, deep breathing,
   fruity breath, dehydration)
 - Random glucose ≥250 mg/dL

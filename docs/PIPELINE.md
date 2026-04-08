@@ -407,16 +407,43 @@ WHO.
 
 ### 6.2 Chunk size & why it matters
 
-`chunk_size=2048`, `chunk_overlap=256`. Protocols must be **≤2000
-chars** per file — enforced by convention, not by the loader. Long
-protocols get split into focused sub-files. The organophosphate debug
-is the cautionary tale: a 2557-char `poisoning-who.md` split on `##
-Immediate Actions`, and the atropine block ended up in chunk 2 which
-scored slightly below chunk 1 — so the LLM saw "cholinergic signs" but
-not "atropine dose". The fix was to split the file into
-`poisoning-organophosphate-who.md` (1773 chars, 1 chunk) and
-`poisoning-general-who.md` (1989 chars, 1 chunk). **Every focused
-protocol should fit in one chunk.**
+`chunk_size=2048`, `chunk_overlap=256`. But the load-bearing rule is
+NOT a char count — we learned this the hard way on 2026-04-08 when the
+`medlocal protocol audit` skill revealed that 64 of 67 protocols were
+silently multi-chunk despite most being under 2500 chars.
+
+**The actual vstash chunking algorithm** (`vstash/ingest.py:chunk_text`):
+
+1. **Split at every markdown header** (`#`, `##`, `###`, ...) BEFORE
+   looking at size. A 1500-char file with five `##` sections becomes
+   five chunks.
+2. Sub-split oversized sections at paragraph boundaries.
+3. Merge adjacent sections smaller than ~80 tokens.
+
+**The real authoring rule:**
+
+> **Use at most ONE `##` header per protocol file. Prefer `**bold
+> labels**` for sub-sections.** Each file stays as one vstash chunk,
+> and the whole protocol — diagnosis, dosing, complications, danger
+> signs — reaches the LLM together on every query.
+
+`poisoning-organophosphate-who.md` is the template. It has one H1 and
+uses `**Step 1 — Protect yourself.**`, `**Step 2 — Decontaminate ...**`
+etc. as its sub-section headers. Result: one chunk, atropine dose
+always visible. A rewrite of `measles-who.md` on 2026-04-08 followed
+the same pattern and immediately fixed the pregnant-measles case that
+had been missing the Vitamin A dose.
+
+**When content is genuinely too large for one flat file** (e.g. a
+dermatology protocol covering five distinct NTDs), split into focused
+**sibling files**, one per topic. Split only when the sub-topics are
+independent enough that only one is relevant to any given query —
+otherwise flatten with bold labels so both sides come through together.
+
+**Validate before committing.** `medlocal protocol validate <path>`
+runs the text rules and then ingests the file to confirm the chunk
+count is exactly 1. `medlocal protocol audit` runs the same checks
+across the whole corpus and is the pre-release gate.
 
 ---
 

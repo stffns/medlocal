@@ -1,8 +1,7 @@
 # WHO: Snakebite Management for Community Health Workers
 
-## First Aid — Immediate Actions
-
-### DO:
+**First Aid — Immediate Actions.**
+**DO:**
 1. Move away from the snake — do NOT try to catch or kill it
 2. Keep the victim calm and still — movement spreads venom faster
 3. Remove rings, bracelets, tight clothing near the bite (swelling will occur)
@@ -12,7 +11,7 @@
 7. If possible, take a photo of the snake (for identification)
 8. Transport the victim — do NOT let them walk
 
-### DO NOT:
+**DO NOT:**
 - Do NOT cut the wound
 - Do NOT suck out the venom
 - Do NOT apply a tourniquet
@@ -21,15 +20,14 @@
 - Do NOT give aspirin (increases bleeding)
 - Do NOT give alcohol
 
-## Signs of Envenoming (venom effects)
-
-### Local Signs (at bite site)
+**Signs of Envenoming (venom effects).**
+**Local Signs (at bite site):**
 - Pain and swelling spreading from bite
 - Bruising/discoloration
 - Blistering
 - Tissue death (blackening)
 
-### Systemic Signs — LIFE-THREATENING
+**Systemic Signs — LIFE-THREATENING:**
 **Neurotoxic (cobra, mamba, krait):**
 - Drooping eyelids (ptosis)
 - Difficulty swallowing or speaking
@@ -47,22 +45,21 @@
 3. Tilt the container
 4. If blood has NOT clotted → **confirmed envenoming** → needs antivenom urgently
 
-## Treatment at Health Facility
-
-### Antivenom
+**Treatment at Health Facility.**
+**Antivenom:**
 - The ONLY specific treatment for snakebite envenoming
 - Must be given intravenously at a health facility
 - Effective even hours after the bite — it is NEVER too late to give antivenom
 - Watch for allergic reaction during administration (epinephrine must be ready)
 
-### Supportive Care
+**Supportive Care:**
 - IV fluids for shock
 - Pain management (paracetamol — NOT aspirin or ibuprofen)
 - Tetanus prophylaxis
 - Wound care — clean but do NOT suture tight
 - Monitor breathing — ventilator support if paralysis develops
 
-## Prevention
+**Prevention.**
 - Wear boots and long trousers in grass, bush, and at night
 - Use a torch/flashlight when walking at night
 - Check shoes before wearing
@@ -70,7 +67,7 @@
 - Clear brush and debris around the house
 - Store food in sealed containers (attracts rodents which attract snakes)
 
-## Danger Signs — Refer Immediately
+**Danger Signs — Refer Immediately.**
 ALL snakebites with any of these need URGENT hospital care:
 - Any swelling beyond the bite site
 - Bleeding from any site

@@ -1,9 +1,9 @@
 # WHO: Shock Management for Community Health Workers
 
-## What Is Shock
+**What Is Shock.**
 The body's organs are not getting enough blood. Can be fatal within minutes to hours.
 
-## How to Recognize Shock
+**How to Recognize Shock.**
 - Cold, pale, sweaty skin (especially hands and feet)
 - Weak, rapid pulse (>100 bpm in adults, >160 in infants)
 - Fast breathing
@@ -12,7 +12,7 @@ The body's organs are not getting enough blood. Can be fatal within minutes to h
 - Little or no urine output
 - Thirst
 
-## Common Causes
+**Common Causes.**
 | Type | Cause | Look For |
 |------|-------|----------|
 | Hypovolemic | Blood loss, severe dehydration, burns | Visible bleeding, diarrhea/vomiting, burn injury |
@@ -20,7 +20,7 @@ The body's organs are not getting enough blood. Can be fatal within minutes to h
 | Anaphylactic | Allergic reaction | Drug/food/insect sting, swelling, rash, breathing difficulty |
 | Cardiogenic | Heart failure | Chest pain, difficulty breathing lying flat |
 
-## Immediate Actions — ALL Types
+**Immediate Actions — ALL Types.**
 1. **Call for help — REFER URGENTLY**
 2. Lay patient flat, elevate legs 30 cm (unless difficulty breathing or head injury)
 3. Keep warm — cover with blankets
@@ -29,19 +29,18 @@ The body's organs are not getting enough blood. Can be fatal within minutes to h
 6. Monitor breathing and pulse every 5 minutes
 7. If breathing stops: begin CPR
 
-## Specific Treatment
-
-### Bleeding (Hypovolemic Shock)
+**Specific Treatment.**
+**Bleeding (Hypovolemic Shock):**
 - Apply direct pressure to wound
 - Elevate bleeding limb
 - Start IV Normal Saline or Ringer's Lactate — run fast (1 liter in 15-30 minutes)
 - If no IV available: give ORS by mouth if conscious
 
-### Severe Dehydration (Hypovolemic)
+**Severe Dehydration (Hypovolemic):**
 - IV Ringer's Lactate: 30 mL/kg in first 30 minutes, then 70 mL/kg over 2.5 hours
 - If no IV: ORS by nasogastric tube 20 mL/kg/hour
 
-### Anaphylaxis — LIFE-THREATENING
+**Anaphylaxis — LIFE-THREATENING:**
 1. **Epinephrine (adrenaline) IM immediately:**
    - Adult: 0.5 mL of 1:1000 (0.5 mg)
    - Child: 0.01 mL/kg of 1:1000 (max 0.3 mg)
@@ -51,12 +50,12 @@ The body's organs are not getting enough blood. Can be fatal within minutes to h
 4. If wheezing: salbutamol inhaler
 5. **REFER URGENTLY** even if improving (can relapse)
 
-### Septic Shock
+**Septic Shock:**
 - Start IV fluids: Normal Saline 20 mL/kg bolus, repeat up to 3 times
 - Give antibiotics immediately: Ceftriaxone 50-80 mg/kg IV/IM (max 2g)
 - **REFER URGENTLY**
 
-## Danger Signs (worsening shock)
+**Danger Signs (worsening shock).**
 - Pulse becoming weaker or faster
 - Skin becoming more pale/cold/blue
 - Decreasing consciousness

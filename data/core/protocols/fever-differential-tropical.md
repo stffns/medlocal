@@ -1,9 +1,9 @@
 # Fever and Headache in Tropical/Endemic Areas — Differential Diagnosis
 
-## IMPORTANT: Fever + headache has MULTIPLE possible causes
+**IMPORTANT: Fever + headache has MULTIPLE possible causes.**
 Do NOT assume a single diagnosis without testing. Use this guide to narrow down.
 
-## Step 1: Check for Danger Signs FIRST
+**Step 1: Check for Danger Signs FIRST.**
 If ANY of these are present, REFER URGENTLY before further assessment:
 - Stiff neck (cannot touch chin to chest) → suspect meningitis
 - Convulsions → suspect cerebral malaria or meningitis
@@ -11,8 +11,7 @@ If ANY of these are present, REFER URGENTLY before further assessment:
 - Unable to drink → severe dehydration or severe illness
 - Severe bleeding (gums, nose, vomit) → suspect dengue hemorrhagic
 
-## Step 2: Key Questions to Distinguish Causes
-
+**Step 2: Key Questions to Distinguish Causes.**
 | Question | Why it matters |
 |----------|---------------|
 | How many days of fever? | Malaria: cyclical. Typhoid: sustained >7 days. Dengue: 2-7 days |
@@ -24,45 +23,44 @@ If ANY of these are present, REFER URGENTLY before further assessment:
 | Vaccination status? | Unvaccinated: measles, yellow fever more likely |
 | Recent travel? | May have encountered disease not common locally |
 
-## Step 3: Rapid Tests Available at Community Level
+**Step 3: Rapid Tests Available at Community Level.**
 - **Malaria RDT** — do this FIRST for any fever in endemic area. Takes 15 minutes.
 - **If RDT positive** → treat for malaria (see malaria protocol)
 - **If RDT negative** → malaria less likely, consider other causes below
 
-## Most Likely Causes by Pattern
-
-### Malaria
+**Most Likely Causes by Pattern.**
+**Malaria:**
 - Cyclical fever with chills and sweating
 - Headache, body aches, fatigue
 - RDT positive
 - Action: ACT treatment (see malaria protocol)
 
-### Typhoid
+**Typhoid:**
 - Sustained fever rising over days, >7 days duration
 - Headache, abdominal pain, constipation then diarrhea
 - Relative bradycardia (pulse slower than expected)
 - RDT negative for malaria
 - Action: Azithromycin (see typhoid protocol)
 
-### Dengue
+**Dengue:**
 - High fever 2-7 days + severe headache + pain behind eyes
 - Muscle/joint pain ("breakbone fever")
 - Rash appearing day 3-5
 - WARNING: Do NOT give aspirin or ibuprofen (bleeding risk)
 - Action: Paracetamol only, monitor for warning signs (see dengue protocol)
 
-### Meningitis
+**Meningitis:**
 - Severe headache + stiff neck + fever
 - May have rash (petechial — purple spots that don't fade)
 - Photophobia (light sensitivity)
 - Action: REFER URGENTLY, give ceftriaxone IM before referral if available
 
-### Measles
+**Measles:**
 - Fever + generalized rash (face to body) + cough/red eyes
 - Unvaccinated child
 - Action: Vitamin A immediately (see measles protocol)
 
-## When You Cannot Determine the Cause
+**When You Cannot Determine the Cause.**
 1. If malaria RDT available → do it
 2. If positive → treat malaria
 3. If negative and fever <7 days → give paracetamol, fluids, follow up in 2 days

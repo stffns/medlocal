@@ -1,6 +1,6 @@
 # WHO: Antenatal Care for Community Health Workers
 
-## Recommended Visit Schedule
+**Recommended Visit Schedule.**
 Minimum 8 antenatal contacts:
 - Up to 12 weeks: 1st contact
 - 20 weeks: 2nd contact
@@ -11,7 +11,7 @@ Minimum 8 antenatal contacts:
 - 38 weeks: 7th contact
 - 40 weeks: 8th contact
 
-## At Every Visit — Check
+**At Every Visit — Check.**
 1. **Blood pressure** — if ≥140/90: see pre-eclampsia protocol
 2. **Weight** — expected gain: 1-2 kg/month in 2nd and 3rd trimester
 3. **Fundal height** — should match weeks of pregnancy (±2 cm)
@@ -20,7 +20,7 @@ Minimum 8 antenatal contacts:
 6. **Urine dipstick** — protein (pre-eclampsia), glucose (diabetes)
 7. Ask about: vaginal bleeding, headache, visual changes, swelling, decreased fetal movement
 
-## Routine Tests (at first visit)
+**Routine Tests (at first visit).**
 - Hemoglobin (anemia)
 - Blood group and Rh factor
 - HIV test (with consent)
@@ -29,17 +29,17 @@ Minimum 8 antenatal contacts:
 - Urinalysis
 - Malaria RDT (in endemic areas)
 
-## Routine Supplementation
+**Routine Supplementation.**
 - **Iron + folic acid:** 30-60 mg iron + 400 mcg folic acid daily throughout pregnancy
 - **Calcium:** 1.5-2g daily if low dietary calcium intake (prevents pre-eclampsia)
 - **Deworming:** Albendazole 400 mg single dose after first trimester (endemic areas)
 
-## Preventive Treatments
+**Preventive Treatments.**
 - **Tetanus toxoid:** per schedule (see immunization protocol)
 - **IPTp for malaria:** Sulfadoxine-pyrimethamine at each ANC visit from 2nd trimester, ≥1 month apart, minimum 3 doses (endemic areas)
 - **Insecticide-treated bed net** — for all pregnant women in malaria areas
 
-## Danger Signs in Pregnancy — Refer Immediately
+**Danger Signs in Pregnancy — Refer Immediately.**
 - Vaginal bleeding at any stage
 - Severe headache with blurred vision (pre-eclampsia)
 - Convulsions (eclampsia)
@@ -49,7 +49,7 @@ Minimum 8 antenatal contacts:
 - Baby not moving (after 28 weeks)
 - Swelling of face and hands (sudden onset)
 
-## Birth Preparedness Plan
+**Birth Preparedness Plan.**
 Discuss with every pregnant woman by 3rd trimester:
 1. Where will you deliver? (facility recommended)
 2. How will you get there? (transport plan)
