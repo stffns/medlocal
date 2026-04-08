@@ -119,26 +119,58 @@ Capa G  check_controlled_drugs (authority)         defense in depth
 Capa H  StructuredLLMParseError → graceful refusal silent-failure close
 ```
 
-**How the cross-lingual safety net (Capa C) works, since this is the
-subtle one.** Capa A is a raw-text regex that covers English and
-Spanish patterns directly — it fires zero-cost on obvious wordings
-like "no respira" or "bee sting swelling throat". A French-speaking
-CHW asking *"Bébé ne peut pas boire, vomit tout"* will NOT hit Capa A
-because the regex has no French vocabulary. But Capa B (the preflight
-LLM call) translates the symptoms to English `clinical_terms` — for
-this case it produces `["infant", "unable to drink", "vomits
-everything", "severe dehydration", "danger signs"]`. Capa C then
-re-runs the SAME English regex over those translated terms. "Unable
-to drink" and "vomits everything" are both in Capa A's English
-pattern list, so Capa C fires and the case is flagged as emergency.
+**How the three emergency-detection layers actually interact** —
+traced empirically through the benchmark on 2026-04-08 so this
+section reflects what the code does, not what the code ought to do.
 
-The trick is that Capa C does not need French (or Swahili, or
-Hindi, or Amharic) regex patterns. It reuses the English patterns
-by running them against the preflight's English translation. A
-cloud model with a naive prompt has no equivalent pass — it has one
-layer of reasoning (the model itself), and when that reasoning
-fails on a French IMCI danger sign (as Gemini 3.1 Pro did on XE03,
-see §5), there is no fallback.
+**Capa A** is a raw-text regex over the user's original question.
+It covers English directly, Spanish via explicit patches added
+during testing (pediatric chemical ingestion phrasings, Spanish
+passive-voice dog bites, etc.), and a handful of language-
+agnostic keywords like `convulsion` that happen to appear in
+several Romance languages. It does NOT cover French, Portuguese,
+Swahili, Hindi, or Arabic. It is the zero-cost fast path for
+cases where the CHW types in one of the languages it knows.
+
+**Capa B** is the preflight LLM call. Its system prompt includes
+explicit IMCI danger-sign reasoning rules ("unable to drink or
+breastfeed is a general danger sign in any language; qualifiers
+like 'only', 'mild', 'stable' downgrade; explicit signs like
+'chest indrawing' upgrade"). The LLM reads the raw question and
+returns `{vital_emergency, clinical_terms, ...}`. **Capa B is the
+workhorse for true cross-lingual semantic classification** —
+empirically it is what catches the French ("Bébé ne peut pas
+boire, vomit tout"), Portuguese ("Criança inconsciente"), and
+Swahili ("ana degedege") benchmark cases. Without Capa B's
+explicit prompt rules, these cases fall through entirely — which
+is exactly what happens with Gemini 3.1 Pro's naive prompt on
+XE03 (see §5.5 point 1).
+
+**Capa C** is a defensive backstop that re-runs Capa A's regex
+against the English `clinical_terms` field the preflight
+produced. Its empirical value is narrower than we initially
+claimed: in the current benchmark data, Capa C does not catch
+any case that Capa A or Capa B have not already caught. It does
+have a known gap — the preflight sometimes returns nominalized
+forms ("inability to drink") that do not match the verb-form
+regex ("unable to drink") — so Capa C would NOT, today, rescue
+a French IMCI case if Capa B had failed on it. We keep Capa C
+because it has zero marginal cost and because a future wording
+the preflight returns in verb-form would benefit from it; we
+document the nominalization gap as a follow-up fix (extend the
+Capa A regex with common nominalized forms, or normalise the
+preflight output before running the regex).
+
+**The honest story.** MedLocal's cross-lingual emergency coverage
+comes from Capa B's explicit reasoning rules, not from a clever
+regex-over-translation trick. The architectural differentiator
+vs a cloud baseline with a naive prompt is the preflight prompt
+itself — the thousand lines of IMCI logic, qualifier handling,
+and scope classification that let an E2B-class model apply
+clinical reasoning it could not derive on its own. Gemini 3.1 Pro
+fails XE03 not because it cannot reason about "Bébé ne peut pas
+boire" — it could, with the right prompt — but because no one
+wrote the preflight prompt for it. The prompt is the moat.
 
 Each layer closes a specific failure mode we observed during adversarial
 testing. None of them alone is sufficient. Together they form the
@@ -557,6 +589,7 @@ Condensed from the sessions documented in `CHANGELOG.md` and
 | Defense in depth beats any single check | Every silent failure we found was a single check that lacked a second check to catch its own blind spot. The answer is always one more layer. |
 | The test harness itself is part of the system | A regex-based must-not-contain detector is whack-a-mole against LLM variance. Either make it a unit test with every wording that ever broke it, or replace it with an LLM-judge. |
 | vstash and MedLocal co-evolve | Four retrieval improvements discovered in MedLocal debugging landed upstream in vstash 0.26.0 during the same week. The retrieval engine and the clinical deployment are strongest together. |
+| Narrate the architecture you have, not the architecture you want | The first draft of this writeup claimed "Capa C rescues French XE03 via regex-over-translation". An empirical trace showed that Capa B (the preflight LLM) catches XE03 and Capa C does not fire at all because of a nominalisation mismatch. A plausible-sounding mechanism is not a verified mechanism. If you are claiming a failure mode is closed, trace the closure through the code before you write the sentence. Credit to Silt: "nine fixes, zero test assertions — confidence: fictional." |
 
 ---
 
@@ -690,6 +723,18 @@ new case `CP01` in the benchmark is the regression guard.
    Inference wrapper that runs the existing FastAPI backend on-device.
    One-weekend build target; the deeper Kotlin rewrite is deferred
    until after field testing validates the desktop pipeline.
+
+7. **Capa C nominalization gap fix** — the preflight LLM sometimes
+   returns nominalised forms ("inability to drink", "fluid intake
+   failure") where the Capa A regex only matches verb forms
+   ("unable to drink"). Currently Capa C catches zero cases that
+   Capa A or Capa B do not already catch, so the gap is theoretical,
+   but it will bite the first time Capa B fails on a cross-lingual
+   case with a nominalised translation. Fix options: extend the
+   Capa A regex with common nominalised forms (cheap), or run the
+   preflight output through a small normaliser before the Capa C
+   regex pass (cleaner). Logged as a follow-up because Silt caught
+   it during the 2026-04-08 writeup review.
 
 ---
 
