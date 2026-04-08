@@ -16,6 +16,175 @@ Nothing yet. Next work lines are tracked in `docs/ROADMAP.md`.
 
 ---
 
+## [0.6.0] — 2026-04-08
+
+### Heavy-metal poisoning + protocol skill validation
+
+First protocol authored end-to-end with the new `medlocal protocol new`
+skill, and the first coverage for chronic chemical exposure beyond
+acute pesticide poisoning. Brings benchmark to **100 cases** and the
+corpus to **68 protocols**.
+
+### Added
+- `data/core/protocols/poisoning-heavy-metals-who.md` — single flat
+  4608-char file (1 vstash chunk, validated by the skill) covering
+  lead, mercury, and arsenic recognition; exposure clue checklists
+  for each metal; universal CHW actions (identify source, eliminate
+  exposure, refer — chelation is hospital-level only); pediatric and
+  pregnancy priority flags; community-prevention messaging. Sources:
+  WHO Lead Poisoning fact sheet (2024-09-27 update), WHO Guidelines on
+  Clinical Management of Exposure to Lead (2021), WHO Mercury and
+  Health (2024), WHO Arsenic (2022), WHO/IPCS INTOX. Two WebFetch
+  checks against the live WHO fact sheets verified the lead reference
+  value (5 µg/dL with the "no safe level" caveat) and the current
+  mercury source list before authoring.
+- `tests/benchmark_comprehensive.py`: new `heavy_metals` category with
+  `HM01` — pediatric chronic lead exposure (battery recycling + lead
+  paint, anaemia + abdo pain + cognitive delay). Brings the suite from
+  99 to **100 cases**.
+- `tests/smoke_critical.py`: `HM01` added to SMOKE_IDS (smoke is now
+  21 cases, all PASS post-flatten).
+
+### Changed
+- The `medlocal protocol new` pipeline was exercised end-to-end for
+  the first time on this protocol — text validation → copy → ingest
+  + chunk-count check → retrieval dry-run with 4 lay-language CHW
+  probes (Spanish pediatric lead, Spanish artisanal mining mercury,
+  Spanish arsenic groundwater, English adult battery-recycling).
+  All 4 probes surfaced the new protocol in the top 6 (ranks 1, 2,
+  3, 1). This is the workflow the skill was built for: structural
+  correctness AND retrieval reachability verified before commit.
+
+### Stats after this release
+- Protocols: 67 → **68**
+- Benchmark cases: 99 → **100**
+- Smoke cases: 20 → **21**
+
+---
+
+## [0.5.2] — 2026-04-08
+
+### Flatten 64 multi-chunk protocols
+
+The `medlocal protocol audit` skill (added in 0.5.1) revealed that
+**64 of 67 protocols were silently producing 2 to 9 vstash chunks
+each** instead of the intended single chunk. Each one carried the
+same latent bug that broke organophosphate poisoning on 2026-04-07
+and pregnant-measles on 2026-04-08: only one chunk per document
+reaches the LLM (`mmr_lambda=1.0` hard dedup), so the chunk that
+ranks highest for a given query may not be the one containing the
+dose, the contraindication, or the pregnancy warning.
+
+The benchmark passes 99/99 only because the existing cases happen
+to query in ways that rank the right chunk — adversarial rewordings
+expose the bug.
+
+### Added
+- `scripts/flatten_protocol.py` — deterministic structural rewriter
+  that converts every `##` / `###` / `####` / `#####` / `######`
+  header to a `**bold label**` paragraph while preserving the H1
+  title. Processes deepest header levels first so nested headers are
+  not double-rewritten. Collapses runs of >2 blank lines for clean
+  diffs. **Pure structural rewriting — no LLM in the loop, no
+  rephrasing, no summarisation.**
+
+### Changed
+- All 64 multi-chunk protocols rewritten with `flatten_protocol.py`.
+  After re-ingest the audit goes from **64 errors / 74 warnings** to
+  **0 errors / 10 warnings** (informational H3 heuristic only). Every
+  protocol now produces exactly 1 vstash chunk so the entire content
+  reaches the LLM together on every query.
+- `CLAUDE.md` Key Conventions section now states the real authoring
+  rule: **at most ONE `##` per file, prefer `**bold labels**` for
+  sub-sections**, validate with `medlocal protocol validate` before
+  committing. The previous "≤2000 chars" rule was wrong — char count
+  is a soft signal, header count is the load-bearing predictor of
+  multi-chunking.
+- `docs/PIPELINE.md` §6.2 rewritten with the actual vstash chunking
+  algorithm (split at every header BEFORE checking size), the
+  `poisoning-organophosphate-who.md` template, and the validate/audit
+  workflow.
+
+### Why bold labels instead of splitting into sibling files
+Splitting a protocol into focused sibling files (e.g.
+`measles-diagnosis-who.md` + `measles-treatment-who.md`) is the right
+move when sub-topics are independent enough that only one is ever
+relevant to a given query. For most clinical protocols this is NOT
+true: a question about measles in a pregnant woman needs the
+diagnosis criteria AND the Vitamin A dose AND the obstetric referral
+warning all at once. Flattening keeps them all in the same chunk so
+all three reach the LLM together.
+
+### Known follow-up
+Smoke and benchmark require `LM Studio n_ctx ≥ 8192`. Each protocol
+is now a larger single chunk, so 6 chunks of full-protocol context
+plus the system prompt overflows the 4096 default. The CLAUDE.md
+instruction is now load-bearing, not just an optimisation.
+
+---
+
+## [0.5.1] — 2026-04-08
+
+### Protocol skill (audit / validate / new) + measles fix
+
+Introduces `medlocal protocol` CLI sub-app for authoring, validating,
+and auditing clinical protocols. Building this skill exposed the
+finding that became 0.5.2: **64 of 67 protocols were silently
+multi-chunk**, carrying the same latent bug as the organophosphate
+case from the previous day.
+
+### The real vstash chunking rule (discovered while building this)
+
+Two debugging sessions taught us what `vstash/ingest.py:chunk_text`
+actually does. It is **not** "split at chunk_size tokens". It is:
+
+1. Split at **every** markdown header (`#`, `##`, `###`, ...) before
+   looking at size.
+2. Sub-split oversized sections at paragraphs.
+3. Merge adjacent sections smaller than ~80 tokens.
+
+A 1500-char file with five `##` headings produces 5 chunks, while a
+4000-char flat file with no `##` produces 1 chunk. The load-bearing
+authoring rule is therefore: **use at most ONE `##` per protocol
+file. Prefer `**bold labels**` for sub-sections.** This is what
+0.5.2 enforces across the corpus.
+
+### Added
+- `medlocal/protocol.py` — core helpers:
+  - `ProtocolIssue`, `SplitPoint`, `RetrievalReport` dataclasses
+  - `validate_file()` — pure text checks (H2/H3 counts, char counts,
+    H1 title, source attribution, YAML frontmatter)
+  - `suggest_split_points()` — H2 positions for sibling-file fallback
+  - `get_chunk_count()` / `ingest_and_verify()` — vstash-level checks
+  - `audit_corpus()` — scan whole corpus, cross-check disk ↔ KB,
+    detect stale orphans (chunks in the KB whose source file is gone)
+  - `retrieval_dry_run()` — run probe queries, report rank of target
+    in the merged top-k. This is the check that would have caught
+    the organophosphate embedder failure at authoring time.
+- `medlocal/cli.py` — new `protocol` Typer sub-app with three commands:
+  - `medlocal protocol audit [--profile core]` — pre-release gate
+  - `medlocal protocol validate <path> [--no-ingest]` — per-file gate
+  - `medlocal protocol new <path> [-q "query"] [--dry-run]` —
+    full authoring pipeline: text validation → copy → ingest +
+    chunk-count check → retrieval dry-run with each probe query.
+
+### Changed
+- `data/core/protocols/measles-who.md` — rewritten as a flat
+  2518-char file with no `##` headers, only `**bold labels**`. The
+  pregnant-measles screenshot test ("Mujer 22, embarazada 7 meses,
+  fiebre 38.8, sarpullido cara+brazos, no vacunada") was producing a
+  generic "Administrar Vitamina A" with NO DOSE and NO pregnancy
+  flag because the pre-fix file had 4 H2 sections → 4 chunks, and
+  the dose table lived in a chunk the LLM never saw for this query.
+  After the rewrite the response includes the 200,000 IU × 2 days
+  dose AND the pregnancy context.
+
+### Removed
+- `data/core/protocols/measles-treatment-who.md` (intermediate split
+  attempt — merged back into the single `measles-who.md`).
+
+---
+
 ## [0.5.0] — 2026-04-07
 
 ### The organophosphate debugging session
