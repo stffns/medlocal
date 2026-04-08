@@ -58,6 +58,8 @@ SMOKE_IDS = [
     "RP04",
     # cross-lingual emergency — Swahili seizure
     "XE04",
+    # heavy_metals — pediatric lead exposure (battery recycling + lead paint)
+    "HM01",
 ]
 
 
