@@ -6,12 +6,12 @@ Built for the [Kaggle Gemma 4 Good Hackathon 2026](https://www.kaggle.com/compet
 Tracks: Health · Education · Accessibility.
 
 > Works without internet. Fits in your pocket. Every answer is traceable to a
-> WHO or MSF protocol — no fine-tuning, no hallucinated dosing, no cloud
+> WHO or MSF protocol, no fine-tuning, no hallucinated dosing, no cloud
 > dependency. Validated against a 100-case clinical benchmark.
 
 ## What it does
 
-A community health worker (CHW) asks a question — in any language, on any
+A community health worker (CHW) asks a question, in any language, on any
 device, without internet. MedLocal retrieves the relevant published clinical
 protocol and presents a structured response with assessment, numbered
 actions, dosages, danger signs, and a source citation.
@@ -83,27 +83,8 @@ medlocal search "pesticide poisoning organophosphate"
 
 ## Architecture in one diagram
 
-```
-Build-time (with internet, one-time)        Runtime (no internet, always)
 
-  WHO PDFs                                    CHW question (any language)
-  MSF guides     ──► vstash ingest            ↓
-  CHT XForms         (chunk_size=2048,        regex emergency fast path
-                      multilingual            ↓
-                      embedder)               preflight (1 LLM call)
-                                              ↓ scope OK?
-                                              4-pass retrieval
-                                              (3 hybrid + 1 BM25-only)
-                       ↓                      ↓
-                  core.db (SQLite             relevant[:6] → context
-                  + vec_chunks +              ↓
-                  fts_chunks)                 chat_structured(JSON schema)
-                                              ↓
-                                              safety layer
-                                              (dosage cross-check, audit)
-                                              ↓
-                                              structured response → mobile UI
-```
+![alt text](image.png)
 
 The deep dive lives in [`docs/PIPELINE.md`](docs/PIPELINE.md), including
 the four compounding retrieval bugs we fixed in the organophosphate
@@ -112,14 +93,15 @@ the debugging.
 
 ## Benchmarks (gemma-4-e4b-it @ n_ctx ≥ 8192)
 
-| Suite                  | Cases | Status                       |
-|------------------------|-------|------------------------------|
-| Smoke (`smoke_critical`)| 21   | **21/21 PASS** (~5 min)      |
-| Comprehensive           | 100  | **target 100/100** (~25 min) |
+| Suite                    | Cases | Status                                |
+|--------------------------|-------|---------------------------------------|
+| Smoke (`smoke_critical`) | 21    | **21 / 21 PASS** (~5 min)             |
+| Comprehensive            | 100   | **100 / 100 PASS** (~47 min, 28 s/q)  |
 
-13 categories: safety · emergency · clinical · dosage · hallucination ·
-protocol · contraindication · multilingual · emergency_skip · age_safety
-· rabies · anaphylaxis · cross-lingual · heavy_metals.
+14 categories, **all at 100 %**: safety · emergency · clinical · dosage
+· hallucination · protocol · contraindication · multilingual ·
+emergency_skip · age_safety · rabies · anaphylaxis · cross-lingual ·
+heavy_metals.
 
 vstash retrieval (the engine underneath) holds NDCG@10 = 0.7255 on
 SciFact, +9.1 % over BM25 and +4.7 % over ColBERTv2 — see ARCHITECTURE.md
