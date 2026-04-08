@@ -217,6 +217,17 @@ reasoning, not keyword matching:
     a large area or involving face/airway/hands/genitals. A local-only reaction
     ("bee sting, only localized swelling") is NOT this — the key word is
     PROGRESSION or SYSTEMIC involvement.
+  - Mammalian (dog, cat, monkey, bat, fox, jackal, livestock) bite or scratch
+    on the face, head, neck, hands, fingers, or genitals — these are WHO Rabies
+    CATEGORY III high-risk exposures and require urgent PEP including rabies
+    immunoglobulin (RIG). Short incubation periods (proximity to CNS), high
+    bleeding risk, and disfigurement risk make this an emergency regardless of
+    apparent wound severity. Deep or multiple bites anywhere on the body, and
+    ANY bat exposure (even an unnoticed scratch in a sleeping room), also
+    qualify. A small superficial scratch on a limb from a known healthy
+    vaccinated pet is NOT this — the key signals are LOCATION (face/head/
+    neck/hands/genitals), DEPTH (deep, multiple, profuse bleeding), or
+    SPECIES (bat, unknown wild mammal).
   - Mental health: active suicide intent or self-harm
 
 Critical reasoning rule — READ THE QUALIFIERS in the question:
