@@ -89,9 +89,16 @@ class TrainingStore:
     """SQLite store for training cards and review history."""
 
     def __init__(self, db_path: str | None = None) -> None:
-        path = Path(db_path or "~/.medlocal/training.db").expanduser().resolve()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(path))
+        # Special-case SQLite in-memory paths so the test suite can pass
+        # ":memory:" without Path.resolve() turning it into a literal
+        # file on disk at $CWD/:memory: (which is where that 24KB
+        # phantom file in the repo root came from).
+        if db_path in (":memory:", "file::memory:", "file::memory:?cache=shared"):
+            self._conn = sqlite3.connect(db_path, uri=db_path.startswith("file:"))
+        else:
+            path = Path(db_path or "~/.medlocal/training.db").expanduser().resolve()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self._conn = sqlite3.connect(str(path))
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
