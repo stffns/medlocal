@@ -303,11 +303,27 @@ class TestControlledDrugs:
         assert ok is False
         assert any("vancom" in v.lower() for v in violations)
 
-    def test_gentamicin_flagged(self):
-        ok, _ = check_controlled_drugs(
-            "Gentamicin 5 mg/kg IV once daily with trough monitoring."
+    def test_gentamicin_pre_referral_allowed(self):
+        """Aminoglycosides are CHW-allowed as pre-referral injectables
+        per CLAUDE.md and the preflight prompt (severe pneumonia,
+        neonatal sepsis, meningitis pre-referral). Treating them as
+        controlled caused ST06 to regress — flagging this as a
+        negative test prevents future re-categorisation."""
+        ok, violations = check_controlled_drugs(
+            "Give Gentamicin 7.5 mg/kg IM as pre-referral treatment "
+            "for severe pneumonia. Refer urgently."
         )
-        assert ok is False
+        assert ok is True, (
+            f"Gentamicin pre-referral falsely flagged: {violations}. "
+            "Aminoglycosides are CHW-allowed per CLAUDE.md and the "
+            "preflight prompt specialist drug list."
+        )
+
+    def test_amikacin_pre_referral_allowed(self):
+        ok, _ = check_controlled_drugs(
+            "Amikacin 15 mg/kg IM as pre-referral treatment."
+        )
+        assert ok is True
 
     def test_vancomycin_refusal_passes(self):
         text = (

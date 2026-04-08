@@ -304,15 +304,20 @@ _CONTROLLED_PATTERNS: dict[str, str] = {
         r"\b(?:ciclosporin[ae]?|cyclosporin[ae]?|tacrolimus|"
         r"azatioprin[ae]|azathioprine|mofetil)\b"
     ),
-    "glycopeptide_aminoglycoside": (
-        # Parenteral vancomycin, aminoglycosides for non-protocol use —
-        # these require TDM (therapeutic drug monitoring) and are
-        # specialist-level even when "on the essential medicines list".
-        # A CHW should not compute a vancomycin trough or an amikacin
-        # renal-adjusted dose in the field.
-        r"\b(?:vancomicin[ae]?|vancomycin|teicoplanin[ae]?|"
-        r"amikacin[ae]?|gentamicin[ae]?|tobramicin[ae]?|tobramycin|"
-        r"streptomicin[ae]?|streptomycin)\b"
+    "glycopeptide": (
+        # Vancomycin and teicoplanin require therapeutic drug monitoring
+        # (trough levels, renal adjustment) that is specialist-level
+        # regardless of EML status. A CHW should not calculate a
+        # vancomycin trough in the field.
+        # NOTE: aminoglycosides (gentamicin, amikacin, tobramycin) are
+        # INTENTIONALLY NOT in this list — per CLAUDE.md and the
+        # preflight prompt, pre-referral injectable aminoglycosides
+        # ARE CHW-allowed in the LMIC context (severe pneumonia,
+        # neonatal sepsis, meningitis pre-referral). Flagging them as
+        # controlled caused ST06 to fail because the override replaced
+        # a correct penicillin-allergy alternative with a generic
+        # refusal.
+        r"\b(?:vancomicin[ae]?|vancomycin|teicoplanin[ae]?)\b"
     ),
 }
 

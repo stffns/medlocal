@@ -19,3 +19,9 @@ data/core/who/
 # ":memory:" as a path instead of using SQLite's in-memory mode. Safety
 # net so it cannot be committed even if it reappears.
 :memory:
+
+# Benchmark result artefacts — regenerated on every run, partial writes
+# mid-bench should never be committed. The final summary printed to
+# stdout is the canonical record; the JSON is for local inspection.
+tests/comprehensive_results.json
+tests/baseline_results_*.json
