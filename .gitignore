@@ -7,3 +7,14 @@ build/
 *.db
 medlocal.toml
 .env
+
+# Source PDFs — large, copyrighted, rebuilt locally from SOURCES.md.
+# The structured markdown in data/core/protocols/ is the committed truth.
+data/core/hesperian/
+data/core/msf/
+data/core/who/
+
+# Stray SQLite file created when a caller passes the literal string
+# ":memory:" as a path instead of using SQLite's in-memory mode. Safety
+# net so it cannot be committed even if it reappears.
+:memory:
