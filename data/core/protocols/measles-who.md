@@ -1,60 +1,52 @@
-# WHO: Measles Management for Community Health Workers
+# WHO: Measles — Recognition, Treatment, Complications
 
-## When to Suspect Measles
-Classic triad — ALL three present:
-1. Fever (high, >=38.5 C) for 2-4 days
-2. Generalized rash (starts on face/neck, spreads downward to body and limbs)
-3. PLUS at least ONE of: cough, runny nose, red eyes (conjunctivitis)
+Also known as: sarampión, rougeole, measles rash, Koplik spots.
 
-Other clues:
-- Koplik spots (tiny white spots inside cheeks) — appears before rash, confirms diagnosis
-- Child NOT vaccinated or incomplete vaccination
-- Contact with measles case in last 7-21 days
-- Outbreak in the community
+**When to suspect — classic triad, all three present:** (1) fever
+≥38.5 °C for 2–4 days; (2) generalized rash starting on face/neck
+and spreading downward; (3) at least one of cough, runny nose, or
+red eyes (conjunctivitis). Other clues: Koplik spots (white spots
+inside cheeks) confirm diagnosis; patient NOT vaccinated (missed
+MR1 at 9 months, MR2 at 15–18 months); contact with a case in the
+last 7–21 days; community outbreak.
 
-## IMPORTANT: Ask About Vaccination Status
-- Has the child received measles vaccine (MR1 at 9 months, MR2 at 15-18 months)?
-- If unvaccinated + fever + rash + red eyes = measles until proven otherwise
+**Vitamin A — give immediately to ALL cases.** Reduces measles
+mortality by ~50 %. Day 1 and day 2:
+- Under 6 months: **50,000 IU** × 2 days
+- 6–11 months: **100,000 IU** × 2 days
+- 12 months, adults, and pregnant women: **200,000 IU** × 2 days
 
-## Treatment — No Antiviral Exists, Supportive Care Only
+Short-course Vitamin A at these doses is safe in pregnancy for
+active measles treatment (WHO 2017).
 
-### All Cases
-1. **Vitamin A** — give IMMEDIATELY (reduces mortality by 50%):
-   - Under 6 months: 50,000 IU on day 1 and day 2
-   - 6-11 months: 100,000 IU on day 1 and day 2
-   - 12 months and older: 200,000 IU on day 1 and day 2
-2. Paracetamol for fever
-3. Continue breastfeeding, encourage fluids and soft foods
-4. Keep eyes clean — wipe with clean damp cloth
-5. Isolate from other children for 4 days after rash appears
+**Supportive care.** Paracetamol for fever (avoid ibuprofen if
+dehydrated). Continue breastfeeding; offer fluids and soft foods.
+Keep eyes clean with a damp cloth. Isolate for 4 days after rash.
 
-### Complications — Common and Dangerous
-- **Pneumonia** (most common cause of measles death): cough + fast breathing → treat with amoxicillin, see pneumonia protocol
-- **Diarrhea/dehydration**: ORS + zinc, see diarrhea protocol
-- **Mouth ulcers**: Rinse with salt water, apply gentian violet 0.25%
-- **Eye involvement**: Vitamin A + tetracycline eye ointment. If corneal clouding → **REFER URGENTLY** (risk of blindness)
-- **Encephalitis**: Convulsions or altered consciousness → **REFER URGENTLY**
-- **Severe malnutrition + measles**: Very high mortality → **REFER URGENTLY**
+**Danger signs — refer immediately:** unable to drink or
+breastfeed; vomiting everything; convulsions; lethargic or
+unconscious; mouth ulcers preventing eating; corneal clouding;
+pneumonia (fast breathing, chest indrawing); severe dehydration;
+severe malnutrition; **pregnancy with suspected measles (any
+trimester)**; HIV-positive patient with suspected measles.
 
-## Danger Signs — Refer Immediately
-- Unable to drink or breastfeed
-- Vomiting everything
-- Convulsions
-- Lethargic or unconscious
-- Mouth ulcers preventing eating
-- Clouding of the cornea (eye damage)
-- Pneumonia (fast breathing, chest indrawing)
-- Severe dehydration
-- Severe malnutrition
+**Complications.** Pneumonia is the leading cause of measles death
+— treat per the pneumonia protocol, refer if chest indrawing.
+Diarrhea/dehydration: ORS + zinc. Mouth ulcers: salt water rinse +
+gentian violet 0.25 %. Eye involvement: Vitamin A + tetracycline
+eye ointment; if corneal clouding → REFER URGENTLY. Encephalitis
+(convulsions, altered consciousness) → REFER URGENTLY. Severe
+malnutrition + measles → REFER URGENTLY.
 
-## Prevention
-- **Vaccination is the only prevention** — 2 doses (MR1 at 9 months, MR2 at 15-18 months)
-- During outbreak: vaccinate all children 6 months-15 years
-- Vitamin A supplementation every 6 months reduces measles mortality
-- Isolate confirmed cases for 4 days after rash onset
+**Measles in pregnancy — always refer.** Raises the risk of
+miscarriage, preterm labour, and severe maternal pneumonia. Refer
+for obstetric monitoring at diagnosis even if the mother looks
+stable. Give Vitamin A 200,000 IU × 2 days while arranging
+transport.
 
-## Reporting
-- Measles is a NOTIFIABLE disease — report every suspected case to the health authority
-- Even one case may indicate an outbreak
+**Prevention.** Vaccination is the only prevention — MR1 at 9
+months, MR2 at 15–18 months. During outbreak, vaccinate all
+children 6 months – 15 years. Measles is a NOTIFIABLE disease —
+report every suspected case; one case may indicate an outbreak.
 
-Source: WHO/UNICEF IMCI Guidelines; WHO Measles Position Paper (2017, updated 2022); WHO Measles Outbreak Response Guidelines
+Source: WHO Measles Position Paper (2017, updated 2022); WHO/UNICEF IMCI.
