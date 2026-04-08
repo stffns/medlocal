@@ -173,6 +173,19 @@ def consult(
     import re as _re
     safety_flags: list[SafetyFlag] = []
 
+    def _flag(f: SafetyFlag) -> None:
+        """Append a safety flag if it is not already present.
+
+        Prevents duplicate flags from the multiple code paths that can
+        classify the same consult as an emergency (regex fast path,
+        preflight vital_emergency, cross-lingual fallback, LLM urgency
+        override). Keeping this as a helper instead of scattered
+        `if flag not in safety_flags` guards keeps the invariant in one
+        place — adding a new emergency path cannot regress the dedup.
+        """
+        if f not in safety_flags:
+            safety_flags.append(f)
+
     # --- Separate clinical query from triage context for retrieval ---
     search_query = _extract_search_query(question)
 
@@ -195,7 +208,7 @@ def consult(
         )
 
     if is_emergency:
-        safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
+        _flag(SafetyFlag.EMERGENCY_DETECTED)
 
     # --- Retrieval (legacy keyword expansion + preflight terms when available) ---
     # The legacy `_KEYWORDS_PROMPT` is well-tuned for this corpus and is the
@@ -217,7 +230,7 @@ def consult(
     if not pf and not is_emergency and english_keywords:
         is_emergency, emergency_patterns = detect_emergency(english_keywords)
         if is_emergency:
-            safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
+            _flag(SafetyFlag.EMERGENCY_DETECTED)
 
     if not results:
         result = {
@@ -254,7 +267,7 @@ def consult(
         relevant,
     )
     if confidence == Confidence.LOW:
-        safety_flags.append(SafetyFlag.LOW_CONFIDENCE)
+        _flag(SafetyFlag.LOW_CONFIDENCE)
         # Short-circuit: don't call LLM with irrelevant protocols
         result = {
             "answer": _REFER_MSG,
@@ -349,7 +362,7 @@ def consult(
         structured["triage_questions"] = []
         if not is_emergency:
             is_emergency = True
-            safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
+        _flag(SafetyFlag.EMERGENCY_DETECTED)
 
     # In assessment mode, generate triage questions in the user's language
     # Reuse q_lang already resolved from config/detection above
@@ -366,7 +379,7 @@ def consult(
     # Dosage cross-check (fast, no LLM call)
     dosages_ok, unmatched = check_dosages(answer, protocol_texts)
     if not dosages_ok:
-        safety_flags.append(SafetyFlag.DOSAGE_MENTIONED)
+        _flag(SafetyFlag.DOSAGE_MENTIONED)
         logger.warning("Unmatched dosages in answer: %s", unmatched)
         answer += (
             "\n\n⚠ **Verify dosages** — some values could not be confirmed "
@@ -379,7 +392,7 @@ def consult(
     if verify:
         grounded, issues = verify_grounding(answer, protocol_texts, llm_cfg)
         if not grounded:
-            safety_flags.append(SafetyFlag.HALLUCINATION_SUSPECTED)
+            _flag(SafetyFlag.HALLUCINATION_SUSPECTED)
             answer += (
                 "\n\n⚠ **Verification warning** — some claims in this response "
                 "may not be fully supported by the source protocols. "
@@ -390,10 +403,9 @@ def consult(
     llm_urgency = structured.get("urgency", "routine")
     if llm_urgency == "emergency":
         is_emergency = True
-        if SafetyFlag.EMERGENCY_DETECTED not in safety_flags:
-            safety_flags.append(SafetyFlag.EMERGENCY_DETECTED)
+        _flag(SafetyFlag.EMERGENCY_DETECTED)
     elif llm_urgency == "urgent" and SafetyFlag.EMERGENCY_DETECTED not in safety_flags:
-        safety_flags.append(SafetyFlag.URGENT_REFERRAL)
+        _flag(SafetyFlag.URGENT_REFERRAL)
 
     result = {
         "answer": answer,
