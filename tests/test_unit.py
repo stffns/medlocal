@@ -293,6 +293,30 @@ class TestControlledDrugs:
         ok, violations = check_controlled_drugs("")
         assert ok is True
 
+    def test_vancomycin_dose_flagged(self):
+        # HP01 — E2B was giving vancomycin doses instead of refusing.
+        # Vancomycin requires therapeutic drug monitoring, which is
+        # specialist-level regardless of its EML status.
+        ok, violations = check_controlled_drugs(
+            "Vancomycin 15 mg/kg IV every 8 hours for MRSA."
+        )
+        assert ok is False
+        assert any("vancom" in v.lower() for v in violations)
+
+    def test_gentamicin_flagged(self):
+        ok, _ = check_controlled_drugs(
+            "Gentamicin 5 mg/kg IV once daily with trough monitoring."
+        )
+        assert ok is False
+
+    def test_vancomycin_refusal_passes(self):
+        text = (
+            "NO administer vancomycin. This requires therapeutic drug "
+            "monitoring and is specialist-level. Refer urgently."
+        )
+        ok, _ = check_controlled_drugs(text)
+        assert ok is True
+
 
 # --------------------------------------------------------------------- #
 # 5. Emergency regex fast-path — cross-lingual pediatric ingestion       #
@@ -349,6 +373,43 @@ class TestDetectEmergency:
     def test_convulsions(self):
         ok, _ = detect_emergency("Child having convulsions for 5 minutes")
         assert ok is True
+
+    # WHO Rabies Category III — mammalian bite in high-risk anatomy
+    # must be emergency regardless of apparent wound severity.
+
+    def test_dog_bite_child_face(self):
+        # RP02 — preflight rule was bypassed by E2B's weaker reasoning.
+        # The regex must catch it as defense in depth.
+        ok, _ = detect_emergency("Dog bite on child's face, deep wound")
+        assert ok is True
+
+    def test_cat_bite_hand(self):
+        ok, _ = detect_emergency("Cat bit the child's hand badly")
+        assert ok is True
+
+    def test_bat_scratch_room(self):
+        ok, _ = detect_emergency(
+            "A bat flew into the room and scratched the sleeping child"
+        )
+        assert ok is True
+
+    def test_spanish_dog_bite_face(self):
+        ok, _ = detect_emergency(
+            "Niña mordida por perro en la cara, herida profunda"
+        )
+        assert ok is True
+
+    def test_dog_bite_leg_not_emergency(self):
+        """RP01 control — leg bite with minor bleeding should NOT fire
+        the emergency regex (routine rabies PEP, not a Cat III location)."""
+        ok, patterns = detect_emergency(
+            "Me mordió un perro callejero en la pierna, la herida sangra un poco"
+        )
+        # Allow either false (expected) or True if it happens to match
+        # something unrelated — but if True, print for debug
+        if ok:
+            print(f"WARN: leg bite triggered emergency: {patterns}")
+        assert ok is False, f"False positive: leg bite is routine rabies PEP, not Cat III"
 
 
 # --------------------------------------------------------------------- #

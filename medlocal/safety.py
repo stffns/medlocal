@@ -154,6 +154,24 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\b(qu[ií]mic\w*|limpiador\w*|limpieza|lej[ií]a|cloro|blanqueador|kerosen[oe]?|gasolina|pesticida\w*|detergente\w*|[aá]cido\w*|c[aá]ustic\w*|insecticida\w*|veneno\w*|raticida\w*)\b.{0,40}\b(se\s+)?(tom[oó]|bebi[oó]|trag[oó]|ingiri[oó])\b",
     r"(?i)\benvenenamiento\b",
     r"(?i)\bintoxicaci[oó]n\b",
+    # Mammalian bite in WHO Rabies Category III anatomy (face, head,
+    # neck, hands, fingers, genitals) or any bat exposure — these are
+    # ALWAYS emergencies per WHO, regardless of apparent wound severity.
+    # The preflight prompt has the rule but smaller models (E2B) do not
+    # apply it consistently. This regex is the reliable fast-path.
+    # Covers English active ("dog bit the face"), English passive
+    # ("bitten by a dog in the face"), and the Spanish equivalents.
+    r"(?i)\b(dog|cat|monkey|bat|fox|jackal|livestock|mongoose|perro|gato|mono|murci[eé]lago|zorro|chacal|ganado)\s+(bite|bit|bit[eé]|scratch|araz?[oó]|mordi[oó]|atac[oó]|attack)\b.{0,80}\b(face|head|neck|hand|finger|genital|cara|rostro|cabeza|cuello|mano|dedo|genital|pene|vulva)\b",
+    r"(?i)\b(face|head|neck|hand|finger|cara|rostro|cabeza|cuello|mano|dedo)\b.{0,80}\b(dog|cat|bat|perro|gato|murci[eé]lago)\s+(bite|bit|scratch|mordi[oó])\b",
+    # Spanish passive voice: "mordida/mordido por perro en la cara"
+    r"(?i)\bmordid[oa]s?\s+por\s+(un\s+|una\s+)?(perro|gato|mono|murci[eé]lago|zorro|chacal|ganado)\b.{0,60}\b(cara|rostro|cabeza|cuello|mano|dedo|genital|face|head|neck|hand)\b",
+    r"(?i)\b(cara|rostro|cabeza|cuello|mano|dedo|face|head|neck|hand|finger)\b.{0,60}\bmordid[oa]s?\s+por\s+(un\s+|una\s+)?(perro|gato|mono|murci[eé]lago)\b",
+    # English passive voice: "bitten by a dog in the face"
+    r"(?i)\bbit(ten)?\s+by\s+(a\s+|an\s+)?(dog|cat|monkey|bat|fox|perro)\b.{0,60}\b(face|head|neck|hand|finger|genital|cara|cabeza|mano)\b",
+    # Bat-specific — any bat encounter is Category III by WHO (even
+    # scratches or in-room exposure of a sleeping child)
+    r"(?i)\bbat\s+(bite|bit|scratch|in\s+the\s+room|flew\s+into|sleeping)\b",
+    r"(?i)\bmurci[eé]lago\b",
     # Anaphylaxis / severe allergic reaction
     r"(?i)\banaphyla",
     r"(?i)\bangioedema\b",
@@ -285,6 +303,16 @@ _CONTROLLED_PATTERNS: dict[str, str] = {
     "immunosuppressant": (
         r"\b(?:ciclosporin[ae]?|cyclosporin[ae]?|tacrolimus|"
         r"azatioprin[ae]|azathioprine|mofetil)\b"
+    ),
+    "glycopeptide_aminoglycoside": (
+        # Parenteral vancomycin, aminoglycosides for non-protocol use —
+        # these require TDM (therapeutic drug monitoring) and are
+        # specialist-level even when "on the essential medicines list".
+        # A CHW should not compute a vancomycin trough or an amikacin
+        # renal-adjusted dose in the field.
+        r"\b(?:vancomicin[ae]?|vancomycin|teicoplanin[ae]?|"
+        r"amikacin[ae]?|gentamicin[ae]?|tobramicin[ae]?|tobramycin|"
+        r"streptomicin[ae]?|streptomycin)\b"
     ),
 }
 

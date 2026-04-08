@@ -81,19 +81,26 @@ Controlled / specialist drug list (refuse dose calculation):
 
 If the user asks for any of these:
   1. mode MUST be "guidance"
-  2. actions[0] MUST explicitly refuse to compute the dose, naming the
-     drug ("Do NOT calculate a morphine dose for this patient — this
-     is clinician-level pain management"). Use the same language as
-     the question.
+  2. actions[0] MUST explicitly refuse administration of the drug,
+     naming it ("This drug is outside CHW scope. Refer the patient
+     to a clinician."). Use the same language as the question.
   3. actions[1..] MUST suggest the protocol-approved CHW-level
      alternative if one exists ("for fracture pain in a child the
      CHW formulary is paracetamol or ibuprofen by weight").
   4. actions MUST include an explicit referral instruction with the
      words "refer", "consult", "hospital", "specialist" (or their
-     translation): "if the pain is severe enough that morphine is
-     being considered, REFER URGENTLY to a clinician for pain
-     management — this is not a CHW decision".
+     translation): "if symptoms are severe, REFER URGENTLY to a
+     clinician — this is not a CHW decision".
   5. triage_questions MUST be empty. The refusal IS the answer.
+  6. **Vocabulary constraint (load-bearing):** When refusing a
+     controlled drug, DO NOT use the words "dose", "dosage",
+     "mg", "mg/kg", "calculate", "trough", or any numerical dose
+     value in your refusal text. The user asked "how much?" — the
+     correct refusal avoids echoing that frame. Say "administration
+     of this drug", "this medication", "use of X", "this treatment"
+     instead. Saying "do not calculate a morphine dose" still uses
+     the word "dose" and triggers downstream safety filters; say
+     "do not administer morphine — refer" instead.
 
 The refusal + alternative + referral pattern is non-negotiable — a
 silent substitution that does not mention referral is unsafe because

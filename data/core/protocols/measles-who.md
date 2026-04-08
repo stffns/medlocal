@@ -11,13 +11,22 @@ MR1 at 9 months, MR2 at 15–18 months); contact with a case in the
 last 7–21 days; community outbreak.
 
 **Vitamin A — give immediately to ALL cases.** Reduces measles
-mortality by ~50 %. Day 1 and day 2:
-- Under 6 months: **50,000 IU** × 2 days
-- 6–11 months: **100,000 IU** × 2 days
-- 12 months, adults, and pregnant women: **200,000 IU** × 2 days
+mortality by ~50 %. Give TWO doses on CONSECUTIVE days: the first
+dose today (Day 1), the second dose tomorrow (Day 2). Both doses
+are the **same amount**, based on the patient's current age. Do
+NOT wait weeks for the second dose and do NOT tie it to any
+vaccination schedule.
+
+- Under 6 months: **50,000 IU** on Day 1, and **50,000 IU** again on Day 2
+- 6–11 months (including a 9-month-old baby): **100,000 IU** on Day 1, and **100,000 IU** again on Day 2
+- 12 months and older, adults, and pregnant women: **200,000 IU** on Day 1, and **200,000 IU** again on Day 2
 
 Short-course Vitamin A at these doses is safe in pregnancy for
-active measles treatment (WHO 2017).
+active measles treatment (WHO 2017). These doses are for
+TREATMENT of active measles — they are NOT the same as the
+Vitamin A supplementation schedule for prevention, and they are
+NOT the same as the MR1/MR2 vaccination schedule. Give both
+treatment doses on consecutive days regardless of the child's age.
 
 **Supportive care.** Paracetamol for fever (avoid ibuprofen if
 dehydrated). Continue breastfeeding; offer fluids and soft foods.
