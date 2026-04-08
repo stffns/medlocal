@@ -32,6 +32,13 @@ class SafetyFlag(IntEnum):
     HALLUCINATION_SUSPECTED = 3 # Answer contains info not in protocols
     DOSAGE_MENTIONED = 4        # Dosage in answer — needs extra scrutiny
     URGENT_REFERRAL = 5         # LLM classified as urgent — refer within hours
+    GENERATION_FAILED = 6       # Structured LLM output could not be parsed
+                                # after repair — consult() returned a graceful
+                                # refusal instead of a silent empty response.
+    CONTROLLED_DRUG_DOSE_COMPUTED = 7  # A dose for a controlled / specialist
+                                # drug (opioid, sedative, chemo, anaesthetic)
+                                # slipped past PRIORITY 0.5 and reached the
+                                # answer. Defense-in-depth behind the prompt.
 
 
 # ------------------------------------------------------------------ #
@@ -131,10 +138,22 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\b(costal|intercostal|subcostal)\s*(retraction|recession)s?\b",
     r"(?i)\bsevere.{0,10}(respiratory|breathing) distress\b",
     r"(?i)\bstridor\b",
-    # Poisoning/ingestion (any chemical ingestion = emergency)
+    # Poisoning/ingestion — English. ANY chemical ingestion is an emergency
+    # regardless of reported amount ("a little", "a sip"). The preflight
+    # prompt has the rule but smaller models (E2B) do not apply it
+    # consistently when a qualifier is present; this regex is the reliable
+    # fast-path.
     r"(?i)\b(ingestion|ingest(ed)?|swallow(ed)?|drink|drank)\b.{0,30}\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b",
     r"(?i)\b(poison|chemical|clean(er|ing)|bleach|kerosene|gasoline|pesticide|acid|caustic|detergent)\b.{0,30}\b(ingestion|ingest(ed)?|swallow(ed)?)\b",
     r"(?i)\bpoisoning\b",
+    # Poisoning/ingestion — Spanish. Pediatric chemical ingestion in the
+    # CHW context is almost always phrased "[niño/niña/bebé/hijo/hija]
+    # se tomó/bebió/tragó/ingirió ... [químico/limpiador/lejía/...]".
+    # Same rule: any amount, any qualifier, flag as emergency.
+    r"(?i)\b(se\s+)?(tom[oó]|bebi[oó]|trag[oó]|ingiri[oó])\b.{0,40}\b(qu[ií]mic\w*|limpiador\w*|limpieza|lej[ií]a|cloro|blanqueador|kerosen[oe]?|gasolina|pesticida\w*|detergente\w*|[aá]cido\w*|c[aá]ustic\w*|insecticida\w*|veneno\w*|raticida\w*|pintura|pila|batería)\b",
+    r"(?i)\b(qu[ií]mic\w*|limpiador\w*|limpieza|lej[ií]a|cloro|blanqueador|kerosen[oe]?|gasolina|pesticida\w*|detergente\w*|[aá]cido\w*|c[aá]ustic\w*|insecticida\w*|veneno\w*|raticida\w*)\b.{0,40}\b(se\s+)?(tom[oó]|bebi[oó]|trag[oó]|ingiri[oó])\b",
+    r"(?i)\benvenenamiento\b",
+    r"(?i)\bintoxicaci[oó]n\b",
     # Anaphylaxis / severe allergic reaction
     r"(?i)\banaphyla",
     r"(?i)\bangioedema\b",
@@ -225,6 +244,103 @@ def check_dosages(answer: str, protocol_texts: list[str]) -> tuple[bool, list[st
     ]
 
     return len(unmatched) == 0, unmatched
+
+
+# ------------------------------------------------------------------ #
+# Controlled / specialist drug guard (defense in depth behind         #
+# PRIORITY 0.5 of the consult system prompt). If this fires, the      #
+# LLM ignored the refusal rule and computed a dose for a drug the     #
+# CHW is not authorised to administer — consult() overwrites the      #
+# answer with a hard refusal template and flags the response.         #
+# ------------------------------------------------------------------ #
+
+# Case-insensitive patterns for each controlled class. The patterns
+# are deliberately inclusive (Spanish + English + common variants)
+# because the LLM may emit the drug in either language. Additions
+# go here + a unit test in tests/test_unit.py.
+_CONTROLLED_PATTERNS: dict[str, str] = {
+    "opioid": (
+        # Covers Spanish/English spellings incl. fentanyl/fentanil/fentanilo,
+        # morfina/morphine, etc.
+        r"\b(?:morph?in[ae]|fentan[iy]l[oi]?|oxicodona|oxycodone|tramadol|"
+        r"codein[ae]|pethidin[ae]|meperidin[ae]|metadona|methadone|"
+        r"hidromorfona|hydromorphone|bupren[oó]rfina|buprenorphine)\b"
+    ),
+    "sedative_anaesthetic": (
+        r"\b(?:midazolam|propofol|thiopent[ao]l|tiopent[ao]l|"
+        r"ketamin[ae]?|etomidato?|etomidate)\b"
+    ),
+    "parenteral_diazepam": (
+        # Diazepam IV/IM is specialist; oral diazepam is CHW-allowed.
+        # We allow dose tokens between the drug name and the route marker
+        # ("diazepam 10 mg IV") with a non-period gap to stay within one
+        # sentence.
+        r"\bdiazepam\b[^.]{0,60}?\b(?:iv|im|parenteral|intravenous|intramuscular)\b"
+    ),
+    "chemotherapy": (
+        r"\b(?:chemother|quimioter|cisplatin[oa]?|doxorrubicin[ao]?|"
+        r"doxorubicin|metotrexat[oe]|methotrexate|ciclofosfamida|"
+        r"cyclophosphamide|paclitaxel|docetaxel)\b"
+    ),
+    "immunosuppressant": (
+        r"\b(?:ciclosporin[ae]?|cyclosporin[ae]?|tacrolimus|"
+        r"azatioprin[ae]|azathioprine|mofetil)\b"
+    ),
+}
+
+# Dose token — matches "5 mg", "0.5mg/kg", "2 mcg", etc. Intentionally
+# broad: any time we see a number followed by a clinical unit within
+# ~200 characters of a controlled drug mention, we assume the LLM is
+# trying to dose it.
+_CONTROLLED_DOSE_RE = re.compile(
+    r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|g|mL|ml|IU|U)\b(?:\s*/\s*kg)?",
+    re.IGNORECASE,
+)
+
+
+def check_controlled_drugs(answer: str) -> tuple[bool, list[str]]:
+    """Detect when the answer contains a dose for a controlled/specialist drug.
+
+    Walks the answer case-insensitively for each drug pattern. For every
+    match, looks in a ±200-character window around the match for a dose
+    token (``<number> mg|mcg|ml|IU|U`` optionally followed by ``/kg``).
+
+    To avoid catching refusals that mention the drug alongside a dose
+    purely pedagogically ("do NOT give morphine 0.1 mg/kg to children"),
+    the check backs off when a negation cue is present within 30 chars
+    before the drug mention — same pre-negation vocabulary as the
+    benchmark's ``_check_absent``.
+
+    Returns:
+        ``(ok, violations)``. ``ok`` is ``False`` if at least one
+        violation was found. Each violation string is
+        ``"<category>:<drug_match>"`` for logging / audit.
+    """
+    pre_negation = [
+        "not ", "no ", "never ", "avoid ", "don't ", "do not ", "nunca ",
+        "no dar ", "no administr", "no se debe", "no debe", "evit",
+    ]
+    lower = answer.lower()
+    violations: list[str] = []
+    for category, pattern in _CONTROLLED_PATTERNS.items():
+        for match in re.finditer(pattern, lower):
+            # Pre-negation backoff — if the drug is inside a refusal
+            # sentence, don't flag it. Same 60-char window the benchmark
+            # uses for consistency.
+            context_before = lower[max(0, match.start() - 60) : match.start()]
+            if any(neg in context_before for neg in pre_negation):
+                continue
+            # Look for a dose token anywhere in the match itself OR
+            # in a 200-char window after it. The match-internal check
+            # is required for patterns like parenteral_diazepam that
+            # match the whole "diazepam 10 mg IV" span — in that case
+            # the dose lives inside the match, not after it.
+            window_end = min(len(lower), match.end() + 200)
+            search_span = match.group(0) + lower[match.end() : window_end]
+            if _CONTROLLED_DOSE_RE.search(search_span):
+                drug = match.group(0)
+                violations.append(f"{category}:{drug}")
+    return len(violations) == 0, violations
 
 
 # ------------------------------------------------------------------ #

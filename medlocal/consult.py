@@ -6,12 +6,13 @@ import logging
 
 from .config import LLMConfig, MedLocalConfig
 from .knowledge import KnowledgeBase, SearchResult
-from .llm import chat, chat_structured
+from .llm import StructuredLLMParseError, chat, chat_structured
 from .preflight import preflight
 from .safety import (
     AuditLog,
     Confidence,
     SafetyFlag,
+    check_controlled_drugs,
     check_dosages,
     detect_emergency,
     score_confidence,
@@ -239,6 +240,29 @@ def consult(
         if pf.get("vital_emergency"):
             is_emergency = True
 
+    # --- Defense-in-depth: re-run the emergency regex on the preflight's
+    # English clinical_terms translation. This catches the failure mode
+    # where a smaller model (E2B) reasons its way to vital_emergency=False
+    # on a case whose translated keywords would unambiguously match the
+    # regex ("cleaning product ingestion child", "chest indrawing",
+    # "facial deep wound child"). Architectural rationale: the raw-question
+    # regex is the zero-LLM fast path, the preflight LLM is the semantic
+    # classifier, and THIS pass is the "trust the translation the preflight
+    # already produced" safety net. Credit to Jay's observation on
+    # 2026-04-08: if we bother translating, we should bother validating
+    # the translation.
+    if not is_emergency and pf.get("clinical_terms"):
+        english_probe = " ".join(pf["clinical_terms"])
+        backup_em, backup_patterns = detect_emergency(english_probe)
+        if backup_em:
+            is_emergency = True
+            emergency_patterns = backup_patterns
+            logger.info(
+                "Emergency caught by regex-over-preflight-translation: "
+                "query=%r terms=%r patterns=%r",
+                search_query[:80], english_probe[:80], backup_patterns,
+            )
+
     # --- Out-of-scope short-circuit BEFORE retrieval ---
     if pf.get("out_of_scope"):
         return _out_of_scope_result(
@@ -376,7 +400,45 @@ def consult(
     })
 
     schema = _CONSULT_SCHEMA_GUIDANCE if (has_triage or is_emergency) else _CONSULT_SCHEMA
-    structured = chat_structured(messages, llm_cfg, schema, "clinical_response")
+    try:
+        structured = chat_structured(messages, llm_cfg, schema, "clinical_response")
+    except StructuredLLMParseError as parse_err:
+        # Graceful refusal — the LLM produced output that could not be
+        # parsed even after structural repair. Silently returning an
+        # empty dict (the pre-2026-04-08 behaviour) is unsafe because
+        # the downstream safety layer has nothing to inspect and the
+        # audit log records a "successful" empty consult. We instead
+        # return an explicit refusal that the CHW can act on.
+        logger.error(
+            "consult: chat_structured failed, returning GENERATION_FAILED refusal: %s",
+            parse_err.reason,
+        )
+        _flag(SafetyFlag.GENERATION_FAILED)
+        _flag(SafetyFlag.LOW_CONFIDENCE)
+        refusal = (
+            "⚠ The system could not generate a complete response for this "
+            "question. This is a technical failure, not a clinical decision. "
+            "Please rephrase the question or consult your supervisor."
+        )
+        result = {
+            "answer": refusal,
+            "sources": sources,
+            "confidence": Confidence.LOW,
+            "safety_flags": safety_flags,
+            "emergency": is_emergency,
+            "urgency": "emergency" if is_emergency else "routine",
+            "mode": "guidance",
+            "triage_questions": [],
+            "condition": "",
+            "assessment": refusal,
+            "actions": [refusal],
+            "refer_if": [],
+            "source_protocol": "",
+        }
+        if audit:
+            audit.log(mode="consult_generation_failed",
+                      question=question, **_audit_kwargs(result))
+        return result
 
     # Force guidance mode when triage answers were provided or emergency detected
     if has_triage or is_emergency:
@@ -425,6 +487,39 @@ def consult(
             "\n\n⚠ **Verify dosages** — some values could not be confirmed "
             "against source protocols. Check with supervisor before administering."
         )
+
+    # Controlled / specialist drug guard — defense in depth behind the
+    # PRIORITY 0.5 prompt rule. If the LLM computed a dose for an opioid,
+    # sedative, anaesthetic, chemo agent, or similar specialist drug, we
+    # OVERWRITE the answer with a hard refusal rather than shipping it.
+    # This is the check `check_dosages` cannot make — it only validates
+    # dose VALUES, not dose AUTHORITY. See Silt's review on 2026-04-08.
+    controlled_ok, controlled_violations = check_controlled_drugs(answer)
+    if not controlled_ok:
+        _flag(SafetyFlag.CONTROLLED_DRUG_DOSE_COMPUTED)
+        logger.error(
+            "PRIORITY 0.5 bypassed by LLM — controlled drug dose computed: %s",
+            controlled_violations,
+        )
+        violated_drugs = ", ".join(sorted({v.split(":", 1)[1] for v in controlled_violations}))
+        refusal = (
+            f"⚠ Safety override — this question would have returned a dose for "
+            f"a controlled / specialist drug ({violated_drugs}) that is outside "
+            f"the CHW scope. Do NOT administer. The appropriate action is to "
+            f"refer the patient to a clinician for pain, sedation, or specialist "
+            f"management. If the patient is in severe distress, refer urgently."
+        )
+        answer = refusal
+        # Also overwrite the structured fields the UI reads, so the
+        # banner is not contradicted by a leftover action list.
+        structured["condition"] = (
+            structured.get("condition", "") + " — SAFETY OVERRIDE"
+        ).strip(" —")
+        structured["assessment"] = refusal
+        structured["actions"] = [refusal]
+        structured["refer_if"] = [
+            "Severe pain or symptoms requiring the specialist drug in question."
+        ]
 
     # Grounding verification (optional — costs an extra LLM call)
     grounded = None

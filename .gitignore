@@ -6,6 +6,7 @@ build/
 .pytest_cache/
 *.db
 medlocal.toml
+medlocal.*.toml
 .env
 
 # Source PDFs — large, copyrighted, rebuilt locally from SOURCES.md.
