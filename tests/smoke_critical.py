@@ -60,6 +60,8 @@ SMOKE_IDS = [
     "XE04",
     # heavy_metals — pediatric lead exposure (battery recycling + lead paint)
     "HM01",
+    # child_protection — textbook NAT case from the 2026-04-08 screenshot
+    "CP01",
 ]
 
 

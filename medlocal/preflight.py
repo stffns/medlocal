@@ -229,6 +229,32 @@ reasoning, not keyword matching:
     neck/hands/genitals), DEPTH (deep, multiple, profuse bleeding), or
     SPECIES (bat, unknown wild mammal).
   - Mental health: active suicide intent or self-harm
+  - Child maltreatment / safeguarding emergency: any pattern suggesting
+    non-accidental trauma. Single isolated red flags are enough — do not
+    wait for a "full picture" before escalating. These are vital
+    emergencies regardless of how minor the visible injury looks:
+      • Any bruise, burn, or unexplained skin mark on a pre-mobile
+        infant / baby / lactante / newborn — babies who cannot roll
+        cannot injure themselves.
+      • Bruises in protected, non-bony areas (inner thighs, buttocks,
+        genitals, torso, back, ears, neck) at any age.
+      • Multiple bruises in different stages of healing
+        (yellow/green old + purple/red fresh) — repeated trauma.
+      • Patterned marks (hand slap, belt, cord, bite, cigarette
+        burn, stocking/glove burn).
+      • Injury history incompatible with mechanism or developmental
+        stage (e.g. "fell from a tree" but bruises on inner thighs;
+        "rolled off the bed" in a 2-month-old who cannot roll).
+      • Adult caregiver who is not the parent, insists on remaining
+        present during evaluation, parents "unavailable", or who
+        gives changing stories.
+      • Child who is silent, avoids eye contact, or LOOKS AT THE
+        ACCOMPANYING ADULT BEFORE ANSWERING (checking for permission
+        to speak) — one of the strongest red flags.
+    Adult intimate-partner violence (IPV) presentations with injuries
+    + controlling partner behaviour + fear follow the same logic.
+    The medical injury may be minor; the safeguarding risk of sending
+    the person back to the abuser is the emergency.
 
 Critical reasoning rule — READ THE QUALIFIERS in the question:
   - Words like "only", "just", "stable", "mild", "without", "no [danger sign]"
