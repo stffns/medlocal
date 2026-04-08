@@ -10,7 +10,7 @@ Built for the **Kaggle Gemma 4 Good Hackathon 2026**.
 - **Target LLM:** Gemma 4 E4B/E2B (on-device, multimodal)
 - **Teacher LLM:** Gemini 2.5 Flash (offline, generates consultation index + training cards)
 - **Target users:** Community health workers without internet access
-- **Hackathon tracks:** Health, Education, Accessibility
+- **Hackathon impact tracks:** Health & Sciences, Global Resilience, Digital Equity & Inclusivity
 
 ## Architecture
 

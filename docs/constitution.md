@@ -106,11 +106,11 @@ Search queries both profiles transparently via federated retrieval. Results comp
 
 **Primary goal:** A working prototype that a community health worker can use on their phone, without internet, to consult clinical guidelines, identify medications from photos, and learn protocols through spaced repetition.
 
-The project addresses all three hackathon tracks simultaneously:
+The project addresses all three official Kaggle Gemma 4 Good Hackathon impact tracks simultaneously:
 
-- **Health:** Clinical decision support with protocol-backed answers and visual triage.
-- **Education:** Adaptive spaced repetition for continuous medical training with LLM-generated evaluations.
-- **Accessibility:** Zero cloud dependency means full accessibility for the 37% of the world without internet.
+- **Health & Sciences:** Clinical decision support with protocol-backed answers, structured triage, dosage cross-check against source protocols, and visual medication identification — grounded in published WHO and MSF guidelines.
+- **Global Resilience:** Offline-first architecture for health workers in crisis zones, rural clinics, and communities with intermittent or no connectivity. The full pipeline (retrieval, reasoning, vision, training) runs on a single device without cloud dependency.
+- **Digital Equity & Inclusivity:** 37% of the world lacks reliable internet; MedLocal targets exactly that gap. Runs on phone-class hardware with a 2-billion-parameter model (Gemma 4 E2B), supports 7 languages (ES, FR, SW, HA, PT, AR, HI, AM), and is Apache 2.0 so health ministries and NGOs can deploy and adapt it without license friction.
 
 ---
 

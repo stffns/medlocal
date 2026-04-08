@@ -2,12 +2,28 @@
 
 **Offline-first clinical consultation and training for community health workers.**
 
-Built for the [Kaggle Gemma 4 Good Hackathon 2026](https://www.kaggle.com/competitions/gemma-3n-impact-challenge).
-Tracks: Health · Education · Accessibility.
+Built for the [Kaggle Gemma 4 Good Hackathon 2026](https://www.kaggle.com/competitions/gemma-4-good-hackathon).
+Impact tracks: Health & Sciences · Global Resilience · Digital Equity & Inclusivity.
 
 > Works without internet. Fits in your pocket. Every answer is traceable to a
 > WHO or MSF protocol, no fine-tuning, no hallucinated dosing, no cloud
-> dependency. Validated against a 100-case clinical benchmark.
+> dependency. Validated against a 101-case clinical benchmark.
+
+> ⚠️ **MEDICAL DISCLAIMER** — MedLocal is a research and educational
+> demonstration of retrieval-augmented clinical reference tooling. It
+> is **NOT a medical device**, is **NOT FDA, EMA, or otherwise
+> regulatory-approved**, and is **NOT intended for clinical
+> decision-making without supervision by a qualified healthcare
+> professional**. The information retrieved is sourced from published
+> WHO and MSF protocols for reference and educational purposes only
+> and does not constitute medical advice. MedLocal does not replace
+> clinical judgement, physical examination, laboratory testing, or
+> consultation with a qualified healthcare provider. Any use in a
+> live patient-care context is at the sole discretion and risk of the
+> healthcare professional or organization deploying it. The author
+> assumes no liability for any decisions made on the basis of this
+> software. See [`LICENSE`](LICENSE) for the full disclaimer of
+> warranty and limitation of liability.
 
 ## What it does
 
@@ -16,9 +32,9 @@ device, without internet. MedLocal retrieves the relevant published clinical
 protocol and presents a structured response with assessment, numbered
 actions, dosages, danger signs, and a source citation.
 
-- **68 structured WHO/MSF protocols** covering pediatrics, maternal health,
-  emergencies, infectious diseases, NCDs, toxicology, and heavy-metal
-  poisoning
+- **69 structured WHO/MSF protocols** covering pediatrics, maternal health,
+  emergencies, infectious diseases, NCDs, toxicology, heavy-metal
+  poisoning, and child protection / safeguarding
 - **Zero-hallucination architecture** — vstash retrieves, the model formats.
   If a fact is not in a protocol it does not appear in the answer.
 - **Pre-flight translator** — one structured LLM call classifies scope and
@@ -81,6 +97,52 @@ medlocal protocol new drafts/new-protocol.md \
 medlocal search "pesticide poisoning organophosphate"
 ```
 
+## Dependencies
+
+MedLocal is built on top of the following open-source projects,
+installed as external dependencies from PyPI. **None of these are
+bundled into this repository** — all are procured via `pip install`
+at setup time. Under the Kaggle Gemma 4 Good Hackathon rules
+(Section 3.6.c), only OSI-approved open-source licenses that allow
+commercial use are used.
+
+| Package | Version | License | Role |
+|---|---|---|---|
+| [**vstash**](https://github.com/stffns/vstash) | ≥ 0.26.0 | MIT | Local hybrid retrieval substrate (vector + FTS5 + adaptive RRF) — a separate open-source project, used here as a library dependency in the same way as numpy or fastembed |
+| [fastembed](https://github.com/qdrant/fastembed) | — | Apache 2.0 | ONNX embedding model runtime *(transitive via vstash)* |
+| [sqlite-vec](https://github.com/asg017/sqlite-vec) | — | Apache 2.0 | SQLite vector search extension *(transitive via vstash)* |
+| [typer](https://github.com/fastapi/typer) | ≥ 0.9 | MIT | CLI framework |
+| [rich](https://github.com/Textualize/rich) | ≥ 13 | MIT | Terminal formatting |
+| [pydantic](https://github.com/pydantic/pydantic) | ≥ 2.0 | MIT | Data models |
+| [openai](https://github.com/openai/openai-python) | ≥ 1.0 | Apache 2.0 | OpenAI-compatible client (LM Studio / Ollama / OpenRouter) |
+| [FastAPI](https://github.com/fastapi/fastapi) | ≥ 0.100 | MIT | HTTP server |
+| [uvicorn](https://github.com/encode/uvicorn) | ≥ 0.20 | BSD-3 | ASGI runtime |
+| [py-fsrs](https://github.com/open-spaced-repetition/py-fsrs) | ≥ 6.0 | MIT | Spaced repetition scheduler |
+
+### Pretrained models and input data
+
+The following **are not bundled** with this repository. Under Section
+2.5 of the hackathon rules, pretrained models and input data with
+independent licenses do not need to be re-licensed as part of any
+winner license grant.
+
+- **Gemma 4 E2B / E4B** (Apache 2.0, released by Google on 2026-03-31)
+  — loaded at runtime by LM Studio, Ollama, or llama.cpp. The user
+  procures the model file independently from
+  [ai.google.dev/gemma](https://ai.google.dev/gemma) or
+  [huggingface.co/google/gemma-4](https://huggingface.co/google).
+- **Embedding models** — `BAAI/bge-small-en-v1.5` and
+  `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` are
+  downloaded on first use by fastembed from HuggingFace and cached
+  locally.
+- **Clinical content sources** — WHO, MSF, and Hesperian publications
+  are cited in [`docs/SOURCES.md`](docs/SOURCES.md). MedLocal does
+  **not** redistribute source documents; it redistributes only
+  original protocol documents authored by the MedLocal project that
+  describe the same factual medical content using original wording.
+  See [`docs/SOURCES.md`](docs/SOURCES.md) for the originality and
+  copyright disclosure.
+
 ## Architecture in one diagram
 
 ![MedLocal build-time ingest pipeline and offline runtime consult pipeline — WHO/MSF protocols flow through vstash into a single core.db, then the CHW question is classified by preflight, retrieved via the 4-pass FTS-boosted pipeline, and answered with schema-enforced structured output plus a safety layer.](image.png)
@@ -134,4 +196,51 @@ in front of a CHW at 2 a.m. in a clinic with no signal.
 
 ## License
 
-Apache 2.0 — Jayson Steffens, 2026.
+MedLocal is licensed under the **Apache License 2.0**. See the
+[`LICENSE`](LICENSE) file for the full text.
+
+Copyright © 2026 Jayson Steffens.
+
+### Hackathon winner license obligation
+
+This project is an entry in the
+[Kaggle Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gemma-4-good-hackathon).
+Per Section 2.5 of the competition rules, if MedLocal is awarded a
+prize, the winning Submission and the source code used to generate
+the Submission will additionally be licensed under
+[**CC-BY 4.0**](https://creativecommons.org/licenses/by/4.0/) as an
+additional license alongside Apache 2.0. This additional license
+applies only to the snapshot of MedLocal as submitted to the
+hackathon. Pretrained models and input data with incompatible
+licenses (e.g., Gemma 4 weights under Apache 2.0, cited WHO/MSF
+publications) are explicitly carved out by Section 2.5 of the rules
+and are not subject to the winner license. Dependencies installed
+from PyPI retain their original licenses — see the Dependencies
+section above. Future development of MedLocal after the hackathon
+submission remains under Apache 2.0 at the author's sole discretion.
+
+### Content sources and originality
+
+Clinical protocol documents in `data/core/protocols/` are **original
+works** authored by the MedLocal project, based on **factual
+medical information** from published WHO, MSF, and Hesperian
+guidelines cited in [`docs/SOURCES.md`](docs/SOURCES.md). Factual
+medical information (diagnostic criteria, drug dosages, clinical
+thresholds, epidemiological data) is not subject to copyright
+protection under U.S. law (17 U.S.C. § 102(b)) or most
+international jurisdictions. The specific wording, structure,
+clinical decision logic, and cross-references of the protocol
+documents in this repository are original creative expression by
+the author and are licensed under Apache 2.0 along with the rest
+of the MedLocal codebase. No portion of any cited source document
+is reproduced verbatim. See [`docs/SOURCES.md`](docs/SOURCES.md)
+for the full originality and attribution disclosure.
+
+### Medical disclaimer
+
+MedLocal is a research and educational tool and is NOT a medical
+device. See the disclaimer at the top of this README and the
+warranty and liability sections of the [`LICENSE`](LICENSE) file
+for the full terms. Use in any clinical setting is at the sole
+discretion and risk of the deploying healthcare professional or
+organization.

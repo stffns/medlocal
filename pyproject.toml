@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "vstash>=0.13.0",
+    "vstash>=0.26.0",
     "typer>=0.9",
     "rich>=13.0",
     "pydantic>=2.0",

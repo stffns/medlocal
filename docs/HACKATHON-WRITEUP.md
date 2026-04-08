@@ -1,8 +1,18 @@
 # MedLocal — Kaggle Gemma 4 Good Hackathon Writeup
 
 **Offline-first clinical consultation and training for community health workers.**
-**Tracks:** Health · Education · Accessibility.
+**Impact tracks:** Health & Sciences · Global Resilience · Digital Equity & Inclusivity.
 **Author:** Jayson Steffens · Apache 2.0 · [github.com/stffns/medlocal](https://github.com/stffns/medlocal)
+
+> ⚠ **Medical disclaimer** — MedLocal is a research and educational
+> demonstration of retrieval-augmented clinical reference tooling. It
+> is **not a medical device**, is **not FDA, EMA, or otherwise
+> regulatory-approved**, and is **not intended for clinical decision-
+> making without supervision by a qualified healthcare professional**.
+> The information it retrieves is sourced from published WHO and MSF
+> protocols for reference and educational purposes only and does not
+> constitute medical advice. The full disclaimer and liability
+> limitation is in [`README.md`](../README.md) and the [`LICENSE`](../LICENSE).
 
 > A 2-billion-parameter model running offline on a phone-class device,
 > passing a 101-case adversarial clinical safety benchmark, with every
@@ -31,7 +41,7 @@ is one of four pillars:
    NDCG@10 = 0.7255 on SciFact; four retrieval improvements discovered
    during MedLocal development landed upstream in vstash 0.26.0 during
    the same week as this writeup
-3. **Structured, bounded WHO/MSF protocols** (68 files, one vstash
+3. **Structured, bounded WHO/MSF protocols** (69 files, one vstash
    chunk per file, every one traceable to an official source)
 4. **An 8-layer anti-hallucination pipeline** that catches scope
    violations, dose authority failures, silent parse errors,
@@ -715,7 +725,7 @@ new case `CP01` in the benchmark is the regression guard.
    the structured output live.
 
 4. **Pre-built `core.db` for distribution** — the one-file install.
-   Ship the SQLite database with all 68 protocols pre-ingested so
+   Ship the SQLite database with all 69 protocols pre-ingested so
    that the end user downloads, installs, and runs offline in three
    commands.
 
@@ -763,7 +773,7 @@ is three things the cloud model does not have:
 1. **vstash** — a local hybrid retrieval engine whose four most
    recent improvements were discovered while debugging MedLocal and
    landed upstream in vstash 0.26.0 during the same week.
-2. **Structured, bounded protocols** — 68 files, one chunk each,
+2. **Structured, bounded protocols** — 69 files, one chunk each,
    every one traceable to a WHO or MSF source, every one editable
    by a clinician with a text editor.
 3. **An 8-layer anti-hallucination pipeline that is loud by default**
@@ -796,4 +806,32 @@ That is the hackathon submission. The rest is implementation detail.
 *This document is the distilled executive view of the project. For
 the full pipeline deep dive, see [`docs/PIPELINE.md`](PIPELINE.md).
 For the change history, see [`CHANGELOG.md`](../CHANGELOG.md). For
-source traceability, see [`docs/SOURCES.md`](SOURCES.md).*
+source traceability and the full copyright / originality disclosure,
+see [`docs/SOURCES.md`](SOURCES.md).*
+
+---
+
+## Hackathon rules compliance
+
+This submission follows the Kaggle Gemma 4 Good Hackathon rules
+([official page](https://www.kaggle.com/competitions/gemma-4-good-hackathon)):
+
+- **Section 2.5 — Winner license obligation.** If MedLocal is
+  awarded a prize, the winning Submission and the source code used
+  to generate it will additionally be licensed under
+  [**CC-BY 4.0**](https://creativecommons.org/licenses/by/4.0/)
+  alongside Apache 2.0. Pretrained models (Gemma 4 weights under
+  Apache 2.0) and cited WHO / MSF publications are carved out by
+  Section 2.5 and are not subject to the winner license.
+- **Section 3.6.c — Open-source dependencies.** All dependencies
+  are installed from PyPI under OSI-approved open-source licenses
+  that allow commercial use. The full dependency table with
+  per-package licenses is in [`README.md`](../README.md).
+- **Copyright and originality.** Clinical protocol documents in
+  `data/core/protocols/` are original works authored by the
+  MedLocal project, based on factual medical information from
+  publicly available WHO / MSF / Hesperian guidelines. Factual
+  medical information is not subject to copyright protection
+  under [17 U.S.C. § 102(b)](https://www.law.cornell.edu/uscode/text/17/102).
+  No portion of any cited source document is reproduced verbatim.
+  Full disclosure in [`docs/SOURCES.md`](SOURCES.md#copyright-originality-and-license-compatibility).

@@ -628,6 +628,12 @@ textbook presentations.
 
 ---
 
-*Last updated: 2026-04-07 — after the organophosphate retrieval
-debugging session. Smoke: 20/20 PASS including the new ES07 case.
-Full 96-case benchmark running at time of writing.*
+*Last updated: 2026-04-08 — corpus grew to 69 protocols with the
+`heavy_metals` (HM01) and `child_protection` (CP01) additions, the
+benchmark grew to 101 cases, smoke to 22 cases, and the silent-
+failure hardening pass landed (fail-loud JSON repair, controlled-
+drug authority check, runtime precondition check, 58 unit tests).
+E2B post-hardening bench: 99/101. The original 2026-04-07 version
+of this document described the 67-protocol / 96-case era; this
+line has been updated but the body still describes the architecture
+as it landed on 2026-04-07.*

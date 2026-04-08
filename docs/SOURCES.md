@@ -1,5 +1,67 @@
 # MedLocal — Source Documents
 
+## Copyright, originality, and license compatibility
+
+The clinical protocol documents in `data/core/protocols/` are
+**original works** authored by the MedLocal project, based on
+**factual medical information** from the publicly available
+guidelines cited in this document. Factual medical information —
+diagnostic criteria, drug dosages, clinical thresholds, dose
+schedules, epidemiological data, and similar facts — is not
+subject to copyright protection under U.S. law
+([17 U.S.C. § 102(b)](https://www.law.cornell.edu/uscode/text/17/102))
+or most international jurisdictions, which protect only the
+specific expression of ideas and not the underlying facts or
+methods of operation.
+
+The specific wording, structure, clinical decision logic,
+internal cross-references, multilingual aliases, and lay-language
+rewrites of the protocol documents in this repository are
+**original creative expression** by the MedLocal author, written
+to be readable by community health workers with limited formal
+medical training. They are licensed under **Apache 2.0** along
+with the rest of the MedLocal codebase (see [`../LICENSE`](../LICENSE)).
+
+**No portion of any cited source document is reproduced verbatim
+in this repository.** Where a cited WHO or MSF publication
+provided structural inspiration (for example, the IMCI decision
+trees or the WHO Basic Emergency Care triage flow), the MedLocal
+protocols implement the same underlying clinical logic using
+independent wording written from scratch by the MedLocal author
+after reviewing the source.
+
+### License compatibility note
+
+Some cited WHO publications are released under
+[CC-BY-NC-SA 3.0 IGO](https://creativecommons.org/licenses/by-nc-sa/3.0/igo/),
+which restricts commercial redistribution. This restriction does
+**not** apply to MedLocal because MedLocal does not redistribute
+any CC-BY-NC-SA content. MedLocal redistributes only original
+documents authored by the MedLocal project that describe the same
+factual medical content using different wording. This is the same
+relationship a textbook, review article, or encyclopedia entry
+has with its cited primary sources — the author draws on them for
+facts and cites them for attribution, but does not reproduce their
+expression.
+
+MedLocal does not download, bundle, or redistribute source PDFs.
+The "Downloaded PDFs" referenced below are used at build time by
+the author for research and are not part of the shipped
+repository or the PyPI distribution. Users who wish to consult
+the original sources directly are linked to the publisher URLs
+for each source.
+
+### Attribution practice
+
+Every protocol document in `data/core/protocols/` includes an
+attribution line in its header identifying the upstream source
+(WHO publication, MSF guideline, Hesperian book, etc.) that
+informed the factual content. This attribution is a matter of
+good scientific practice and does not imply endorsement or
+sponsorship by the cited organizations.
+
+---
+
 ## Founding Principle: Total Traceability
 
 > Every answer MedLocal generates MUST be traceable to an officially
@@ -144,7 +206,7 @@ These go into the editable `local` profile, not the read-only `core`.
 
 ---
 
-## Structured Protocols — Current State (68 files, all single-chunk)
+## Structured Protocols — Current State (69 files, all single-chunk)
 
 As of 2026-04-08 every protocol in `data/core/protocols/` produces
 exactly one vstash chunk (verified by `medlocal protocol audit`).
@@ -258,6 +320,12 @@ Grouped by clinical domain for readability.
 |------|--------|
 | `drug-allergies-alternatives.md` | WHO Essential Medicines List + UpToDate alternative regimens |
 
+### Child Protection & Safeguarding
+
+| File | Source |
+|------|--------|
+| `child-protection-who.md` | WHO Clinical Handbook "Responding to child maltreatment: a clinical handbook for health professionals" (2022, ISBN 9789240048737); WHO INSPIRE: Seven Strategies for Ending Violence Against Children (2016); Pierce MC et al., TEN-4-FACESp bruising rule (JAMA Network Open 2021); WHO "Responding to children and adolescents who have been sexually abused" (2017) |
+
 ---
 
 ## Validation Checklist
@@ -279,5 +347,7 @@ Before any new protocol is included in `core.db`:
 
 ---
 
-*Last updated: 2026-04-08 — after the corpus-wide flatten and the
-addition of `poisoning-heavy-metals-who.md` (case HM01).*
+*Last updated: 2026-04-08 — corpus flatten, heavy-metals protocol
+(case HM01), and child-protection protocol (case CP01) all landed
+on the same day. Copyright and originality disclosure added
+reflecting the hackathon rules review.*

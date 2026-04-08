@@ -16,6 +16,73 @@ Nothing yet. Next work lines are tracked in `docs/ROADMAP.md`.
 
 ---
 
+## [0.6.2] — 2026-04-08
+
+### Hackathon rules compliance + documentation consistency pass
+
+Reviewed all submission-facing documents against the Kaggle Gemma 4
+Good Hackathon rules and landed the corrections.
+
+### Added
+- **Medical disclaimer** in `README.md` and `docs/HACKATHON-WRITEUP.md`
+  — explicit "not a medical device, not FDA/EMA approved, not for
+  clinical decision-making without qualified supervision". Required
+  before any reviewer reads the submission.
+- **Dependencies table** in `README.md` with per-package licenses,
+  showing every external dependency is OSI-approved and allows
+  commercial use per hackathon Section 3.6.c. `fastembed` and
+  `sqlite-vec` are marked as transitive (via vstash) for accuracy.
+- **Section 2.5 carve-out disclosure** for pretrained models and
+  cited publications in `README.md` and `docs/HACKATHON-WRITEUP.md`.
+- **Copyright and originality disclosure** in `docs/SOURCES.md`
+  and cross-referenced from `README.md` and
+  `docs/HACKATHON-WRITEUP.md`. Explains that clinical protocol
+  documents are original works based on factual medical
+  information per 17 U.S.C. § 102(b), with no verbatim reproduction
+  of any cited source.
+- **CC-BY 4.0 winner-license obligation** statement in `README.md`
+  and `docs/HACKATHON-WRITEUP.md` per rules Section 2.5.
+- **License compatibility note** for WHO CC-BY-NC-SA 3.0 IGO
+  publications in `docs/SOURCES.md` — confirms MedLocal does not
+  redistribute CC-BY-NC-SA content, only references it for
+  attribution.
+- **New Hackathon rules compliance** section at the bottom of
+  `docs/HACKATHON-WRITEUP.md` consolidating the Section 2.5 carve-
+  out, Section 3.6.c dependency policy, and the copyright /
+  originality argument.
+- **`child-protection-who.md`** added to the protocol catalogue in
+  `docs/SOURCES.md` (was on disk, had been missing from the
+  traceability table).
+
+### Changed
+- **Impact track names updated** to the official Kaggle categories
+  everywhere — `README.md`, `docs/HACKATHON-WRITEUP.md`,
+  `docs/constitution.md`, and `CLAUDE.md` now say
+  "Health & Sciences · Global Resilience · Digital Equity &
+  Inclusivity" instead of the early-draft "Health · Education ·
+  Accessibility".
+- `docs/constitution.md` §5 Hackathon Objective rewritten so each
+  track has a concrete, track-specific description of what
+  MedLocal contributes to that impact area.
+- `README.md` protocol count updated from 68 to **69** (child
+  protection was added today but the count had not been bumped).
+- `README.md` benchmark size updated from "100-case" to "101-case"
+  (the `CP01` child protection case was added today).
+- `docs/SOURCES.md` protocol count updated from 68 to **69** in
+  the "Structured Protocols — Current State" header.
+
+### Rationale
+None of today's earlier commits broke compliance; the review just
+surfaced stale counts and missing language that a careful Kaggle
+reviewer would have flagged. The rules around Section 2.5 winner
+license, Section 3.6.c dependencies, and the copyright treatment
+of factual medical information are all straightforward to satisfy
+but had to be stated explicitly. The medical disclaimer is the
+single most important addition — a clinical reviewer needs to see
+it before the first benchmark number.
+
+---
+
 ## [0.6.1] — 2026-04-08
 
 ### Perfect 100/100 benchmark — two safety gaps closed
