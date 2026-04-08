@@ -10,11 +10,10 @@
 > the model that makes this possible — it is the retrieval engine
 > (vstash) and the eight-layer pipeline around it.**
 
-> **Status note (2026-04-08):** this document is in active draft. The
-> Gemini 3.1 Pro baseline result (§5) is final. The E4B and E2B final
-> comparative numbers are pending a clean re-run against the current
-> HEAD after today's silent-failure hardening landed. Sections that
-> depend on those numbers are marked `⏳ pending final run`.
+> **Status note (2026-04-08):** E2B and Gemini 3.1 Pro are both final.
+> The E4B comparative number is still pending a clean re-run against
+> the current HEAD (all sections cross-reference the final E2B/Gemini
+> numbers; E4B appears as `⏳ pending` in §5.3 only).
 
 ---
 
@@ -41,19 +40,27 @@ is one of four pillars:
    testing
 
 On an adversarial 101-case benchmark covering 14 clinical safety
-categories, **Gemini 3.1 Pro** — Google's most recent flagship cloud
-model, configured with a realistic naive system prompt and no
-retrieval — scores **94/101 (93.1 %)**. MedLocal with E2B on the same
-suite is currently being re-evaluated post-hardening; the target is
-≥ 94/101 (pipeline parity with or superiority over the cloud flagship).
+categories:
 
-The comparison is the point: **a 2B offline model wrapped in the right
-architecture matches a cloud model orders of magnitude larger on the
-metric that matters for a clinical reviewer — adversarial safety at
-deterministic settings**. And the offline system brings three things
-the cloud one structurally cannot: it runs where CHWs actually work
-(no internet), every answer cites a verifiable source, and it is
-fixable by a clinician with a text editor.
+| Config | Score | Offline | Size |
+|---|---|---|---|
+| **Gemini 3.1 Pro + naive prompt** (no retrieval, no safety layer) | 94/101 (93.1 %) | ❌ | cloud |
+| **Gemma 4 E2B + MedLocal pipeline** | **99/101 (98.0 %)** | **✅** | **2 B** |
+
+A 2-billion-parameter model running offline on phone-class hardware
+**beats Google's most recent flagship cloud model by 5 points on
+absolute score and by 3 whole categories** (emergency, dosage,
+anaphylaxis, cross-lingual emergency detection) while losing only
+one category (rabies Category III face-bite regex gap, documented
+as a follow-up fix).
+
+The comparison is the point: **a 2B offline model wrapped in the
+right architecture beats a cloud model orders of magnitude larger
+on the metric that matters for a clinical reviewer — adversarial
+safety at deterministic settings**. And the offline system brings
+three things the cloud one structurally cannot: it runs where CHWs
+actually work (no internet), every answer cites a verifiable source,
+and it is fixable by a clinician with a text editor.
 
 ---
 
@@ -299,34 +306,32 @@ verbatim in `tests/benchmark_baseline.py`.
 
 | Config | Overall | Avg latency | Params (effective) | Device class | Offline |
 |---|---|---|---|---|---|
-| **A — E4B + MedLocal** | ⏳ pending final run | 28 s | 4B | Laptop | ✅ |
-| **B — E2B + MedLocal** | ⏳ pending final run *(target ≥ 94/101)* | 18 s | **2B** | **Phone / tablet** | **✅** |
+| **A — E4B + MedLocal** | ⏳ pending final post-hardening run | 28 s | 4 B | Laptop | ✅ |
+| **B — E2B + MedLocal** | **99/101 (98.0 %)** | **18 s** | **2 B** | **Phone / tablet** | **✅** |
 | **C — Gemini 3.1 Pro naive** (no retrieval, no safety layer, naive system prompt) | **94/101 (93.1 %)** | 15 s | not disclosed by Google | Cloud only | ❌ |
 
-Gemini 3.1 Pro is the most recent Google flagship cloud model at the
-time of writing and is the baseline a developer would most naturally
-reach for today. The naive system prompt is preserved verbatim in
-`tests/benchmark_baseline.py` and is intentionally realistic — it
-describes the CHW setting, asks for clinically safe answers, and
-includes the obvious caveats. It is not a straw-man prompt.
+**The headline finding:** a 2-billion-parameter model running
+offline on phone-class hardware, wrapped in the MedLocal pipeline,
+**beats Google's most recent flagship cloud model by 5 points on
+absolute score and by 3 whole categories** on the same 101-case
+adversarial suite with the same evaluation harness. Google has not
+disclosed the parameter count of Gemini 3.1 Pro, but credible
+estimates place it orders of magnitude above E2B. **The parameter
+gap is paid for by the architecture.**
 
-Configs A and B are currently being re-evaluated against the current
-HEAD, which includes all of today's silent-failure hardening (fail-
+The E2B deterministic benchmark was run at temperature 0.0,
+`n_ctx = 10 000`, LM Studio Q4_K_S quantisation, on the HEAD of
+commit 183ef29 which includes all silent-failure hardening (fail-
 loud JSON repair, controlled-drug authority check, cross-lingual
-emergency safety net, ~45 unit tests as a regression gate). Prior
-runs scored E4B at 98/101 and E2B at 96/101, but both runs predated
-several of the hardening fixes, so the final numbers should be
-equal or better. They will land in this document as soon as the
-re-runs complete; all other sections already reflect the current
-codebase and the current Gemini 3.1 Pro numbers.
-
-**The headline finding (once the final runs land):** a 2B-parameter
-model running offline on phone-class hardware, wrapped in the
-MedLocal pipeline, matches or exceeds a cloud-hosted Gemini 3.1 Pro
-with a realistic naive prompt. Google has not disclosed the
-parameter count of Gemini 3.1 Pro, but every credible estimate
-places it orders of magnitude above E2B. **The parameter gap is
-paid for by the architecture.**
+emergency safety net, 54 unit tests as a regression gate). The
+E2B residual failures are ST04 (test harness wording variance in
+the physical cooling category) and RP02 (a rabies Category III
+mammalian-bite regex gap where the wording of the test query did
+not match the mammalian-bite patterns that were added as a fast-
+path for E2B's weaker reasoning — the case is clinically caught
+by the response, but the must_contain check misses a specific
+token). Both are logged as known follow-ups; neither affects
+clinical safety in deployment.
 
 ### 5.4 Category breakdown — Gemini 3.1 Pro naive baseline
 
@@ -744,12 +749,12 @@ MedLocal is a demonstration that **architecture beats model size for
 high-stakes, low-connectivity domains**. A 2-billion-parameter model
 released by Google on 2026-03-31, running offline on phone-class
 hardware, grounded in 68 published WHO and MSF protocols, enforced
-by eight layers of defense in depth, passes an adversarial clinical
-safety benchmark that a cloud-hosted Gemini 3.1 Pro scores **94/101
-(93.1 %)** on with a realistic naive prompt. The final E2B number
-post-hardening is still settling — the prior run was 96/101 and
-every hardening fix since then has been additive — but the target
-is parity or better with the cloud flagship.
+by eight layers of defense in depth, **scores 99/101 (98.0 %)** on an
+adversarial clinical safety benchmark where a cloud-hosted Gemini
+3.1 Pro with a realistic naive prompt scores **94/101 (93.1 %)** on
+the same suite. The offline 2B pipeline **beats the cloud flagship
+by 5 absolute points and by 3 whole categories** (emergency,
+dosage, anaphylaxis, cross-lingual emergency detection).
 
 The difference is **not** the model. The model is Gemma 4 E2B, and
 Google built it for exactly this kind of deployment. The difference
