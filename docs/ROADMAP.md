@@ -21,13 +21,17 @@
 
 ---
 
-## Current State (2026-04-04)
+## Current State (2026-04-07)
 
 ### Completed
-- [x] 54 clinical protocols (WHO/MSF sourced, structured markdown)
+- [x] **67 clinical protocols** (WHO/MSF sourced, ≤2000 chars each, 1 chunk per file)
+- [x] **28 CHT decision-support workflows** (PIH Malawi + default reference app)
 - [x] Safety layer (emergency detection, confidence, dosage check, allergy verification, audit log)
+- [x] `_flag()` helper for safety flag dedup (2026-04-07)
 - [x] Structured JSON output via schema (forces condition naming)
-- [x] Multi-query retrieval (symptom-only keyword expansion)
+- [x] **Pre-flight translator** — single structured call classifies scope + emergency before retrieval
+- [x] **4-pass `_multi_query_search`** — raw + English expansion + preflight terms + **FTS-only safety net**
+- [x] **FTS-boosted hybrid retrieval** (`vec_weight=0.3, fts_weight=0.7, mmr_lambda=1.0`) via direct `_store.search`
 - [x] Judge with double grounding (Q&A pair + source protocol)
 - [x] Teacher/Judge LLM separation in config
 - [x] Unified web UI (consult + vision + camera + follow-ups)
@@ -35,12 +39,14 @@
 - [x] Vision + text context combined in pipeline
 - [x] vstash chunk_size=2048 for medical content
 - [x] 201 training cards across 15 topics
-- [x] E2E test suite (22 cases)
+- [x] **99-case comprehensive benchmark** (13 categories, release gate, ~25 min)
+- [x] **20-case smoke suite** (dev loop, ~5 min, 20/20 PASS on 2026-04-07)
+- [x] E2E test suite (22 cases, legacy)
 - [x] Model benchmark (24 scenarios x 8 models)
 - [x] Tested: E2B, E4B, Qwen 4B/9B, Gemma 31B, Flash Lite/Flash/Pro
 - [x] Bilingual verified (ES, FR, SW, HA, PT, AR, HI, AM)
-- [x] CLAUDE.md, README, constitution, roadmap, sources plan
-- [x] Repo private on GitHub
+- [x] CLAUDE.md, README, constitution, ARCHITECTURE, PIPELINE, ROADMAP, SOURCES, CHANGELOG
+- [x] Repo private on GitHub (`stffns/medlocal`)
 
 ### Benchmark Results
 ```
@@ -133,8 +139,15 @@ Qwen 3.5 9B           90.5%     18.6s      6/6      10/10
 
 ### What Works
 ```
-CHW question → vstash (chunk_size=2048) → top 4 protocols → LLM structured output → safety checks → response
+CHW question → _extract_search_query → detect_emergency (regex fast path)
+            → preflight (scope + cross-lingual emergency classification)
+            → _multi_query_search (4 passes including FTS-only safety net)
+            → relevant[:6] → chat_structured(JSON schema)
+            → mode resolution (guidance vs assessment)
+            → safety layer (dosage cross-check, grounding, audit)
+            → structured response to mobile UI
 ```
+See `docs/PIPELINE.md` for the full deep dive.
 
 ### What Doesn't Work
 - Consultation index (false positive contamination) — REMOVED

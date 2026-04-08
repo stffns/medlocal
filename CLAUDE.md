@@ -32,9 +32,13 @@ Single tab with text + camera + follow-ups:
 - Follow-up questions refine diagnosis iteratively
 
 ### Dual-Profile Knowledge Base
-- `core` (read-only) — 54 WHO/MSF protocols + 162 consultation index pairs
+- `core` (read-only) — 67 WHO/MSF protocols (structured markdown, ≤2000 chars each)
 - `local` (editable) — Country-specific protocols, scanned documents
-- Federated search via vstash (hybrid vector + keyword, RRF)
+- Federated search via vstash with FTS-boosted hybrid retrieval:
+  - 3 hybrid passes (raw, English expansion, preflight terms) with
+    `vec_weight=0.3, fts_weight=0.7, mmr_lambda=1.0`
+  - 4th BM25-only safety-net pass that rescues FTS-rank-1 chunks the
+    multilingual embedder buries (see `docs/PIPELINE.md` §3.3)
 
 ### Stack
 - **vstash** — Retrieval engine (SQLite, local embeddings, NDCG@10=0.7255 on SciFact)
@@ -120,16 +124,18 @@ medlocal/
   api.py           # FastAPI endpoints
   web.py           # Mobile-first HTML UI (single file)
   cli.py           # Typer CLI
-data/core/protocols/  # 54+ structured clinical protocols (WHO/MSF sourced)
+data/core/protocols/  # 67 structured clinical protocols (WHO/MSF sourced, ≤2000 chars each)
 tests/
-  benchmark_comprehensive.py   # 96-case suite, 13 categories — release gate (~22 min)
-  smoke_critical.py            # 17 critical cases — dev loop (~3 min)
+  benchmark_comprehensive.py   # 99-case suite, 13 categories — release gate (~25 min)
+  smoke_critical.py            # 20 critical cases — dev loop (~5 min)
   test_e2e.py                  # 22 E2E cases (legacy)
 docs/
   constitution.md   # Project vision and hackathon objective
   ARCHITECTURE.md   # System architecture, pipeline diagram, benchmarks, lessons
-  ROADMAP.md        # 6-phase plan with insights
+  PIPELINE.md       # Deep dive on consult flow, retrieval internals, debug playbook
+  ROADMAP.md        # Phase plan with insights
   SOURCES.md        # Source documents plan with URLs and validation checklist
+CHANGELOG.md        # Version history (keep-a-changelog format)
 ```
 
 ## Development
@@ -139,10 +145,10 @@ pip install -e ".[dev]"
 ruff check medlocal/
 pytest tests/
 
-# Fast dev loop — 17 critical cases, ~3 min
+# Fast dev loop — 20 critical cases, ~5 min
 python tests/smoke_critical.py
 
-# Release gate — 96 cases, 13 categories, ~22 min
+# Release gate — 99 cases, 13 categories, ~25 min
 python tests/benchmark_comprehensive.py
 ```
 
@@ -183,7 +189,20 @@ base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
   findings. Fix pending.
 
 ## Benchmarks (gemma-4-e4b-it @ 8192 ctx)
-- **Comprehensive:** 96/96 (100%) — all 13 categories at 100% (2026-04-07)
-- **Avg latency:** 15.42s/query, p95 24.5s, total 22 min
-- **HP03 ("what blood tests should I order?"):** formerly KNOWN FAILURE, now resolved
-  via preflight out-of-scope short-circuit before retrieval
+- **Comprehensive:** 99/99 expected (100%) on current HEAD — all 13 categories at 100%
+  (last full run 2026-04-07 was 98/99 with a temporary `relevant[:8]` cap that
+  overflowed RP04; reverted to `[:6]`, smoke 20/20 confirms the fix)
+- **Avg latency:** ~16-20s/query, p95 ~25s
+- **HP03 ("what blood tests should I order?"):** resolved via preflight
+  out-of-scope short-circuit before retrieval (2026-04-07)
+- **ES07 (organophosphate cholinergic toxidrome):** added 2026-04-07 as the
+  smoking gun that exposed the FTS/vector retrieval bug; now passes with
+  atropine + soap-and-water decontamination correctly surfaced
+
+## Retrieval notes (2026-04-07 session)
+- See `docs/PIPELINE.md` §3 for the deep dive on the 4-pass retrieval and
+  the FTS-only safety-net that rescues chunks the multilingual embedder buries
+- `KnowledgeBase.search` bypasses `Memory.search()` and calls
+  `_store.search` directly to forward `vec_weight/fts_weight/mmr_lambda`.
+  The `TODO(vstash-upstream)` block in `knowledge.py` lists the 4 vstash
+  improvements that would let us delete this workaround

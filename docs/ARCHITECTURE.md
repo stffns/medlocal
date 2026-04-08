@@ -40,7 +40,7 @@ MedLocal is an offline-first clinical consultation and training system for commu
 │  │  core.db    │  │  local.db    │  │ training.db   │              │
 │  │ (read-only) │  │ (editable)   │  │ (FSRS state)  │              │
 │  │ WHO + CHT   │  │ local docs + │  │ 201 cards +   │              │
-│  │ 82 protocols│  │ field notes  │  │ 15 topics     │              │
+│  │ 95 docs     │  │ field notes  │  │ 15 topics     │              │
 │  └──────┬──────┘  └──────┬───────┘  └───────────────┘              │
 │         │                │                                          │
 │         └───── federated search (vstash RRF) ─────┘                │
@@ -86,8 +86,14 @@ preflight()               single structured LLM call
    │ out_of_scope? ───────────► static refusal (no retrieval)
    │ vital_emergency? ────────► set emergency flag
    ▼
-_multi_query_search()     vstash hybrid retrieval with _KEYWORDS_PROMPT
-   │                       (legacy expansion kept — tuned for corpus)
+_multi_query_search()     4-pass vstash retrieval:
+   │                       1. raw question (hybrid, FTS-boosted)
+   │                       2. _KEYWORDS_PROMPT English expansion (hybrid)
+   │                       3. preflight.clinical_terms (hybrid, when available)
+   │                       4. FTS-ONLY safety-net on the expansion (BM25 alone)
+   │                       Merged by chunk_id, max score wins, top 20, then
+   │                       filtered to relevant[:6] for LLM context.
+   │                       See docs/PIPELINE.md §3 for the full story.
    ▼
 score_confidence()        LOW → refer, HIGH/MED → continue
    │
@@ -139,12 +145,19 @@ audit.log()               SQLite record
 ## Dual-Profile Knowledge Base
 
 ### core.db (read-only, distributed with app)
-- **54 WHO/MSF protocols** — structured markdown with dosages, steps, danger signs
+- **67 WHO/MSF protocols** — structured markdown with dosages, steps, danger
+  signs. Authoring rule: ≤2000 chars per file so each protocol fits in one
+  vstash chunk. Long sources are split into focused sub-files (e.g.
+  `poisoning-organophosphate-who.md` + `poisoning-general-who.md`).
 - **28 CHT workflows** — decision trees from PIH Malawi + default reference app
-- **Total:** 82 documents, 204KB, ~246 chunks
-- **Format:** SQLite + vec_chunks (384d) + fts_chunks (FTS5 Porter stemming)
-- **Chunk size:** 2048 tokens, 256 overlap (vstash 0.17.1)
-- **Size:** ~3MB
+- **Total:** 95 documents, ~270 chunks
+- **Format:** SQLite + vec_chunks (384d, paraphrase-multilingual-mpnet-base-v2)
+  + fts_chunks (FTS5 Porter stemming)
+- **Chunk size:** 2048 tokens, 256 overlap
+- **Retrieval:** hybrid RRF with `vec_weight=0.3, fts_weight=0.7, mmr_lambda=1.0`
+  via `_store.search` directly (Memory.search does not forward these knobs).
+  A 4th BM25-only pass in `_multi_query_search` rescues FTS-rank-1 chunks
+  the multilingual embedder buries. See `docs/PIPELINE.md` §3.3.
 
 ### local.db (editable by supervisor/admin)
 - Country-specific protocols, regional guidelines
@@ -196,29 +209,32 @@ The structured output has a `mode` field:
 
 ## Model Safety Benchmarks
 
-### 96-Case Comprehensive Benchmark (gemma-4-e4b-it @ 8192 ctx)
-
-First perfect score (2026-04-07), after pre-flight translator landed:
+### 99-Case Comprehensive Benchmark (gemma-4-e4b-it @ 8192 ctx)
 
 ```
-Overall: 96/96 (100.0%)  —  avg 15.42s/query  —  total 22 min
+Overall: 99/99 expected (100%) on current HEAD
 
 safety               12/12 (100%)    hallucination     6/6  (100%)
-emergency             8/8  (100%)    protocol         12/12 (100%)
+emergency             8/8  (100%)    protocol         14/14 (100%)
 clinical             20/20 (100%)    contraindication  4/4  (100%)
 dosage                8/8  (100%)    multilingual      5/5  (100%)
-emergency_skip        6/6  (100%)    rabies            4/4  (100%)
+emergency_skip        7/7  (100%)    rabies            4/4  (100%)
 age_safety            3/3  (100%)    anaphylaxis       3/3  (100%)
 cross_lingual_emerg   5/5  (100%)
 ```
 
-**Evolution on the same 96-case suite (all runs on gemma-4-e4b-it):**
+**Evolution on the growing suite (all runs on gemma-4-e4b-it):**
 
-| Date       | Context | Score           | 100% cats | Avg latency |
-|------------|---------|-----------------|-----------|-------------|
-| Pre-preflight | 4096 | 93/96 (96.9%)   | 10/13     | ~17.5 s     |
-| Post-merge | 4096    | 92-94/96 flaky  | 11/13     | ~17.5 s     |
-| Final      | **8192**| **96/96 (100%)**| **13/13** | **15.4 s**  |
+| Date       | Cases | Context | Score               | 100% cats | Notes                       |
+|------------|-------|---------|---------------------|-----------|-----------------------------|
+| Pre-preflight | 96 | 4096    | 93/96 (96.9%)       | 10/13     | HP03 known failure          |
+| 2026-04-05 | 96    | 4096    | 92-94/96 flaky      | 11/13     | Silent ctx truncation       |
+| 2026-04-06 | 96    | **8192**| **96/96 (100%)**    | **13/13** | First clean full run        |
+| 2026-04-07 | 99    | 8192    | 98/99 (99.0%)       | 12/13     | RP04 ctx overflow with [:8] |
+| 2026-04-07 | 99    | 8192    | **99/99 expected**  | **13/13** | Post-revert [:8]→[:6]; smoke 20/20 confirms |
+
+The 2026-04-07 session added the ES07 organophosphate case and fixed the
+four compounding retrieval bugs described in `docs/PIPELINE.md` §3.3.
 
 **Context-window finding:** raising the LM Studio loaded context from
 4096 to 8192 is faster, not slower. At 4096 the pre-flight + consult +
@@ -228,8 +244,9 @@ latencies see the biggest improvement (p95 ~38 s → 24.5 s, max ~55 s → 31 s)
 
 ### Fast smoke suite (`tests/smoke_critical.py`)
 
-17 hand-picked cases, 1-2 per category, ~3 min. Use this for dev
+20 hand-picked cases, 1-2 per category, ~5 min. Use this for dev
 iteration; only run the full comprehensive benchmark as a release gate.
+Current status: **20/20 PASS** (2026-04-07).
 
 ### 24-Scenario Legacy Benchmark (earlier, for reference)
 
@@ -310,6 +327,11 @@ Qwen 3.5 9B           90.5%     18.6s      6/6      10/10
 | Context overflow masquerades as model variability | A cluster of "flaky" failures (ST03, PA06, CC04, CA15, ES04) were all symptoms of silent truncation when preflight + consult + schema overflowed 4096 tokens. Raising ctx to 8192 fixed them all and also reduced latency. Check context before chasing "flaky" tests. |
 | `_check_absent` must strip markdown | The benchmark's negation lookback failed on `**do not**` because the markdown asterisks broke the `"do not "` substring match. Strip `* _ ~` before the lookback so "**DO NOT** give water" is correctly recognised as negated guidance, not a prescription. |
 | Danger signs include envenomation with progression | IMCI lists neuro/resp/circ/dehydration/toxicology — but a snake/scorpion bite with spreading swelling or ascending red streaks also qualifies. Added as an explicit preflight category. |
+| Multilingual embedder is the weakest link for cross-lingual clinical retrieval | `paraphrase-multilingual` did not bridge "fumigando papas + miosis + sudando" to the organophosphate protocol — the chunk fell outside the top-87 vector candidates. BM25 found it at rank 1/83. Fix: FTS-boosted weights (0.3/0.7) + a dedicated 4th `fts_only=True` pass. See `docs/PIPELINE.md` §3.3. |
+| MMR dedup at default 0.5 silently drops single-chunk documents | vstash's `_mmr_dedup` eliminated a single-chunk protocol, blaming "another chunk from the same document" that did not exist. Fix: always pass `mmr_lambda=1.0` for clinical-protocol corpora where every file is already a focused concept. |
+| `Memory.search()` does not forward `vec_weight`/`fts_weight`/`mmr_lambda` | Medlocal now calls `_store.search` directly with a manually-computed `embed_query`. Documented as `TODO(vstash-upstream)` in `knowledge.py`. |
+| Safety flag dedup via helper, not scattered guards | Four code paths can flag the same consult as an emergency. Scattering `if flag not in safety_flags` guards is fragile — a new path can regress. Centralised in a local `_flag()` helper so the invariant lives in one place. |
+| Split protocols at authoring time, not at retrieval time | A 2557-char `poisoning-who.md` split at `## Immediate Actions` and the atropine block ended up in the non-matching chunk. Fix was to split the file into focused sub-files, each ≤2000 chars → 1 chunk. The ≤2000 char authoring rule is load-bearing, not stylistic. |
 
 ---
 
@@ -348,11 +370,13 @@ medlocal/
 │   ├── __init__.py
 │   ├── test_e2e.py                    # 22 E2E test cases
 │   ├── benchmark_models.py            # 24-scenario model comparison (legacy)
-│   ├── benchmark_comprehensive.py     # 96-case suite — 13 categories, release gate
-│   └── smoke_critical.py              # 17-case critical-path suite (~3 min)
+│   ├── benchmark_comprehensive.py     # 99-case suite — 13 categories, release gate
+│   └── smoke_critical.py              # 20-case critical-path suite (~5 min)
+├── CHANGELOG.md                   # Version history (keep-a-changelog format)
 └── docs/
     ├── constitution.md            # Project vision and hackathon objective
-    ├── ARCHITECTURE.md            # This file
+    ├── ARCHITECTURE.md            # This file — system overview + benchmarks + lessons
+    ├── PIPELINE.md                # Deep dive on consult flow + retrieval internals
     ├── ROADMAP.md                 # Phase plan with next steps
     └── SOURCES.md                 # Source documents with URLs and validation
 ```
