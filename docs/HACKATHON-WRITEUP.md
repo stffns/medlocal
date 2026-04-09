@@ -1100,11 +1100,95 @@ new case `CP01` in the benchmark is the regression guard.
 
 ## 9. What we would build next
 
-Ordered by value for an eventual field trial. Items marked ✅ landed
-during the hackathon sprint itself and are included here as
-follow-ups that surfaced new work rather than as deferred items.
+**The one item that matters most, stated first.** Everything else
+on this list is instrumentation, packaging, protocol authoring, and
+evaluation breadth. The real impact story — and the single piece of
+work that would turn this proof of concept into the product the
+Kaggle Gemma 4 Good Hackathon is asking for — is an Android-native
+MedLocal APK running Gemma 4 E2B **entirely on-device**, with no
+network path during consultation.
 
-1. ✅ **LLM-judge fallback for `must_not_contain`** (landed
+**1. Android-native MedLocal APK running Gemma 4 E2B on a real phone.**
+
+This is the headline next step and we want to be explicit about why.
+The full MedLocal value story collapses to a single image: a
+community health worker in rural Mali pulling a $50 Android phone
+out of a pocket, typing a question in French or Swahili, and getting
+a source-cited clinical recommendation in **under 30 seconds**
+**without ever touching the network**. The patient in front of them
+is a child with suspected measles or pneumonia or an ear infection,
+the nearest clinic is six hours away, and the only reason the CHW is
+not flying blind is because the recommendation came with a citation
+they and their supervisor can verify against a WHO protocol.
+
+**What we already built for this target.** Every architectural
+choice in MedLocal was made under the constraint "this must fit on
+a $50 Android phone". The E2B model (2.3 B effective parameters
+via nested transformers and PLE, ~2.5 GB disk, ~2 GB RAM at Q4_K_S)
+is Google's on-device design point for Gemma 4. The vstash
+retrieval engine is a local SQLite database with no cloud
+dependencies. The pipeline runs deterministically at temperature
+0.0 under `llama.cpp`, so the same question produces the same
+answer on every call — reproducible audit logs. The 73-protocol
+corpus and the LLM-judge cache fit in under 10 MB combined. The
+9-layer safety defense was designed to compensate for a small
+model's reasoning gaps so that the ceiling is not "which model is
+smartest" but "which architecture lets the smallest viable model
+still be clinically safe". The 101/101 judged bench on E2B
+validates every one of those choices.
+
+**What we did not yet build.** All of the above was tested on a
+laptop with LM Studio hosting the E2B GGUF. **We have not yet
+deployed MedLocal to a specific Android phone SKU.** The APK is
+scoped and planned — three plausible paths are listed below — but
+this hackathon submission ships with the laptop benchmark and the
+architectural argument, not with a phone-in-hand demonstration. The
+gap is real and we state it plainly because over-claiming on a
+medical system is worse than under-claiming.
+
+**Three paths for the APK, in rough order of engineering effort.**
+
+- **Path A — WebView + FastAPI foreground service.** Bundle the
+  existing Python FastAPI server as an Android Foreground Service
+  using Chaquopy or a stripped-down Python runtime, ship the
+  pre-built `core.db` and the GGUF in the APK assets, run
+  `llama.cpp` as a native library via JNI. The UI is the existing
+  `medlocal/web.py` mobile-first HTML loaded into a WebView. Least
+  code reuse risk, maximum direct path from the hackathon code to
+  the phone. Weekend-scale effort once the build toolchain is set
+  up.
+- **Path B — MediaPipe LLM Inference + thin Kotlin wrapper.**
+  Google's MediaPipe LLM Inference API was released on 2026 for
+  exactly this on-device use case and lists Gemma 4 as a first-
+  class supported model. Wrap `consult()` behaviour in a small
+  Kotlin service that calls MediaPipe for generation and SQLite
+  for retrieval. Better performance and thermal behaviour than
+  Path A on commodity phones; more code to write.
+- **Path C — llama.cpp compiled for ARM + Jetpack Compose UI.**
+  Maximum control, maximum polish, most Kotlin-native. Cross-
+  compile `llama.cpp` to Android ARM64, link via JNI, reimplement
+  the FastAPI endpoints as Kotlin coroutines, build the UI in
+  Jetpack Compose. Weeks of work, but the cleanest phone-first
+  codebase and the option to ship it as a proper Play Store app.
+
+**The honest status.** The APK is the work line the hackathon
+demands and we have not yet done it. Everything else in this
+document — the protocols, the pipeline, the safety layer, the
+benchmark — is the runway. **The takeoff is the phone deployment.**
+If we ship the APK by submission, this becomes a finished story; if
+we ship it after submission, this becomes a published research
+trajectory that the judges can follow from their own repo clone.
+Either way, the mobile deployment is the success metric the project
+is architected around, and calling it out as item 1 is more honest
+than burying it in the middle of the backlog.
+
+### The rest of the backlog
+
+Items marked ✅ landed during the hackathon sprint itself and are
+included here as follow-ups that surfaced new work rather than as
+deferred items.
+
+2. ✅ **LLM-judge fallback for `must_not_contain`** (landed
    2026-04-09 as commit `6e93cc0`). Regex runs first as a fast
    path; when it flags a possible violation, Gemini 2.5 Flash
    judges whether the mention is a refusal or a recommendation.
@@ -1113,49 +1197,51 @@ follow-ups that surfaced new work rather than as deferred items.
    it is what gave us the honest 101/101/100 numbers instead of
    the earlier 99/97/94 that contained six Gemini artefacts.
 
-2. ✅ **PRIORITY 0 allergy guardrail** (landed 2026-04-09 as
+3. ✅ **PRIORITY 0 allergy guardrail** (landed 2026-04-09 as
    commit `33f5edb`). Extract user-reported allergies with a
    regex that covers English and Spanish markers plus denial
    backoff, match against a 13-drug alias table with class
    bridging, inject a hard prompt constraint, and post-process
    the answer with a safety override. Twenty-one unit tests.
 
-3. ✅ **Continuous testing rule after every protocol addition**
+4. ✅ **Continuous testing rule after every protocol addition**
    (landed as a feedback memory and the commit message on
    `d07a90f`). Every KB edit now requires a full bench re-run
    before merging. DA05 regression proved the rule.
 
-4. **300-case field validation suite.** The single biggest gap
+5. ✅ **Kaggle notebook reproducible demo** (landed 2026-04-09 as
+   commit `38b28a8`, then updated 2026-04-09 as commit `f36adff`
+   to use `gemma-4-26b-a4b-it` via the Gemini API as the consult
+   LLM so the demo is thematically consistent with the Gemma 4
+   hackathon). Six representative cases with visible source
+   citations, generator script committed alongside the `.ipynb`.
+
+6. **300-case field validation suite.** The single biggest gap
    to field trial readiness. Must be authored in consultation
    with practicing CHWs and clinical supervisors from at least
    three low-resource regions. 101 cases authored by one person
    working alone with AI reviewers is a proof of concept, not a
    deployment validation.
 
-5. **Intimate-partner violence protocol** — parallel to child
+7. **Intimate-partner violence protocol** — parallel to child
    protection, based on WHO RESPECT women framework and the LIVES
    protocol (**L**isten, **I**nquire, **V**alidate, **E**nhance
    safety, **S**upport). Adult safeguarding is the missing
    companion to CP01.
 
-6. **Kaggle notebook reproducible demo** — the hackathon
-   deliverable. Loads the pre-built `core.db`, runs a set of case
-   studies, shows the structured output live with source citations.
-
-7. **Pre-built `core.db` for distribution** — the one-file install.
+8. **Pre-built `core.db` for distribution** — the one-file install.
    Ship the SQLite database with all 73 protocols pre-ingested so
    that the end user downloads, installs, and runs offline in three
-   commands.
+   commands. This is a prerequisite for item 1 — the Android APK
+   bundles a pre-ingested SQLite snapshot rather than running
+   ingest on the phone at first launch.
 
-8. **Ollama deployment recipe** — `docs/HOWTO-DEPLOY.md` with a
+9. **Ollama deployment recipe** — `docs/HOWTO-DEPLOY.md` with a
    Modelfile template (`num_ctx=12000`, `temperature=0.0`, plus the
    retry logic for JSON-schema parsing that Ollama's current
-   structured-output support requires).
-
-9. **Android-native thin-client APK** — a WebView + MediaPipe LLM
-   Inference wrapper that runs the existing FastAPI backend on-device.
-   One-weekend build target; the deeper Kotlin rewrite is deferred
-   until after field testing validates the desktop pipeline.
+   structured-output support requires). A useful alternative
+   deployment story for any reviewer whose workflow is Ollama-
+   first rather than llama.cpp-first.
 
 10. **Capa C nominalization gap fix** — the preflight LLM sometimes
     returns nominalised forms ("inability to drink", "fluid intake
@@ -1273,10 +1359,43 @@ owns. The numbers are audited. The residuals are named. The
 retractions of the earlier over-claims are in §5.4 where anyone
 can find them.
 
-That is the hackathon submission. The rest is implementation
-detail — and, more importantly, the field validation work that
-would turn this proof of concept into a system a community health
-worker could actually rely on.
+That is the hackathon submission as it stands. The rest is
+implementation detail — and, more importantly, the work that would
+turn this proof of concept into a system a community health worker
+could actually hold in their hand.
+
+**The north star — one sentence.** A community health worker in
+rural Mali pulls a $50 Android phone out of a pocket, types a
+question in French or Swahili, and gets a source-cited clinical
+recommendation in under 30 seconds without ever touching the
+network. That is the product. Everything in this writeup — the
+pipeline, the retrieval engine, the safety layer, the protocols,
+the benchmark — is the runway. The takeoff is an on-device
+Android APK shipping Gemma 4 E2B with the 73-protocol `core.db`
+bundled, and that APK is **item 1 of §9** for exactly that reason.
+If this submission wins the hackathon, the work that immediately
+follows is not another protocol or another benchmark case; it is
+a phone in a clinician's hand running the same pipeline the
+reviewer just read about. That is the success criterion the Kaggle
+Gemma 4 Good Hackathon exists to measure, and we wrote the
+architecture to be ready for that deployment the day the APK
+build lands.
+
+**The honest gap, one more time so it is impossible to miss.**
+The phone APK is not yet built. The numbers in this document come
+from a laptop running Gemma 4 GGUF under LM Studio. The
+architectural claim — *"this memory footprint and this pipeline
+are sized for a $50 Android phone"* — is demonstrated by the
+benchmark and by the protocol design. The deployment claim —
+*"this MedLocal APK runs on a specific phone in a specific
+clinician's hand"* — is the next work line, not a claim we are
+making today. The distinction matters because a medical app
+cannot afford a writeup that over-promises. We over-promised in
+the earlier 2026-04-08 draft about Gemini failures; we retracted
+those claims in §5.4 when the judge showed they were wrong. We
+are NOT going to over-promise about phone deployment, and we are
+going to say the APK is the headline next step as loudly as we
+can without pretending it is done.
 
 ---
 

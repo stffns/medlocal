@@ -348,7 +348,9 @@ for pass 2. This separation is load-bearing.
 
 ## 5. Safety layer (`safety.py`)
 
-Five checks, in order of cost and frequency:
+Seven checks, in order of cost and frequency. Checks 6 and 7 were
+added in the 2026-04-08 and 2026-04-09 sessions respectively; the
+rest are the original 2026-04-07 design.
 
 1. **`detect_emergency()` regex** — zero-cost, runs before any LLM
    call. Matches "no respira", "convulsiones", "sangrado severo", and
@@ -378,6 +380,40 @@ Five checks, in order of cost and frequency:
    is what a CHW supervisor reviews at end of shift to spot drift.
    It is also how we retroactively catch failures discovered later.
 
+6. **`check_controlled_drugs()` — added 2026-04-08 (commit
+   `a6aed81`).** Defense-in-depth behind the PRIORITY 0.5 prompt
+   rule. Scans the answer for opioids, parenteral diazepam,
+   sedative-anaesthetics (ketamine, propofol, midazolam),
+   chemotherapy, immunosuppressants, and glycopeptides
+   (vancomycin, teicoplanin). Any mention within the dose-token
+   window, minus a 60-char pre-negation backoff that catches
+   refusals like "do NOT give morphine 0.1 mg/kg", is treated as
+   a PRIORITY 0.5 bypass — `consult()` OVERWRITES the answer with
+   a static refusal rather than ship a half-trusted response. Adds
+   `SafetyFlag.CONTROLLED_DRUG_DOSE_COMPUTED` to the audit log.
+   Aminoglycosides (gentamicin, amikacin) are deliberately NOT in
+   the list because pre-referral parenteral aminoglycosides are
+   CHW-allowed in the LMIC context.
+
+7. **`extract_allergies()` + `check_allergies_in_answer()` — added
+   2026-04-09 (commit `33f5edb`). Capa I, the ninth defense
+   layer.** User-reported drug allergies live only in the question
+   text, not in any retrieved protocol — the other six checks have
+   no protocol-level ground truth to compare against. The layer
+   runs twice: once BEFORE the LLM call, parsing the question for
+   English and Spanish allergy markers ("allergic to X", "alergia
+   a X", "hypersensitivity to X", "intolerante a X") against a
+   13-drug alias table with class bridging (an allergy to
+   penicillin blocks amoxicillin and ampicillin, sulfa blocks
+   cotrimoxazole, etc.) and injecting a hard prompt constraint;
+   once AFTER the LLM call, scanning the answer for any
+   class-wide allergen mention outside a refusal sentence and
+   OVERWRITING the answer with a safety refusal if found. Adds
+   `SafetyFlag.ALLERGY_VIOLATION` to the audit log. Closed the
+   E2B ST04 non-deterministic failure where the small model
+   sometimes ignored the user-stated allergy and recommended the
+   allergic drug anyway.
+
 ---
 
 ## 6. Dual-profile knowledge base (`knowledge.py`)
@@ -387,9 +423,9 @@ Five checks, in order of cost and frequency:
 ```
 Query
   │
-  ├──► core (read-only)  —  54 WHO/MSF protocols, curated
-  │                          ships with the app, never edited
-  │                          live
+  ├──► core (read-only)  —  73 WHO/MSF/UNICEF/AAP protocols,
+  │                          curated, single-chunk, ships with
+  │                          the app, never edited live
   │
   └──► local (editable)  —  country-specific protocols, scanned
                              docs, CHT workflows. The CHW
@@ -515,13 +551,23 @@ time. Step by step:
 
 ## 9. Known limitations and what they teach
 
+This table is updated to reflect the 2026-04-09 state. The earlier
+draft of this document (2026-04-07) contained a row claiming "E2B
+is not viable for the consult path (fails allergy safety)". That
+row was a correct observation of E2B's behaviour **before** the
+PRIORITY 0 allergy guardrail landed in commit `33f5edb`. With the
+guardrail in place, E2B scores 101/101 on the judged bench — tied
+with E4B and within one harness-artefact case of Gemini 3.1 Pro.
+The row is retired because it is no longer accurate.
+
 | Limitation | What it reveals |
 |------------|----------------|
 | Gemma 4B injects LaTeX (`\\geq`) and protocol ref numbers despite the prompt | Small models bias toward "looks like a textbook" formatting. Post-process the structured output to strip these, rather than fighting the prompt. |
-| Multilingual quality: Flash > E4B > E2B for low-resource languages | E2B is not viable for the consult path (fails allergy safety). We keep it as a target for the future "selector" mode where the model chooses a pre-written answer instead of generating one. |
-| Retrieval depends on chunk size; long protocols miss sections | Enforce the ≤2000-char rule on authoring. Every protocol should be one chunk. |
-| Triage prompt does not read text on medication packages | The vision triage prompt treats photos as scenes, not as text sources. Needs an explicit OCR-intent pass before the scene description. Fix is scoped but not done. |
-| No foreign-body-aspiration protocol | Pediatric wheeze questions pattern-match to asthma even when the presentation is clearly choking. Fix is adding the protocol, not tuning retrieval. |
+| Multilingual response richness: E4B > E2B for low-resource languages | E2B is **clinically safe** (101/101) but writes thinner interim-care explanations than E4B, asks fewer follow-up questions, and commits to a referral earlier when uncertain. The pipeline carries both to the same safety floor; the difference is about response richness, not viability. See the hackathon writeup §5.5 for the direct comparison table and Jay's verdict from the 2026-04-09 manual audit. |
+| Retrieval depends on chunk size; long protocols miss sections | Enforce the "≤1 H2 per file, prefer bold labels" authoring rule. Every protocol should be one chunk. The 2026-04-08 flattening pass converted 64 of 67 protocols; the authoring rule is load-bearing. |
+| Adding protocols can silently regress unrelated cases via MMR/RRF ranking shift | DA05 regressed from PASS to FAIL after the 2026-04-09 pneumonia safety floor landed, because cross-protocol weight-band content confused E2B's band-boundary reasoning even though retrieval was correct. Fix: every protocol change now requires a full bench re-run as a release gate, not spot-checking the target case. See the continuous-testing feedback memory and commit `d07a90f`. |
+| Triage prompt does not read text on medication packages | The vision triage prompt treats photos as scenes, not as text sources. Needs an explicit OCR-intent pass before the scene description. Still pending. |
+| Foreign-body-aspiration protocol was added 2026-04-07 | The 2026-04-07 draft of this table listed "no foreign-body-aspiration protocol" as a limitation. `foreign-body-aspiration-who.md` is now in `data/core/protocols/` and the pediatric wheeze vs choking differential is covered. Marked as RESOLVED. |
 
 ---
 
@@ -605,41 +651,146 @@ textbook presentations.
 
 ## 11. What would we build next?
 
-1. **Selector mode for Gemma E2B.** The model picks a pre-written
-   answer from the consultation index instead of generating one.
-   Zero hallucination by construction, E2B-viable, phone-friendly.
-   Docs referenced in `memory/project_selector_architecture.md`.
+Updated for the 2026-04-09 state. Items marked ✅ landed during
+the hackathon sprint itself — they are kept here as "was on the
+backlog, now done" rather than deleted so the reader can see the
+trajectory.
 
-2. **Upstream the retrieval fixes into vstash** (see
+### The one that matters most — field deployment on a real phone
+
+1. **Android-native MedLocal APK running Gemma 4 E2B entirely
+   on-device.** This is the single work line that turns the
+   proof-of-concept into the product. Everything else in this
+   list is instrumentation, packaging, and follow-up protocol
+   authoring. The real impact story is a CHW in rural Mali
+   pulling a $50 Android phone out of a pocket, typing a
+   question in French or Swahili, and getting a source-cited
+   clinical recommendation in under 30 seconds **without ever
+   touching the network**. The memory footprint fits
+   (~2.5 GB disk, ~2 GB RAM at Q4_K_S), the pipeline is built
+   around that footprint, the benchmark validates the
+   behaviour on a laptop standing in for the phone, and the
+   run on an actual phone is the last ten percent. The APK
+   scope as currently planned:
+
+   - WebView + FastAPI backend running as an Android Foreground
+     Service, bundled with the pre-built `core.db` and the GGUF
+     weights on first launch; OR
+   - MediaPipe LLM Inference as the on-device runtime with a
+     thin Kotlin wrapper around `consult()`; OR
+   - llama.cpp compiled for ARM with a JNI bridge and a
+     Jetpack Compose UI — the most work, the most control.
+
+   The Kaggle Gemma 4 Good Hackathon judges care about exactly
+   this deployment target. **If the phone APK ships, the
+   submission succeeds on its own terms.** Until it ships, the
+   submission is a well-engineered demonstration that the
+   architecture supports the target. The honest statement of
+   the gap is in the hackathon writeup §5.5 and §10.
+
+### The rest of the backlog
+
+2. ✅ **LLM-as-judge fallback for `must_not_contain`** — landed
+   2026-04-09 as commit `6e93cc0`. Two-layer evaluator: regex
+   fast path plus Gemini-2.5-Flash judge for the ambiguous cases.
+   Cached verdicts in `tests/.judge_cache.json`.
+
+3. ✅ **PRIORITY 0 allergy guardrail** — landed 2026-04-09 as
+   commit `33f5edb`. Extract, inject, post-process. Closed E2B
+   ST04.
+
+4. ✅ **Continuous-testing rule after every protocol change** —
+   landed 2026-04-09 as a feedback memory and the commit message
+   on `d07a90f` (malaria DA05 fix). Every KB edit now requires a
+   full bench re-run, not spot-checking the target case.
+
+5. **Selector mode for Gemma E2B.** The model picks a pre-written
+   answer from the consultation index instead of generating one.
+   Zero hallucination by construction. Less urgent now that the
+   generative path is 101/101 on the judged bench, but still
+   interesting as a second architectural option for phone
+   deployment where response latency matters more than
+   flexibility. Docs in `memory/project_selector_architecture.md`.
+
+6. **Upstream the retrieval fixes into vstash** (see
    `memory/project_retrieval_insights.md`):
    expose vec/fts weights on `Memory.search()`, add a first-class
    `fts_search()` mode, make MMR a no-op on single-chunk docs, teach
-   adaptive RRF to react to vector-search outcome.
+   adaptive RRF to react to vector-search outcome. Four of these
+   landed upstream in vstash 0.26.0 during the same week as this
+   writeup; the rest are the backlog.
 
-3. **Vision triage text-reading pass.** Add an OCR-intent prompt
+7. **Vision triage text-reading pass.** Add an OCR-intent prompt
    before scene description so photos of medication packages produce
-   drug identification, not scene descriptions.
+   drug identification, not scene descriptions. Still pending from
+   the 2026-04-07 backlog — the image cases surfaced during manual
+   testing but no one has paged this in yet.
 
-4. **Foreign body aspiration protocol** with an explicit asthma
-   differential rule, to unblock the pediatric wheeze failure mode.
+8. **Pre-built core.db for distribution** so the CHW install is one
+   download, no ingest step, works on first boot offline. This is a
+   prerequisite for the Android APK in item 1 — the APK bundles a
+   pre-ingested SQLite snapshot rather than running ingest on the
+   phone at first launch.
 
-5. **Pre-built core.db for distribution** so the CHW install is one
-   download, no ingest step, works on first boot offline.
+9. **300-case field validation suite** authored in consultation
+   with practicing CHWs and clinical supervisors from at least
+   three low-resource regions. The hackathon writeup §5.7 names
+   this as the single biggest gap to deployment readiness. The
+   101-case suite we have is adversarial and auditable but it
+   was authored by one person with AI reviewers; deployment-grade
+   validation requires breadth authored by the people who will
+   actually use the system.
+
+10. **Intimate-partner violence protocol** — parallel to child
+    protection, based on WHO RESPECT women framework and the LIVES
+    protocol (Listen, Inquire, Validate, Enhance safety, Support).
+    Adult safeguarding is the missing companion to CP01.
+
+11. **Protocol authoring guide** (`docs/HOWTO-PROTOCOL-AUTHORING.md`)
+    that codifies every rule the 2026-04-09 sprint proved the hard
+    way: ≤1 H2 per file, worked examples at every band boundary,
+    explicit negation cues for the wrong answer, single-chunk
+    bounded, cited source, `medlocal protocol validate` green
+    before merge, full bench re-run before merge.
 
 ---
 
-*Last updated: 2026-04-09 — corpus grew to 73 protocols. The
-2026-04-09 session added: `medications-pregnancy-safety-who`,
-`infant-safety-home-remedies-who`, `medication-side-effects-expected-
-vs-alarm-who`, and `drug-rash-severity-who`; `pneumonia-imci` got a
-weight-only safety floor section; `malaria-who` got explicit
-boundary examples after DA05; `fever-assessment-imci` got a
-comfort-measures-without-antipyretics section. The pipeline grew
-a ninth defense layer (Capa I — PRIORITY 0 allergy guardrail) and
-the LLM-as-judge evaluator landed as a two-layer harness on top
-of the regex fast path. Final judged bench numbers on commit HEAD:
-E4B + MedLocal 101/101, E2B + MedLocal 101/101, Gemini 3.1 Pro
-naive 100/101 (HP03 harness artefact). 79 unit tests. The body of
-this document still describes the architecture as it landed on
-2026-04-07 — the 2026-04-08 and 2026-04-09 deltas are documented
-in the hackathon writeup §6 and CHANGELOG.*
+*Last updated: 2026-04-09.*
+
+*What is current in this document (updated to the 2026-04-09 state):*
+*§5 Safety layer lists seven checks including Capa G (controlled drug*
+*guard) and Capa I (PRIORITY 0 allergy guardrail). §6 reports the*
+*73-protocol corpus. §9 Known limitations retires the stale*
+*"E2B not viable" claim and adds the continuous-testing rule and the*
+*retrieval-interference lesson from DA05. §11 What would we build*
+*next marks LLM-judge, allergy guardrail, and continuous testing as*
+*landed, elevates Android phone deployment as the headline next*
+*step (item 1 — the one that matters most), and names the 300-case*
+*field validation suite as the single biggest gap to deployment*
+*readiness.*
+
+*What remains as a 2026-04-07 snapshot: §2 end-to-end request flow,*
+*§3 retrieval internals (the four-pass search), §4 structured*
+*output schema, §6.2 chunk-size rationale, §7 preflight translator,*
+*§8 retrieval playbook, §10 hackathon-narrative stories. Those*
+*sections describe the architecture as it landed on 2026-04-07 and*
+*remain accurate for what they cover — the 2026-04-08 and*
+*2026-04-09 deltas are documented in the hackathon writeup §6*
+*(the two debugging-session subsections) and in CHANGELOG.*
+
+*Final judged benchmark on commit HEAD:*
+*E4B + MedLocal 101/101, E2B + MedLocal 101/101, Gemini 3.1 Pro*
+*naive 100/101 (HP03 harness artefact). 79 unit tests. 73*
+*protocols, all single-chunk, validated by `medlocal protocol audit`.*
+
+*The 2026-04-09 session added: `medications-pregnancy-safety-who`,*
+*`infant-safety-home-remedies-who`,*
+*`medication-side-effects-expected-vs-alarm-who`,*
+*`drug-rash-severity-who`; enriched `pneumonia-imci` (weight-only*
+*safety floor), `malaria-who` (explicit boundary examples after*
+*DA05), `fever-assessment-imci` (comfort measures without*
+*antipyretics), `pregnancy-antenatal-who` (common discomforts with*
+*safe-in-pregnancy management), `epilepsy-mhgap-who` (phenobarbital*
+*first-line and fever-in-epileptic-child rule), and*
+*`ear-infections-imci` (infant <3 months referral rule and the*
+*aminoglycoside-ototoxicity warning).*
