@@ -46,12 +46,13 @@ is one of four pillars:
    NDCG@10 = 0.7255 on SciFact; four retrieval improvements discovered
    during MedLocal development landed upstream in vstash 0.26.0 during
    the same week as this writeup
-3. **Structured, bounded WHO/MSF protocols** (69 files, one vstash
+3. **Structured, bounded WHO/MSF protocols** (71 files, one vstash
    chunk per file, every one traceable to an official source)
-4. **An 8-layer anti-hallucination pipeline** that catches scope
+4. **A 9-layer anti-hallucination pipeline** that catches scope
    violations, dose authority failures, silent parse errors,
-   cross-lingual emergency misses, and whack-a-mole negation gaps —
-   each layer closing a failure mode we observed during adversarial
+   cross-lingual emergency misses, whack-a-mole negation gaps, and
+   user-reported allergies that live only in the question — each
+   layer closing a failure mode we observed during adversarial
    testing
 
 On an adversarial 101-case benchmark covering 15 clinical safety
@@ -142,7 +143,7 @@ in force.
 
 ---
 
-## 3. The 8-layer defense
+## 3. The 9-layer defense
 
 ```
 Capa A  detect_emergency regex (EN + ES)          zero-cost fast path
@@ -153,7 +154,23 @@ Capa E  chat_structured (JSON schema)              format enforcement
 Capa F  check_dosages (value cross-check)          dose fidelity
 Capa G  check_controlled_drugs (authority)         defense in depth
 Capa H  StructuredLLMParseError → graceful refusal silent-failure close
+Capa I  PRIORITY 0 allergy guard (extract+override) user-reported constraints
 ```
+
+Capa I is the newest layer (landed 2026-04-09) and it closes a
+failure mode the other eight could not: **user-reported drug
+allergies live only in the question, not in any retrieved protocol.**
+The layer extracts allergies from the raw question with a 13-drug
+alias table (class-bridging: an allergy to penicillin blocks
+amoxicillin and ampicillin), injects a hard constraint into the
+system prompt before the LLM call, and post-processes the answer
+with `check_allergies_in_answer()` that overwrites the response
+with a safety refusal if the model still recommended an allergic
+drug. It parallels Capa G's defense-in-depth pattern: prompt-level
+constraint plus deterministic post-process backstop. The code is
+in `medlocal/safety.py::extract_allergies` and
+`medlocal/consult.py` PRIORITY 0 block. Twenty-one unit tests in
+`tests/test_unit.py` lock the regression.
 
 **How the three emergency-detection layers actually interact** —
 traced empirically through the benchmark on 2026-04-08 so this
@@ -827,9 +844,9 @@ This one sentence is the north star of the whole project and is
 worth re-stating in §10.
 
 Credit: four of the findings in this session were flagged by a
-structured review loop with an AI-assisted code reviewer (Silt). Each
-finding landed with a unit test so the regression cannot recur without
-a fast local signal.
+structured AI-assisted code review loop run against the HEAD commit
+before each merge. Each finding landed with a unit test so the
+regression cannot recur without a fast local signal.
 
 ### The 2026-04-09 follow-up — three more failure modes
 
@@ -933,7 +950,7 @@ Condensed from the sessions documented in `CHANGELOG.md` and
 | Defense in depth beats any single check | Every silent failure we found was a single check that lacked a second check to catch its own blind spot. The answer is always one more layer. |
 | The test harness itself is part of the system | A regex-based must-not-contain detector is whack-a-mole against LLM variance. The fix is the two-layer judge: fast-path regex for the 90 %, LLM judge for the ambiguous 10 %. The 2026-04-09 judge run cleared 6 Gemini "failures" that were not failures at all. |
 | vstash and MedLocal co-evolve | Four retrieval improvements discovered in MedLocal debugging landed upstream in vstash 0.26.0 during the same week. The retrieval engine and the clinical deployment are strongest together. |
-| Narrate the architecture you have, not the architecture you want | The first draft of this writeup claimed "Capa C rescues French XE03 via regex-over-translation". An empirical trace showed that Capa B (the preflight LLM) catches XE03 and Capa C does not fire at all because of a nominalisation mismatch. A plausible-sounding mechanism is not a verified mechanism. If you are claiming a failure mode is closed, trace the closure through the code before you write the sentence. Credit to Silt: "nine fixes, zero test assertions — confidence: fictional." |
+| Narrate the architecture you have, not the architecture you want | The first draft of this writeup claimed "Capa C rescues French XE03 via regex-over-translation". An empirical trace showed that Capa B (the preflight LLM) catches XE03 and Capa C does not fire at all because of a nominalisation mismatch. A plausible-sounding mechanism is not a verified mechanism. If you are claiming a failure mode is closed, trace the closure through the code before you write the sentence. A structured code review flagged the 2026-04-08 draft as "nine fixes, zero test assertions — confidence: fictional", and the lesson stuck. |
 | Continuous testing after every protocol addition | Adding a protocol changes the MMR and RRF rankings for every other case in the corpus. A protocol that fixes one case can silently regress a different one in an unrelated category. DA05 (malaria double-dose) regressed from PASS to FAIL after the pneumonia safety floor landed, even though retrieval was still correct. The rule is "full bench re-run before merge", not "spot-check the fix". |
 | The protocol must be explicit enough that a small model cannot misread it | DA05 was not a retrieval failure — the right chunk was at rank 1. It was a reading failure at the boundary between two adjacent weight bands. The fix was to rewrite the protocol with worked examples naming the specific boundary values ("a 12 kg child receives 1 tablet"), not to "fix the model". When a small model slips, the first place to look is whether the protocol gave it a clear enough answer to copy. |
 | User-reported constraints need a PRIORITY 0 guard, not a prompt hope | Allergies live in the user's message, not in any protocol. A small model will sometimes propagate the constraint and sometimes not. The fix is the same defense-in-depth pattern as the controlled-drug guard: extract the constraint before the LLM call, inject it as a hard prompt block, post-process the answer and override if the constraint was violated. Prompt hope is not a safety layer. |
@@ -1084,7 +1101,7 @@ follow-ups that surfaced new work rather than as deferred items.
    studies, shows the structured output live with source citations.
 
 7. **Pre-built `core.db` for distribution** — the one-file install.
-   Ship the SQLite database with all 70 protocols pre-ingested so
+   Ship the SQLite database with all 71 protocols pre-ingested so
    that the end user downloads, installs, and runs offline in three
    commands.
 
@@ -1152,7 +1169,7 @@ one last time:**
    and landed upstream in vstash 0.26.0 during the same week.
    The retrieval engine and the clinical deployment are strongest
    together.
-2. **Structured, bounded protocols** — 70 files, one chunk each,
+2. **Structured, bounded protocols** — 71 files, one chunk each,
    every one traceable to a WHO, MSF, UNICEF, or AAP source,
    every one editable by a clinician with a text editor. When
    WHO updates a guideline next week, a non-ML clinician fixes
@@ -1257,7 +1274,7 @@ This submission follows the Kaggle Gemma 4 Good Hackathon rules
 Development of MedLocal and its retrieval engine vstash was assisted
 by Claude (Anthropic) for code generation, refactoring, and
 documentation, and by a second AI model used in the structured
-code-review loop described in §6 (referred to internally as "Silt").
+code-review loop described in §6.
 All architectural decisions, algorithm choices, clinical protocol
 sourcing and validation against WHO, MSF, UNICEF, and AAP
 publications, retrieval benchmark design, safety-layer specification,
