@@ -45,7 +45,7 @@
 - [x] Model benchmark (24 scenarios x 8 models)
 - [x] Tested: E2B, E4B, Qwen 4B/9B, Gemma 31B, Flash Lite/Flash/Pro
 - [x] Bilingual verified (ES, FR, SW, HA, PT, AR, HI, AM)
-- [x] CLAUDE.md, README, constitution, ARCHITECTURE, PIPELINE, ROADMAP, SOURCES, CHANGELOG
+- [x] README, constitution, ARCHITECTURE, PIPELINE, ROADMAP, SOURCES, CHANGELOG
 - [x] Repo private on GitHub (`stffns/medlocal`)
 
 ### Benchmark Results

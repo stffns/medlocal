@@ -12,7 +12,34 @@ semver; we will cut 1.0.0 at Kaggle submission.
 
 ## [Unreleased]
 
-Nothing yet. Next work lines are tracked in `docs/ROADMAP.md`.
+### AI-assistance disclosure + agent config untracked (2026-04-09)
+
+Added an Acknowledgments section to `README.md` and
+`docs/HACKATHON-WRITEUP.md` that explicitly discloses the use of
+Claude (Anthropic) for code generation, refactoring, and
+documentation, and the use of a second AI model in the structured
+code-review loop referenced in §6 of the hackathon writeup
+(internally named "Silt"). The disclosure makes clear that all
+architectural decisions, clinical protocol sourcing, benchmark
+design, safety-layer specification, and evaluation methodology were
+authored and verified by the human author, and that clinical error
+remains the author's sole responsibility.
+
+Untracked the repository-level `CLAUDE.md` agent configuration file
+(added to `.gitignore`, removed from tracking via `git rm --cached`).
+That file is a tool-specific config read by Claude Code at the start
+of each session and does not belong in the published source tree.
+The same Acknowledgments section now serves as the canonical
+disclosure surface, so the information that used to live in
+`CLAUDE.md` is preserved in the more appropriate location.
+
+Cross-references to `CLAUDE.md` were removed from `README.md`,
+`docs/ARCHITECTURE.md`, and `docs/ROADMAP.md`. Historical mentions
+in earlier `CHANGELOG.md` entries were left intact as the dated
+record of past releases — rewriting those entries would misrepresent
+the repository's history at the time the changes landed.
+
+Next work lines are tracked in `docs/ROADMAP.md`.
 
 ---
 

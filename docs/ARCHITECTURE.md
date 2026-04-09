@@ -341,7 +341,6 @@ Qwen 3.5 9B           90.5%     18.6s      6/6      10/10
 medlocal/
 ├── pyproject.toml
 ├── README.md
-├── CLAUDE.md
 ├── medlocal.toml                 # Runtime config (gitignored — has API keys)
 ├── medlocal/
 │   ├── __init__.py

@@ -859,3 +859,20 @@ This submission follows the Kaggle Gemma 4 Good Hackathon rules
   under [17 U.S.C. § 102(b)](https://www.law.cornell.edu/uscode/text/17/102).
   No portion of any cited source document is reproduced verbatim.
   Full disclosure in [`docs/SOURCES.md`](SOURCES.md#copyright-originality-and-license-compatibility).
+
+## Acknowledgments
+
+Development of MedLocal and its retrieval engine vstash was assisted
+by Claude (Anthropic) for code generation, refactoring, and
+documentation, and by a second AI model used in the structured
+code-review loop described in §6 (referred to internally as "Silt").
+All architectural decisions, algorithm choices, clinical protocol
+sourcing and validation against WHO, MSF, UNICEF, and AAP
+publications, retrieval benchmark design, safety-layer specification,
+and the evaluation methodology were authored and verified by the
+human author. Every clinical protocol in `data/core/protocols/` was
+cross-checked against its cited source before inclusion, and every
+safety rule that appears in `medlocal/safety.py` was written to
+match a specific failure case the author observed during manual
+testing. Any clinical error in this system is the author's
+responsibility alone.

@@ -192,7 +192,6 @@ in front of a CHW at 2 a.m. in a clinic with no signal.
 - [`docs/SOURCES.md`](docs/SOURCES.md) — source-document traceability
 - [`docs/constitution.md`](docs/constitution.md) — vision and principles
 - [`CHANGELOG.md`](CHANGELOG.md) — release history (keep-a-changelog)
-- [`CLAUDE.md`](CLAUDE.md) — instructions for the agent that builds with this repo
 
 ## License
 
@@ -244,3 +243,17 @@ warranty and liability sections of the [`LICENSE`](LICENSE) file
 for the full terms. Use in any clinical setting is at the sole
 discretion and risk of the deploying healthcare professional or
 organization.
+
+## Acknowledgments
+
+Development of MedLocal and its retrieval engine vstash was assisted
+by Claude (Anthropic) for code generation, refactoring, and
+documentation, and by a second AI model used in a structured
+code-review loop during the hardening phase. All architectural
+decisions, algorithm choices, clinical protocol sourcing and
+validation against WHO, MSF, UNICEF, and AAP publications, retrieval
+benchmark design, safety-layer specification, and the evaluation
+methodology were authored and verified by the human author. Every
+clinical protocol in `data/core/protocols/` was cross-checked against
+its cited source before inclusion. Any clinical error in this system
+is the author's responsibility alone.
