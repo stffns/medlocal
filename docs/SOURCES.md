@@ -74,8 +74,10 @@ sponsorship by the cited organizations.
 ```
 LLM answer → vstash chunk → structured protocol → official source document
     ↑              ↑                  ↑                       ↑
-Gemma 4 E4B    chunk_id        data/core/protocols/      verifiable URL
-(formats only) (auditable)     (exact citation)          (downloadable)
+Gemma 4        chunk_id        data/core/protocols/      verifiable URL
+(E2B / E4B     (auditable)     (73 files, 1 chunk        (downloadable)
+ on-device,                      per file, WHO/MSF/
+ formats only)                   UNICEF/AAP sourced)
 ```
 
 ### Anti-hallucination architecture

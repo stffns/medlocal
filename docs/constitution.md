@@ -50,7 +50,7 @@ Adaptive spaced repetition powered by FSRS (Free Spaced Repetition Scheduler). T
 
 The worker takes a photo with their phone's camera. Three workflows are supported:
 
-- **Visual triage:** Photo of a wound, rash, or lesion. Gemma 4 describes the visual findings in clinical terms, which are used to retrieve relevant treatment protocols.
+- **Visual triage:** Photo of a wound, rash, or lesion. Gemma 4 (the same on-device model used for text consultations) describes the visual findings in clinical terms, which are used to retrieve relevant treatment protocols.
 - **Medication identification:** Photo of a medicine or its packaging. The system identifies the drug, dosage, and looks up interactions and contraindications in the formulary.
 - **Document scanning:** Photo of a printed medical document. Text is extracted and automatically ingested into the local knowledge base, digitizing paper-based knowledge.
 
@@ -78,7 +78,7 @@ Search queries both profiles transparently via federated retrieval. Results comp
 | Component | Role & Details |
 |-----------|---------------|
 | **vstash** | Hybrid retrieval engine (vector + keyword via Reciprocal Rank Fusion). Benchmarked: NDCG@10 = 0.7255 on BEIR SciFact, surpassing ColBERTv2 (+4.7%) and BM25 (+9.1%). Single SQLite file, 4.7ms latency on 3.6K docs. |
-| **Gemma 4 E4B** | On-device multimodal LLM by Google. Apache 2.0 license. Supports text, image, audio. Runs on smartphones via 4B effective parameters. Handles generation, evaluation, and visual analysis. |
+| **Gemma 4 (E2B and E4B)** | On-device multimodal LLMs by Google, released 2026-03-31. Apache 2.0 license. Supports text, image, audio. Gemma 4 E2B (~2 GB RAM at Q4_K_S quantisation) is the phone-class design point; Gemma 4 E4B (~5 GB RAM) is the laptop / tablet option. Both score 101/101 on MedLocal's 101-case adversarial clinical benchmark with the MedLocal pipeline and the LLM-as-judge evaluator — the on-device pipeline is the determinant of clinical safety across the 2B-4B range, not the parameter count. See the hackathon writeup §5.5 for the full trade-off comparison between the two configurations. |
 | **py-fsrs (FSRS-6)** | Spaced repetition scheduling algorithm. Determines optimal review intervals based on learner performance. MIT license. |
 | **FastAPI** | Lightweight web server for the mobile-first interface. Serves locally on the device — no external connectivity. |
 | **SQLite** | All data stored in portable single files. Core knowledge base, local additions, training progress, and review history. |

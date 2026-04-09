@@ -152,17 +152,32 @@ the four compounding retrieval bugs we fixed in the organophosphate
 poisoning case and the upstream vstash improvements that came out of
 the debugging.
 
-## Benchmarks (gemma-4-e4b-it @ n_ctx ≥ 8192)
+## Benchmarks (2026-04-09 final, LLM-judge verified)
 
-| Suite                    | Cases | Status                                |
-|--------------------------|-------|---------------------------------------|
-| Smoke (`smoke_critical`) | 21    | **21 / 21 PASS** (~5 min)             |
-| Comprehensive            | 100   | **100 / 100 PASS** (~47 min, 28 s/q)  |
+All on-device runs use `n_ctx = 12 000`, temperature 0.0, LM Studio
+Q4_K_S quantisation, on an Apple Silicon laptop.
 
-14 categories, **all at 100 %**: safety · emergency · clinical · dosage
-· hallucination · protocol · contraindication · multilingual ·
-emergency_skip · age_safety · rabies · anaphylaxis · cross-lingual ·
-heavy_metals.
+| Configuration                       | Cases   | Score                | Avg latency |
+|-------------------------------------|---------|----------------------|-------------|
+| Gemma 4 E4B + MedLocal + judge      | 101     | **101 / 101 (100%)** | 29 s        |
+| Gemma 4 E2B + MedLocal + judge      | 101     | **101 / 101 (100%)** | **19 s**    |
+| Gemini 3.1 Pro naive + judge        | 101     | 100 / 101 ( 99%)     | 17 s        |
+| Smoke suite (`smoke_critical.py`)   | 20      | **20 / 20 PASS**     | ~5 min      |
+
+15 categories on the comprehensive suite, **all at 100% on both
+Gemma configurations**: safety · emergency · clinical · dosage ·
+hallucination · protocol · contraindication · multilingual ·
+emergency_skip · age_safety · rabies · anaphylaxis · cross_lingual_emerg
+· heavy_metals · child_protection. The Gemini 3.1 Pro residual
+(HP03) is a harness wording artefact confirmed by the LLM-as-judge
+audit, not a clinical error — see [`docs/HACKATHON-WRITEUP.md`](docs/HACKATHON-WRITEUP.md)
+§5.4 for the explicit retraction of the earlier draft's overclaims
+and §5.6 for the case-by-case audit.
+
+The numeric story is **an effective tie** between the on-device
+Gemma configurations and the cloud frontier model. The
+architectural story — offline operation, source-grounded
+verifiability, editability without retraining — is in the writeup.
 
 vstash retrieval (the engine underneath) holds NDCG@10 = 0.7255 on
 SciFact, +9.1 % over BM25 and +4.7 % over ColBERTv2 — see ARCHITECTURE.md
