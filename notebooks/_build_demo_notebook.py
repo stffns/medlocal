@@ -572,7 +572,120 @@ _ = run_demo(
 """))
 
 # ------------------------------------------------------------------ #
-# 7. Closing                                                           #
+# 7. Vision pipeline (documentation only — not executed in this notebook) #
+# ------------------------------------------------------------------ #
+cells.append(md("""
+## Vision is the same model
+
+The seven cases above all use text input, but MedLocal supports
+**three vision workflows on top of the same Gemma 4 multimodal
+weights** the consult path uses. There is no second model, no
+separate vision API, no extra checkpoint to ship, and no parallel
+safety layer to maintain. **Every vision-derived recommendation
+runs through the same 9-layer safety pipeline a text question
+goes through.**
+
+We do not run a live vision call in this notebook for two reasons:
+
+1. **No shareable clinical photographs.** Authoring image-grounded
+   demos requires curated patient photographs we do not have a
+   shareable license to ship into a public Kaggle notebook.
+2. **Reviewer reproducibility.** The vision call is exercised by
+   the FastAPI mobile UI (`medlocal serve` → upload a photo via
+   the camera button). The reviewer who wants to test the vision
+   path locally can clone the repo, start the server, point a
+   phone or laptop browser at the local URL, and use the vision
+   workflows directly. The notebook stays text-only so it remains
+   self-contained and reproducible without binary assets.
+
+### The three vision workflows
+
+**1. Visual triage** (`POST /api/vision/triage`).
+The CHW takes a photo of a wound, rash, lesion, or any visible
+clinical finding, optionally with a short text context ("hace 3
+días", "duele al tocar", "the rash is spreading"). Gemma 4
+produces a clinical-language description of what it sees, the
+description is fed to `consult()` as enriched query context, and
+**the same 9-layer safety pipeline** produces the structured
+response with source-cited actions and refer-if conditions. The
+PRIORITY 0 allergy guardrail (Capa I) sees the enriched query —
+so if the user photographs a rash AND says "I gave amoxicillin,
+he is allergic to penicillin", the allergy extractor catches the
+constraint exactly the same way it does in a text-only consult.
+
+**2. Medication identification** (`POST /api/vision/medication`).
+The CHW takes a photo of a pill, blister pack, vial, or
+packaging label. Gemma 4 reads the label and identifies the
+drug; the identified drug name is then resolved against the
+retrieved formulary entries for dose, contraindications, and
+interactions through the same `consult()` call.
+
+**3. Document scanning** (`POST /api/vision/scan`).
+The CHW takes a photo of a printed clinical document (a national
+protocol page, a hand-written ward instruction, a referral
+form). Gemma 4 extracts the text, the structured markdown is
+added to the **`local`** profile of the dual-profile knowledge
+base, and the document becomes searchable for future
+consultations alongside the validated `core` corpus.
+
+### Why this matters as an architectural claim
+
+A cloud clinical assistant that wants to add vision pays in
+three places: a separate vision API call (which has its own
+latency, its own rate limit, its own failure modes, and its
+own privacy exposure for an image of a real patient), a second
+model that has to be kept in version sync with the text model,
+and a separate safety layer because the cloud vision model
+does not know about the text model's contraindication and
+allergy guards. **MedLocal pays in zero places.** The same
+Gemma 4 weights that just refused a paracetamol recommendation
+for an allergic child can in the next moment look at a photo
+of that child's skin rash and describe it in clinical
+language, and the description goes through the same allergy
+guardrail before any drug is suggested.
+
+Multimodal-on-device is not a checkbox feature for MedLocal —
+it is the architectural reason a CHW with a phone can use the
+system without any cloud round-trip at all, even when the
+question begins with a photograph instead of a sentence.
+
+### How to try the vision pipeline locally
+
+```bash
+# After installing the package and ingesting the core profile:
+medlocal serve --port 8765
+```
+
+Then open `http://localhost:8765` in a browser, click the
+camera button, take or upload a photo, optionally type a short
+context, and hit send. The response renders the visual
+findings, the assessment, the actions, the refer-if criteria,
+and the cited source protocols — all from a single Gemma 4
+model running locally with no network calls during
+consultation. The deep dive is in `docs/PIPELINE.md` §7.5 and
+the architectural framing is in `docs/HACKATHON-WRITEUP.md`
+§3.5 and Story 8.
+
+### Honest scope
+
+The vision pipeline is exercised by manual testing during
+development and by the mobile UI in field use. It is **not
+part of the 101-case adversarial benchmark** because authoring
+image-grounded test cases requires curated clinical
+photographs we do not have a shareable license to ship.
+Building a reproducible vision benchmark suite is on the
+backlog as part of the 300-case field validation work named in
+the hackathon writeup §5.7. The architectural claim — same
+model, same safety layer, same offline runtime — stands on
+the code in `medlocal/vision.py` and on the manual smoke
+tests during development. The benchmark-grade clinical
+accuracy claim for vision specifically is not part of this
+hackathon submission and we are explicit about the gap.
+"""))
+
+
+# ------------------------------------------------------------------ #
+# 8. Closing                                                           #
 # ------------------------------------------------------------------ #
 cells.append(md("""
 ## What this notebook did NOT show

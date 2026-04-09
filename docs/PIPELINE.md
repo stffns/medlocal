@@ -506,6 +506,148 @@ criterion, and a source is actionable.
 
 ---
 
+## 7.5 Vision pipeline (`vision.py`)
+
+> Added 2026-04-09. The earlier version of this document only
+> mentioned vision in passing in §6 (the local-profile document
+> ingest path). Vision is one of the load-bearing capabilities of
+> MedLocal — the same Gemma 4 weights that handle text consultations
+> handle images on-device — and it deserves its own section.
+
+The vision module exposes three workflows on top of the same
+multimodal Gemma 4 model the consult path uses. There is no
+second model, no separate vision API, no extra checkpoint to
+ship, and no parallel safety layer to maintain. Every
+vision-derived recommendation is routed through the same
+9-layer pipeline a text question goes through.
+
+### 7.5.1 `triage(image, cfg, user_context)` — visual triage
+
+The simplest workflow. Takes an image path and an optional
+short text context from the CHW ("hace 3 días", "duele al
+tocar", "the rash is spreading"). Encodes the image to base64,
+formats `_TRIAGE_PROMPT_BASE` with the language instruction,
+and calls the multimodal endpoint. Returns the model's
+clinical-language description plus suggested search terms.
+
+The prompt instructs the model to **describe in clinical
+language, in the user's language, in under 150 words, and to
+suggest retrieval terms** — the goal is a description that is
+specific enough to drive `vstash.search` to the right protocol,
+not a discharge summary.
+
+### 7.5.2 `triage_and_consult(image, kb, cfg, user_context)` — full vision pipeline
+
+This is the workflow the mobile UI calls. It chains
+`triage()` into `consult()` so the visual findings become
+context for the standard consult pipeline:
+
+```
+image + user_context (any language)
+    │
+    ▼
+triage()                — Gemma 4 multimodal call
+    │                     returns visual description in user's language
+    ▼
+extract suggested       — regex pulls "Suggested search terms: ..."
+search terms            — out of the description if present
+    │
+    ▼
+build enriched_query    — "PHOTO CONTEXT (observed by CHW before
+    │                     asking): {visual_findings}\n\nCHW QUESTION:
+    │                     {user_context or search_terms}"
+    │                     The visual findings are PREMISES of the
+    │                     question, not optional decoration.
+    ▼
+consult(enriched_query, — same call the text path uses, with
+        kb,             — language=cfg.language so the response
+        cfg.llm,        — language is honoured (the 2026-04-09 fix)
+        language=cfg.language)
+    │
+    ▼
+Capa A → B → C → D → E → F → G → H → I
+    │                        — full 9-layer safety pipeline runs
+    │                        — exactly the same way as text
+    ▼
+structured response + visual description + cited sources → mobile UI
+```
+
+**The architectural point.** The vision call runs once per
+request, the consult call runs once per request, and they use
+the same Gemma 4 weights from the same loaded model in the
+same llama.cpp / Ollama / LM Studio runtime. There is no
+network. There is no second model. The PRIORITY 0 allergy
+guardrail (Capa I) sees the enriched query — so if the user
+photographs a rash AND says "le di amoxicilina, es alérgico a
+penicilina", the allergy extractor catches the constraint
+exactly the same way it does in a text-only consult.
+
+The 2026-04-09 review surfaced two real bugs in this path —
+the language parameter was not being passed to `consult()` and
+the auto-detector regex had a Spanish/Swahili "ni" collision —
+both fixed in commit `4c19a63` with twelve new unit tests as
+the regression guard. The lesson: **even the bugs in vision
+were caught by the same engineering discipline that drove the
+text side**, and the fix path was identical (manual test →
+audit → unit test → commit).
+
+### 7.5.3 `identify_medication(image, cfg)` — medication ID
+
+A single-call workflow that takes a photo of a pill, blister
+pack, vial, or packaging label and asks Gemma 4 to identify
+the drug. The known limitation listed in §9 — the triage
+prompt was tuned to "describe what you see" rather than "read
+text first" — is a gap that bites this workflow specifically:
+photos of medication labels currently come back as scene
+descriptions ("a white box with blue text") rather than as
+extracted text ("AMOXICILLIN 500 mg"). The fix is scoped (an
+explicit OCR-intent prompt before the scene description) and
+sits on the backlog as the "vision triage text-reading pass"
+item.
+
+When the bug is fixed, the identified drug name will be
+resolved against the retrieved formulary entries via the same
+`consult()` call as triage_and_consult, so the safety layer
+catches age contraindications, allergies, and dose-authority
+violations the same way.
+
+### 7.5.4 `scan_document(image, cfg)` and `scan_and_ingest(image, kb, cfg)` — document scanning
+
+The third workflow turns a photo of a printed clinical
+document — a national protocol page, a hand-written ward
+instruction, a referral form, a posted IMCI chart — into
+structured markdown that gets ingested into the **`local`**
+profile of the dual-profile knowledge base. The CHW's
+supervisor can take a photo of a country-specific protocol the
+core corpus does not cover, the system extracts the text,
+chunks it through vstash with the same chunking rules as core
+protocols, and the new content becomes searchable from the
+next consultation onwards.
+
+This is the architectural answer to "what if my country has
+its own protocol that is not in the WHO core?" — the local
+profile is editable by the deploying organisation, the core
+profile is read-only and ships with the app, and federated
+search merges results from both with the best score winning.
+
+### 7.5.5 What is NOT yet in scope
+
+The vision pipeline is exercised by manual testing during
+development and by the mobile UI in field use. It is **not
+part of the 101-case adversarial benchmark** because authoring
+image-grounded test cases requires curated clinical
+photographs we do not have a shareable license to ship.
+Building a reproducible vision benchmark suite is on the
+backlog as part of the 300-case field validation work named
+in the hackathon writeup §5.7. The architectural claim — same
+model, same safety layer, same offline runtime — stands on
+the code in `medlocal/vision.py` and on the manual smoke
+tests during development. The benchmark-grade clinical
+accuracy claim for vision specifically is not part of this
+hackathon submission and we are explicit about the gap.
+
+---
+
 ## 8. Debugging playbook: when a protocol is "in the DB but not surfacing"
 
 This is the playbook we built on 2026-04-07 and will reach for next

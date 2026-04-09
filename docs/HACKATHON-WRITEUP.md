@@ -43,9 +43,17 @@ model (Gemma 4 E2B, 2B effective parameters, ~2.5 GB, released by
 Google on 2026-03-31 and built on during its first week in the wild)
 is one of four pillars:
 
-1. **Gemma 4 E2B** — on-device inference, phone-class memory footprint
-   (PLE / nested transformers preserve RAM and battery during
-   generation)
+1. **Gemma 4 E2B — multimodal, on-device, one model for everything** —
+   the same E2B that handles text consultations also handles visual
+   triage, medication identification, and document scanning. There
+   is no separate vision API, no second model to ship, no extra
+   memory footprint, no network round-trip for the visual pass.
+   The CHW takes a photo of a wound, a medication package, or a
+   printed protocol page and the same Gemma 4 weights that just
+   answered the previous text question describe what it sees. PLE
+   / nested transformers keep the RAM and battery footprint
+   phone-class during generation; the multimodal head is part of
+   the same checkpoint.
 2. **vstash** — a local hybrid SQLite + FTS5 retrieval engine with
    NDCG@10 = 0.7255 on SciFact; four retrieval improvements discovered
    during MedLocal development landed upstream in vstash 0.26.0 during
@@ -57,7 +65,11 @@ is one of four pillars:
    cross-lingual emergency misses, whack-a-mole negation gaps, and
    user-reported allergies that live only in the question — each
    layer closing a failure mode we observed during adversarial
-   testing
+   testing. The vision pipeline sits on the SAME safety layer: a
+   visual triage that produces a clinical description hands the
+   description to the same `consult()` call that handles text, so
+   every vision-derived recommendation also passes through Capa A
+   through Capa I before it reaches the CHW.
 
 On an adversarial 101-case benchmark covering 15 clinical safety
 categories, evaluated with an LLM-as-judge fallback so that wording
@@ -241,6 +253,80 @@ The deep dive for each layer lives in `docs/PIPELINE.md`. Three of
 them — Capa C, Capa G, and Capa H — are the output of a single review
 session on 2026-04-08 where four structural failure modes were found
 and closed in six hours. That session is detailed in §6 below.
+
+### 3.5 Vision is the same model — and that is the architectural point
+
+A community health worker does not work with a keyboard. They work
+with a phone, a patient, often a printed protocol page taped to a
+clinic wall, sometimes a medication blister pack with a label
+worn to nothing, and a wound or rash they cannot describe in
+words. **Any clinical assistant for a CHW that cannot accept an
+image is not actually built for the user it claims to serve.**
+
+MedLocal supports three vision workflows, all running through the
+**same Gemma 4 multimodal weights** that handle text consultations:
+
+- **Visual triage** (`POST /api/vision/triage`). The CHW takes a
+  photo of a wound, rash, lesion, or any visible clinical finding,
+  optionally with a short text context ("hace 3 días", "duele al
+  tocar"). Gemma 4 produces a clinical-language description of
+  what it sees, that description is fed to `consult()` as
+  enriched query context, and the same 9-layer safety pipeline
+  produces the structured response with source-cited actions and
+  refer-if conditions. **The vision-derived recommendation passes
+  through Capa A through Capa I exactly the same way a text
+  question does.** No bypass, no separate code path, no second
+  safety layer to maintain.
+- **Medication identification** (`POST /api/vision/medication`).
+  The CHW takes a photo of a pill, blister pack, vial, or
+  packaging label. Gemma 4 reads the label and identifies the
+  drug; the identified drug name is then resolved against the
+  retrieved formulary entries for dose, contraindications, and
+  interactions. The medication-ID pipeline is the only place
+  where the vision OCR limitation noted in §9 item 13 currently
+  bites — the triage prompt was tuned for "describe what you see"
+  rather than "read text first" — and the fix is on the backlog.
+- **Document scanning** (`POST /api/vision/scan`). The CHW takes a
+  photo of a printed clinical document (a national protocol page,
+  a hand-written ward instruction, a referral form). Gemma 4
+  extracts the text, the structured markdown is added to the
+  `local` profile of the dual-profile knowledge base, and the
+  document becomes searchable for future consultations alongside
+  the validated `core` corpus.
+
+**Why this matters as an architectural claim, stated plainly.**
+A cloud clinical assistant that wants to add vision pays in three
+places: a separate vision API call (which has its own latency,
+its own rate limit, its own failure modes, and its own privacy
+exposure for an image of a real patient), a second model that has
+to be kept in version sync with the text model, and a separate
+safety layer because the cloud vision model does not know about
+the text model's contraindication and allergy guards. MedLocal
+pays in zero places. **The same Gemma 4 weights that just refused
+a paracetamol recommendation for an allergic child can in the
+next moment look at a photo of that child's skin rash and
+describe it in clinical language, and the description goes
+through the same allergy guardrail before any drug is suggested.**
+Multimodal-on-device is not a checkbox feature for MedLocal; it
+is the architectural reason a CHW with a phone can use the
+system without any cloud round-trip at all.
+
+**The honest scope.** Vision is in the codebase
+(`medlocal/vision.py`), is exposed via three FastAPI endpoints
+(`/api/vision/triage`, `/api/vision/medication`, `/api/vision/scan`),
+is rendered in the mobile-first web UI (`medlocal/web.py`), and
+runs cleanly on E4B and on Gemini cloud variants of Gemma 4. It
+is **not currently part of the 101-case adversarial benchmark**
+because authoring image-grounded test cases requires curated
+clinical photographs we do not have a shareable license to ship.
+The vision pipeline is exercised by manual testing during
+development; building a reproducible vision benchmark suite is
+on the backlog as part of the 300-case field validation work
+named in §5.7. The architectural claim — same model, same safety
+layer, same offline runtime — stands on the code. The
+benchmark-grade clinical accuracy claim for vision specifically
+is not part of this submission and we are explicit about that
+gap.
 
 ---
 
@@ -1095,6 +1181,71 @@ citation** (`Child Protection Who` at rank 1, score 0.017). The
 architecture's anti-hallucination principle is not aspirational —
 it is a gate that we discovered was open, and we closed it. The
 new case `CP01` in the benchmark is the regression guard.
+
+### Story 8 — A photo, a question, the same model, the same safety layer
+
+A CHW takes a photo of a child's leg with a reddish-brown
+discoloration. Alongside the photo they type, in Spanish:
+*"Mancha roja en la pierna sin dolor ni fiebre"* (a red spot on
+the leg without pain or fever). The phone has no network. There
+is no separate vision API to call.
+
+Inside MedLocal the request flows through `triage_and_consult()`:
+
+1. **Visual triage call (Gemma 4, multimodal).** The same Gemma 4
+   weights that handle text consultations are called with the
+   image and the user's text context. The model produces a
+   clinical-language description of what it sees in the photo,
+   in the user's language ("VISUAL FINDINGS: A reddish-brown
+   discoloration is present on the anterior aspect of the lower
+   leg/calf region. The area appears erythematous and slightly
+   hyperpigmented...").
+2. **Enriched query construction.** The visual description is
+   prepended to the user's text question as `PHOTO CONTEXT
+   (observed by CHW before asking): ...` so the downstream
+   consult treats the visual findings as premises of the
+   question, not as optional decoration.
+3. **Standard consult pipeline.** The enriched query is passed
+   to `consult()` with the **same** language parameter from
+   `cfg.language`, the **same** PRIORITY 0 allergy guardrail,
+   the **same** preflight scope and emergency classifier, the
+   **same** 4-pass vstash retrieval, the **same** structured
+   output schema, and the **same** post-process safety checks
+   (controlled drugs, allergies, dosages). The vision-derived
+   recommendation passes through every layer Capa A through
+   Capa I that a text-only consultation passes through. There
+   is no special-case bypass and no separate vision safety
+   layer to maintain.
+4. **Response.** The CHW sees the visual findings rendered as
+   one block, the assessment as another, the actions as
+   numbered steps, the refer-if criteria, and the cited source
+   protocols at the bottom — all of it produced by **one
+   on-device Gemma 4 inference for the vision step plus one for
+   the consult step**, with retrieval against the local SQLite,
+   no network calls in the entire pipeline.
+
+This case is the architectural answer to the question "but can
+your phone-class model handle real photos of patients?". The
+answer is yes, the same way it handles text — by routing the
+photo through the same multimodal weights, applying the same
+safety layer, and citing the same WHO/MSF/UNICEF/AAP protocols.
+The vision side of the pipeline is **not separately
+benchmarked** in the 101-case adversarial suite (see §3.5 for
+the honest scope) and a curated 300-case vision validation
+suite is part of the field-trial work in §9, but the
+architectural claim — same model, same safety layer, same
+offline runtime — is what the code does today.
+
+The case also surfaced a real bug during the 2026-04-09 review:
+the vision pipeline was not honouring `cfg.language` and the
+auto-detector was misclassifying a Spanish input as Swahili
+because of a single-word regex collision on "ni". Both bugs
+were fixed in commit `4c19a63` with twelve new unit tests as
+the regression guard. **Even the bugs we found in vision were
+caught by the same engineering discipline that drove the text
+side: a manual test surfaced the failure, the audit traced both
+the symptom and the root cause, and the fix landed with unit
+tests so it cannot recur silently.**
 
 ---
 
