@@ -57,7 +57,22 @@ is one of four pillars:
 2. **vstash** — a local hybrid SQLite + FTS5 retrieval engine with
    NDCG@10 = 0.7255 on SciFact; four retrieval improvements discovered
    during MedLocal development landed upstream in vstash 0.26.0 during
-   the same week as this writeup
+   the same week as this writeup. vstash also supports **snapvec** as
+   an optional pluggable vector backend: a pure-NumPy 4-bit quantized
+   index (Randomized Hadamard Transform + Lloyd-Max scalar quantization,
+   implementing the TurboQuant algorithm from Zandieh et al., ICLR 2026)
+   that achieves ~8× on-disk compression of the vector index with
+   ≈0.95 recall@10, no training step, and no dependencies beyond NumPy.
+   snapvec is published as a separate MIT-licensed package by the same
+   author (`github.com/stffns/snapvec`). At MedLocal's current scale of
+   73 protocols the snapvec savings are immaterial (the vector index is
+   ~112 KB at float32), but the swap is a one-line config change, and
+   at a deployment scale of 5 000 protocols — a plausible national
+   corpus combining WHO + country-specific + facility-level guidelines —
+   the same swap turns a 7.7 MB vector index into a ~0.98 MB one on
+   phone-class storage. **vstash is engineered for the deployment story
+   MedLocal is aiming at**, even when the hackathon corpus does not yet
+   need all of its knobs.
 3. **Structured, bounded WHO/MSF protocols** (73 files, one vstash
    chunk per file, every one traceable to an official source)
 4. **A 9-layer anti-hallucination pipeline** that catches scope

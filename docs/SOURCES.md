@@ -62,6 +62,61 @@ sponsorship by the cited organizations.
 
 ---
 
+## Engine dependencies and co-authored open source
+
+MedLocal ships as a Python package that depends on several
+open-source libraries installed from PyPI. The two most
+architecturally load-bearing are both published by the same
+author (Jayson Steffens) as independent MIT-licensed projects,
+and both were written or extended during MedLocal development:
+
+- **vstash** (MIT, [`github.com/stffns/vstash`](https://github.com/stffns/vstash))
+  — the hybrid SQLite + FTS5 + vector retrieval engine that sits
+  under the MedLocal `knowledge.py` layer. Four retrieval
+  improvements discovered while debugging the organophosphate
+  cholinergic toxidrome case (2026-04-07) landed upstream in
+  vstash 0.26.0 during the same week as this writeup: adaptive
+  RRF weighting, first-class `fts_only` search mode, MMR no-op
+  on single-chunk documents, and forwarding of
+  `vec_weight / fts_weight / mmr_lambda` through `Memory.search`.
+  NDCG@10 = 0.7255 on BEIR SciFact (+9.1 % vs BM25, +4.7 % vs
+  ColBERTv2). See `docs/PIPELINE.md` §3 and §6 for the full
+  retrieval deep dive.
+
+- **snapvec** (MIT, [`github.com/stffns/snapvec`](https://github.com/stffns/snapvec))
+  — an optional pluggable vector backend for vstash. Pure NumPy,
+  no scipy, no FAISS, no C extensions. Implements the TurboQuant
+  compression pipeline from Zandieh et al. (ICLR 2026,
+  [arXiv:2504.19874](https://arxiv.org/abs/2504.19874)): a
+  Randomized Hadamard Transform followed by Lloyd-Max optimal
+  scalar quantization at 2/3/4 bits per coordinate, with
+  precomputed codebooks for the standard normal distribution so
+  there is no training step. At 4-bit precision snapvec achieves
+  ~8 × on-disk compression of a float32 vector index with
+  ≈0.95 recall@10 on BGE-small embeddings. MedLocal does not
+  enable snapvec for this hackathon submission (at 73 protocols
+  the savings are ~100 KB on a 3 MB database — immaterial) but
+  the engine supports the swap via a one-line config change in
+  `VstashStore(vector_backend="snapvec")`, and at a plausible
+  deployment scale of 5 000 protocols per country the same swap
+  turns a 7.7 MB vector index into a ~0.98 MB one on phone-class
+  storage. snapvec is the architectural readiness for the
+  deployment story MedLocal is aiming at, even if the current
+  corpus is too small to exercise it.
+
+Both packages ship their own MIT license, are listed as
+dependencies in `pyproject.toml`, and are installed from PyPI by
+the normal `pip install medlocal` path. The decision to carve
+them out as independent published libraries rather than vendor
+them into the MedLocal tree was deliberate: vstash is generic
+retrieval infrastructure that could support non-clinical
+deployments, and snapvec is a pure-NumPy compression library
+whose usefulness extends beyond vector search. The MedLocal
+repository is the integration and clinical specialisation on
+top of those engines, not the engines themselves.
+
+---
+
 ## Founding Principle: Total Traceability
 
 > Every answer MedLocal generates MUST be traceable to an officially
