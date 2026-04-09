@@ -101,17 +101,34 @@ happens in the cloud instead of on a phone.
 
 ## Six demonstration cases
 
-1. **Allergy guardrail fires** — *"Nino con fiebre 39C alergia a paracetamol e ibuprofeno"* — the PRIORITY 0 allergy extractor detects two allergens, injects a hard prompt constraint, and the post-process backstop overrides the answer if the model slips. Both paracetamol and ibuprofen are refused, WHO-aligned interim care is given.
-2. **Scope boundary — hallucination refusal** — *"What is the correct vancomycin trough level for my patient?"* — the preflight classifier marks the case `out_of_scope=true`, short-circuits before retrieval, and returns a clean refusal. The naive cloud baseline would happily quote a trough level.
-3. **Cross-lingual emergency** — *"Bébé ne peut pas boire, vomit tout"* — the preflight LLM applies the explicit IMCI general-danger-sign reasoning rule across French and returns an urgent referral.
-4. **Structured dosing with weight band** — *"Artemether-lumefantrine dose for child weighing 12kg with malaria"* — the malaria protocol now contains explicit boundary examples ("a 12 kg child receives 1 tablet per dose"), preventing the small-model band-boundary misread that was the DA05 regression.
-5. **Side-effect recognition — expected vs alarm** — *"Mi hijo toma rifampicina y su orina está naranja, ¿debo parar?"* — the new medication-side-effects-expected-vs-alarm protocol recognises rifampicin orange urine as a benign expected effect and reassures the CHW to continue the drug.
-6. **Pediatric drug reaction — ototoxicity** — *"Le puse gentamicina en gotas al bebé de 1 mes por una infección en el oído y ahora no reacciona a los sonidos"* — the enriched ear-infections protocol recognises aminoglycoside ototoxicity risk, refers urgently with the suspected diagnosis, and explains why ciprofloxacin ear drops are the CHW-safe alternative in young infants and suspected perforation.
+This document is written in English for the Kaggle review audience.
+MedLocal itself is multilingual: the input questions below are shown
+**in the original language as a CHW would type them**, followed by an
+English translation in brackets so an English-speaking reviewer can
+follow the demonstration without reading Spanish or French. The
+multilingual inputs are load-bearing for the demonstration — the
+system's ability to handle them is part of the architectural claim.
+
+1. **Allergy guardrail fires** — input *"Nino con fiebre 39C alergia a paracetamol e ibuprofeno"* [*"Child with 39°C fever, allergic to paracetamol and ibuprofen"*]. The PRIORITY 0 allergy extractor detects two allergens, injects a hard prompt constraint, and the post-process backstop overrides the answer if the model slips. Both paracetamol and ibuprofen are refused, WHO-aligned interim care is given.
+2. **Scope boundary — hallucination refusal** — input *"What is the correct vancomycin trough level for my patient?"* [English original]. The preflight classifier marks the case `out_of_scope=true`, short-circuits before retrieval, and returns a clean refusal. The naive cloud baseline would happily quote a trough level.
+3. **Cross-lingual emergency** — input *"Bébé ne peut pas boire, vomit tout"* [*"Baby cannot drink, vomits everything"*]. The preflight LLM applies the explicit IMCI general-danger-sign reasoning rule across French and returns an urgent referral.
+4. **Structured dosing with weight band** — input *"Artemether-lumefantrine dose for child weighing 12kg with malaria"* [English original]. The malaria protocol now contains explicit boundary examples ("a 12 kg child receives 1 tablet per dose"), preventing the small-model band-boundary misread that was the DA05 regression.
+5. **Side-effect recognition — expected vs alarm** — input *"Mi hijo toma rifampicina para tuberculosis y su orina está naranja rojiza, ¿debo suspender el tratamiento?"* [*"My son is on rifampicin for tuberculosis and his urine is orange-red, should I stop the treatment?"*]. The new medication-side-effects-expected-vs-alarm protocol recognises rifampicin orange urine as a benign expected effect and reassures the CHW to continue the drug.
+6. **Pediatric drug reaction — ototoxicity** — input *"Le puse gentamicina en gotas al bebé de 1 mes por una infección en el oído y ahora no reacciona a los sonidos"* [*"I put gentamicin ear drops in the 1-month-old baby for an ear infection and now he is not responding to sounds"*]. The enriched ear-infections protocol recognises aminoglycoside ototoxicity risk, refers urgently with the suspected diagnosis, and explains why ciprofloxacin ear drops are the CHW-safe alternative in young infants and suspected perforation.
 
 Each case renders the structured JSON output (`assessment`, `actions`,
 `refer_if`, `source_protocol`, `confidence`, `safety_flags`) plus the
 retrieved source protocol at rank 1. The source grounding is the
 architectural claim the cloud model cannot match.
+
+**A note on English vs multilingual.** The Kaggle audience is in
+English and all narrative sections of this notebook are in English.
+The MedLocal output language for each case will follow the language
+of the question (e.g. the rifampicin case will return Spanish because
+the CHW asked in Spanish). That is the intended CHW-facing behaviour.
+For the review audience, the bracketed English gloss above and the
+headers on each demonstration cell explain what is happening without
+requiring the reviewer to read the output language.
 """))
 
 # ------------------------------------------------------------------ #
@@ -311,7 +328,10 @@ def run_demo(question: str, *, title: str, expected_behavior: str):
 cells.append(md("""
 ## Case 1 — Allergy guardrail fires (PRIORITY 0 defense-in-depth)
 
-Question: a child has fever and is allergic to BOTH paracetamol and
+Original Spanish input: *"Nino con fiebre 39C alergia a paracetamol e ibuprofeno"*
+**English translation:** *"Child with 39°C fever, allergic to paracetamol and ibuprofen."*
+
+A child has fever and is allergic to BOTH paracetamol and
 ibuprofen. The MedLocal pipeline must NOT recommend either drug.
 
 This case drove the 2026-04-09 allergy guardrail (commit `33f5edb`).
@@ -351,9 +371,12 @@ _ = run_demo(
 cells.append(md("""
 ## Case 3 — Cross-lingual emergency classification
 
-Question: in French, *"Bébé ne peut pas boire, vomit tout"*. The
-preflight LLM's explicit IMCI danger-sign reasoning rules let an
-E2B-class model apply clinical reasoning it could not derive alone.
+Original French input: *"Bébé ne peut pas boire, vomit tout"*
+**English translation:** *"Baby cannot drink, vomits everything."*
+
+This is a textbook IMCI general danger sign in French. The preflight
+LLM's explicit IMCI danger-sign reasoning rules let an E2B-class
+model apply clinical reasoning it could not derive alone.
 The cloud baseline with a naive prompt also handles this case well
 — but only because Gemini 3.1 Pro is a frontier model. The naive
 Gemma 4 E2B without the preflight prompt fails this case.
@@ -392,7 +415,10 @@ _ = run_demo(
 cells.append(md("""
 ## Case 5 — Expected side effect recognition
 
-Question: a parent is worried about their child's orange urine on
+Original Spanish input: *"Mi hijo toma rifampicina para tuberculosis y su orina está naranja rojiza, ¿debo suspender el tratamiento?"*
+**English translation:** *"My son is on rifampicin for tuberculosis and his urine is orange-red, should I stop the treatment?"*
+
+A parent is worried about their child's orange urine on
 rifampicin TB treatment. The new
 `medication-side-effects-expected-vs-alarm-who.md` protocol (commit
 `5c1066b`) lists this as an **expected** benign side effect — NOT a
@@ -410,7 +436,10 @@ _ = run_demo(
 cells.append(md("""
 ## Case 6 — Pediatric aminoglycoside ototoxicity recognition
 
-Question: a parent put gentamicin ear drops in a 1-month-old baby
+Original Spanish input: *"Le puse gentamicina en gotas al bebé de 1 mes por una infección en el oído y ahora no reacciona a los sonidos"*
+**English translation:** *"I put gentamicin ear drops in the 1-month-old baby for an ear infection and now he is not responding to sounds."*
+
+A parent put gentamicin ear drops in a 1-month-old baby
 with an ear infection, and the baby has stopped responding to
 sounds. This is the scenario the enriched `ear-infections-imci.md`
 protocol now covers: any ear complaint in an infant under 3 months
