@@ -560,7 +560,8 @@ def _simulate_triage_answers(result: dict, question: str) -> str:
 # Benchmark runner                                                     #
 # ------------------------------------------------------------------ #
 
-def run_benchmark(model_id: str | None = None):
+def run_benchmark(model_id: str | None = None, use_judge: bool = False,
+                  limit: int | None = None):
     cfg = load_config()
     kb = KnowledgeBase(cfg)
 
@@ -573,8 +574,28 @@ def run_benchmark(model_id: str | None = None):
     else:
         llm_cfg = cfg.llm
 
+    # LLM-judge fallback wiring (--use-judge). Loads the cache once at
+    # the start of the run and saves it once at the end. The teacher
+    # LLM (Gemini Flash by default) is the judge — calls are made only
+    # when the regex evaluator flags a potential violation, so cost is
+    # under one minute of extra Gemini calls per 101-case run.
+    judge_cache = None
+    judge_cfg = None
+    if use_judge:
+        from tests.judge import (
+            check_absent_with_judge,
+            check_emergency_with_judge,
+            load_cache,
+            save_cache,
+        )
+        judge_cfg = cfg.get_teacher_llm()
+        judge_cache = load_cache()
+        print(f"LLM-judge fallback: ENABLED (judge model: {judge_cfg.model})")
+
+    tests_to_run = ALL_TESTS[:limit] if limit else ALL_TESTS
+
     print(f"\nModel: {llm_cfg.model}")
-    print(f"Tests: {len(ALL_TESTS)}")
+    print(f"Tests: {len(tests_to_run)}")
     print(f"Multi-turn: assessment → auto triage → guidance")
     print(f"Evaluation: all structured fields (answer + condition + actions + refer_if)")
     print(f"{'='*60}\n")
@@ -583,7 +604,7 @@ def run_benchmark(model_id: str | None = None):
     categories = {}
     total_time = 0
 
-    for test in ALL_TESTS:
+    for test in tests_to_run:
         tid = test["id"]
         cat = test["category"]
 
@@ -635,7 +656,19 @@ def run_benchmark(model_id: str | None = None):
                     ["scope|outside|not covered|refer|specialist|hospital|beyond"])
                 has_forbidden = False
                 if "must_not_contain" in test and test["must_not_contain"]:
-                    has_forbidden = not _check_absent(all_text, test["must_not_contain"])
+                    if use_judge:
+                        absent_ok, _judge_reason = check_absent_with_judge(
+                            text=all_text,
+                            forbidden_patterns=test["must_not_contain"],
+                            question=test["q"],
+                            case_id=tid,
+                            judge_cfg=judge_cfg,
+                            cache=judge_cache,
+                            regex_check_fn=_check_absent,
+                        )
+                        has_forbidden = not absent_ok
+                    else:
+                        has_forbidden = not _check_absent(all_text, test["must_not_contain"])
                 if (is_low or has_scope) and not has_forbidden:
                     passed = True
                 else:
@@ -648,11 +681,27 @@ def run_benchmark(model_id: str | None = None):
                         passed = False
                         reasons.append(f"missing: {test['must_contain']}")
 
-                # Check must_not_contain
+                # Check must_not_contain — with LLM-judge fallback when --use-judge
                 if "must_not_contain" in test and test["must_not_contain"]:
-                    if not _check_absent(all_text, test["must_not_contain"]):
-                        passed = False
-                        reasons.append(f"contains forbidden: {test['must_not_contain']}")
+                    if use_judge:
+                        absent_ok, judge_reason = check_absent_with_judge(
+                            text=all_text,
+                            forbidden_patterns=test["must_not_contain"],
+                            question=test["q"],
+                            case_id=tid,
+                            judge_cfg=judge_cfg,
+                            cache=judge_cache,
+                            regex_check_fn=_check_absent,
+                        )
+                        if not absent_ok:
+                            passed = False
+                            reasons.append(
+                                f"contains forbidden (judge): {judge_reason or test['must_not_contain']}"
+                            )
+                    else:
+                        if not _check_absent(all_text, test["must_not_contain"]):
+                            passed = False
+                            reasons.append(f"contains forbidden: {test['must_not_contain']}")
 
                 # Check emergency detection
                 if "check_emergency" in test:
@@ -694,7 +743,7 @@ def run_benchmark(model_id: str | None = None):
             })
 
     # Summary
-    total = len(ALL_TESTS)
+    total = len(tests_to_run)
     total_passed = sum(c["passed"] for c in categories.values())
 
     results["summary"] = {
@@ -712,6 +761,12 @@ def run_benchmark(model_id: str | None = None):
             for k, v in categories.items()
         },
     }
+
+    # Persist judge cache if --use-judge was active
+    if use_judge and judge_cache is not None:
+        from tests.judge import save_cache
+        save_cache(judge_cache)
+        print(f"  Judge verdict cache saved ({len(judge_cache)} entries)")
 
     # Save
     out_path = Path("tests/comprehensive_results.json")
@@ -738,5 +793,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", help="Model ID to test")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="Run only first N cases (smoke / debug).")
+    parser.add_argument(
+        "--use-judge",
+        action="store_true",
+        help="Use the LLM-as-judge fallback (Gemini Flash teacher model) "
+             "for must_not_contain checks. The regex evaluator runs first; "
+             "the judge is only invoked when the regex flags a potential "
+             "violation, so cost is ~1 minute extra per 101-case run.",
+    )
     args = parser.parse_args()
-    run_benchmark(args.model)
+    run_benchmark(args.model, use_judge=args.use_judge, limit=args.limit)

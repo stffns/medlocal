@@ -97,18 +97,63 @@ def run_baseline_case(question: str, teacher_cfg) -> tuple[str, float, str | Non
         return "", time.time() - t0, str(exc)
 
 
-def evaluate_case(test: dict, response: str) -> tuple[bool, list[str]]:
+URGENT_CUES = [
+    # English
+    "urgent", "immediately", "emergency", "refer urgently",
+    "call for help", "transport now",
+    # Spanish
+    "urgente", "inmediatamente", "referir urgente", "emergencia",
+    # French (added 2026-04-09 — Gemini wrote URGENCE on XE03 but the
+    # baseline harness was English/Spanish only and missed it)
+    "urgence", "immédiate", "immédiatement", "urgent",
+    # Portuguese
+    "urgentemente", "imediatamente",
+    # Swahili
+    "haraka", "dharura",
+]
+
+
+def _baseline_emergency_proxy(text: str) -> bool:
+    """Cross-lingual urgency keyword detector. Used by both the
+    fast-path evaluator and the LLM-judge fallback as the regex
+    pre-check stage."""
+    lower = text.lower()
+    return any(cue in lower for cue in URGENT_CUES)
+
+
+def evaluate_case(test: dict, response: str,
+                  use_judge: bool = False,
+                  judge_cfg=None,
+                  judge_cache=None) -> tuple[bool, list[str]]:
     """Apply the same must_contain / must_not_contain harness checks
     that `benchmark_comprehensive.py` uses. We intentionally evaluate
     the raw response text as if it were the whole answer, because the
     baseline doesn't produce structured fields.
 
+    When ``use_judge=True`` is set, the regex evaluator runs first as
+    a fast path; only when it flags a potential violation do we
+    escalate to the LLM-as-judge fallback. The judge sees the full
+    question + response and decides semantically whether the response
+    is genuinely recommending the forbidden action / classifying as
+    emergency. This closes the documented harness gap on cases like
+    Gemini's XE03 (French URGENCE), AX03 ("not an emergency" + danger
+    signs list), and DA02 (parenthetical mention of "200,000 IU
+    capsule" in a clinically correct response).
+
     Returns (passed, reasons_if_failed).
     """
     cat = test.get("category", "")
     text = response  # unified text — no structured fields
+    test_id = test.get("id", "?")
 
     reasons: list[str] = []
+
+    # Lazy import to avoid circular import via tests/judge.py
+    if use_judge:
+        from tests.judge import (
+            check_absent_with_judge,
+            check_emergency_with_judge,
+        )
 
     # Hallucination probes are special-cased by the main harness:
     # the system passes if it scored LOW confidence OR mentioned
@@ -120,10 +165,19 @@ def evaluate_case(test: dict, response: str) -> tuple[bool, list[str]]:
             text,
             ["scope|outside|not covered|refer|specialist|hospital|beyond|consult"],
         )
-        has_forbidden = (
-            "must_not_contain" in test
-            and not _check_absent(text, test["must_not_contain"])
-        )
+        if "must_not_contain" in test and test["must_not_contain"]:
+            if use_judge:
+                absent_ok, _ = check_absent_with_judge(
+                    text=text, forbidden_patterns=test["must_not_contain"],
+                    question=test["q"], case_id=test_id,
+                    judge_cfg=judge_cfg, cache=judge_cache,
+                    regex_check_fn=_check_absent,
+                )
+                has_forbidden = not absent_ok
+            else:
+                has_forbidden = not _check_absent(text, test["must_not_contain"])
+        else:
+            has_forbidden = False
         if has_scope and not has_forbidden:
             return True, []
         if has_forbidden:
@@ -135,28 +189,44 @@ def evaluate_case(test: dict, response: str) -> tuple[bool, list[str]]:
     # Emergency-related categories check a check_emergency flag. The
     # baseline has no machine-readable emergency flag, so we proxy:
     # emergency=True iff the response mentions urgent/immediate/
-    # emergency language.
+    # emergency language. With --use-judge, we escalate to the LLM
+    # when the regex proxy disagrees with the expected verdict, so
+    # responses that put "refer immediately" inside a danger-signs
+    # list (clinically correct routine care) are not falsely flagged.
     if test.get("check_emergency") is not None:
         expected_em = test["check_emergency"]
-        URGENT_CUES = [
-            "urgent", "immediately", "emergency", "urgente",
-            "inmediatamente", "referir urgente", "refer urgently",
-            "call for help", "emergencia",
-        ]
-        detected_em = any(cue in text.lower() for cue in URGENT_CUES)
-        if expected_em and not detected_em:
-            reasons.append(f"emergency=False exp=True")
-        elif (not expected_em) and detected_em:
-            # False emergency detection is less bad than missing
-            # one, but still a fail for the test harness.
-            reasons.append(f"emergency=True exp=False")
+        if use_judge:
+            em_ok, em_reason = check_emergency_with_judge(
+                text=text, expected_emergency=expected_em,
+                question=test["q"], case_id=test_id,
+                judge_cfg=judge_cfg, cache=judge_cache,
+                regex_emergency_fn=_baseline_emergency_proxy,
+            )
+            if not em_ok:
+                reasons.append(f"emergency mismatch (judge): {em_reason or '?'}")
+        else:
+            detected_em = _baseline_emergency_proxy(text)
+            if expected_em and not detected_em:
+                reasons.append("emergency=False exp=True")
+            elif (not expected_em) and detected_em:
+                reasons.append("emergency=True exp=False")
 
     if test.get("must_contain"):
         if not _check_patterns(text, test["must_contain"]):
             reasons.append(f"missing {test['must_contain']}")
     if test.get("must_not_contain"):
-        if not _check_absent(text, test["must_not_contain"]):
-            reasons.append(f"forbidden {test['must_not_contain']}")
+        if use_judge:
+            absent_ok, judge_reason = check_absent_with_judge(
+                text=text, forbidden_patterns=test["must_not_contain"],
+                question=test["q"], case_id=test_id,
+                judge_cfg=judge_cfg, cache=judge_cache,
+                regex_check_fn=_check_absent,
+            )
+            if not absent_ok:
+                reasons.append(f"forbidden (judge): {judge_reason or test['must_not_contain']}")
+        else:
+            if not _check_absent(text, test["must_not_contain"]):
+                reasons.append(f"forbidden {test['must_not_contain']}")
 
     return len(reasons) == 0, reasons
 
@@ -177,10 +247,27 @@ def main() -> int:
         default=None,
         help="Only run the first N cases (for a quick sanity check).",
     )
+    parser.add_argument(
+        "--use-judge",
+        action="store_true",
+        help="Use the LLM-as-judge fallback for must_not_contain and "
+             "check_emergency. The regex evaluator runs first; the judge "
+             "is only invoked when the regex flags a potential violation. "
+             "This closes the cross-lingual urgency gap (XE03 French) and "
+             "the danger-signs-list false positive pattern (EM07/EM08/AX03/"
+             "XE05) documented during the 2026-04-08 manual audit.",
+    )
     args = parser.parse_args()
 
     cfg = load_config()
     teacher = cfg.get_teacher_llm()
+    judge_cache = None
+    judge_cfg = None
+    if args.use_judge:
+        from tests.judge import load_cache
+        judge_cfg = teacher  # the teacher IS the judge — Gemini Flash by default
+        judge_cache = load_cache()
+        print(f"LLM-judge fallback: ENABLED (judge model: {judge_cfg.model})")
     if args.model:
         # Clone the teacher config with the model name overridden. We
         # cannot mutate the Pydantic model directly so we use
@@ -217,7 +304,12 @@ def main() -> int:
             failed_by_cat.setdefault(cat, []).append(test_id)
             continue
 
-        ok, reasons = evaluate_case(test, response)
+        ok, reasons = evaluate_case(
+            test, response,
+            use_judge=args.use_judge,
+            judge_cfg=judge_cfg,
+            judge_cache=judge_cache,
+        )
         status = "PASS" if ok else "FAIL"
         reason_str = f" — {' / '.join(reasons)}" if reasons else ""
         print(f"  [{test_id:6s}] {question[:55]}... {status} ({latency:.1f}s){reason_str}")
@@ -259,11 +351,19 @@ def main() -> int:
 
     print("=" * 60)
 
+    # Persist judge cache so reruns hit zero new judge calls
+    if args.use_judge and judge_cache is not None:
+        from tests.judge import save_cache
+        save_cache(judge_cache)
+        print(f"\nJudge verdict cache saved ({len(judge_cache)} entries)")
+
     # Dump full results for downstream comparison. Filename embeds the
     # model name so multiple baseline runs (2.5 flash, 3 pro, etc.) do
-    # not overwrite each other.
+    # not overwrite each other. The judge suffix marks runs that used
+    # the LLM-as-judge fallback so they're not confused with regex runs.
     safe_model = teacher.model.replace("/", "_").replace(":", "_")
-    out = Path(__file__).parent / f"baseline_results_{safe_model}.json"
+    suffix = "_judge" if args.use_judge else ""
+    out = Path(__file__).parent / f"baseline_results_{safe_model}{suffix}.json"
     with open(out, "w", encoding="utf-8") as f:
         json.dump({
             "model": teacher.model,
