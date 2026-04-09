@@ -62,4 +62,35 @@ Check for danger signs FIRST:
 - Cold baths or alcohol sponging (causes shivering, raises core temperature)
 - Antibiotics for every fever — most fevers are viral
 
-Source: WHO/UNICEF IMCI Guidelines; WHO Pocket Book of Hospital Care for Children
+**Comfort Measures When Antipyretics Are Not Available or Contraindicated.**
+When the child cannot take paracetamol or ibuprofen (allergy, both contraindicated, none in stock, dengue + dehydration ruling out NSAIDs), the following non-pharmacological measures are safe and effective for a stable child without danger signs.
+- **Tepid sponging with lukewarm water (NOT cold, NOT alcohol).** Water at roughly 30 °C — comfortably warm to the inside of the wrist. Sponge forehead, neck, armpits, and groin. Stop if the child shivers — shivering raises core temperature and defeats the purpose. 15 to 20 minutes at a time is enough. Dry the skin, do not fan while wet.
+- **Remove excess clothing.** A single light cotton layer. Keep the room cool and well-ventilated. Do not bundle up a feverish child even if they say they feel cold — covering traps heat.
+- **Increase fluids aggressively.** Breastmilk on demand for infants, ORS and clean water for older children, small frequent sips, 3 to 4 mL/kg every 30 minutes for a child tolerating oral fluids.
+- **Semi-sitting position.** More comfortable than flat; helps if there is also cough or mild breathing difficulty.
+- **Rest in a quiet room.** Avoid over-stimulation and overheating activities.
+
+**When Comfort Measures Alone Are Sufficient — must meet ALL of:**
+- Child is **older than 6 months**
+- Temperature **below 39.5 °C**
+- **No danger signs** (see Step 1)
+- **Tolerating oral fluids** without vomiting
+- **Normal behaviour between fever spikes** — alert, interactive, reasonable appetite
+- **Fever for less than 3 days**
+- **No history of febrile seizures**
+
+**When to Refer Even Without an Antipyretic — ANY of:**
+- Infant **under 3 months** with any fever ≥38 °C — always refer
+- Temperature **≥39.5 °C** in any age, or **≥38.5 °C** in 3-6 months
+- Any danger sign from Step 1
+- History of febrile seizures and current fever
+- Fever lasting more than 3 days
+- Not drinking, vomiting everything, or signs of dehydration
+- Altered behaviour, extreme drowsiness, persistent irritability
+- Rash with fever (could be measles, meningococcemia, dengue, DRESS)
+- Stiff neck, photophobia, or severe headache
+- Suspected dengue with warning signs (abdominal pain, persistent vomiting, bleeding, restlessness, rapid pulse)
+
+**Never.** Cold water baths, ice packs, alcohol rubs (skin absorption is toxic in children and there is a fire risk near lamps), wet sheet wraps, aggressive fanning of wet skin, or forcing fluids against active vomiting.
+
+Source: WHO/UNICEF IMCI Guidelines; WHO Pocket Book of Hospital Care for Children (2013, 2nd ed.); AAP clinical reports on fever management in children.
