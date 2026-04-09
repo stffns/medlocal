@@ -195,9 +195,24 @@ def triage_and_consult(
     # decoration. If the user asks "cuánto le doy" and a medication was read
     # from the photo, the drug must be resolved via the visual context.
     visual_ctx = description.replace(search_terms, "").strip() if search_terms else description
+    # Order matters in the enriched query. The user's text contains the
+    # CLINICAL MECHANISM ("mordida", "se cayó", "tomó algo") — that is the
+    # primary diagnostic signal and should NOT be overridden by whatever the
+    # vision model called the lesion. The 2026-04-09 review found a case
+    # where a user typed "mordida, no sabe que le mordio, tiene marca y
+    # fiebre" with a photo, and the vision model described the lesion as
+    # "small papules consistent with insect bites". The pre-fix enriched
+    # query put the visual description FIRST, which biased the downstream
+    # consult toward "anaphylaxis from insect bite" instead of the correct
+    # "potential envenomation from unknown bite". Fix: user text leads, the
+    # visual description follows clearly labelled as SUPPLEMENTARY VISUAL
+    # NOTES that the LLM should treat as observation, not as classification.
     enriched_query = (
-        f"PHOTO CONTEXT (observed by CHW before asking): {visual_ctx}\n\n"
-        f"CHW QUESTION: {query}"
+        f"CHW QUESTION (primary clinical signal — this is what the worker is "
+        f"reporting and includes the mechanism if any): {query}\n\n"
+        f"VISUAL NOTES (supplementary, what the camera observed — useful for "
+        f"morphology and severity assessment, but NOT a substitute for the "
+        f"mechanism the worker described above): {visual_ctx}"
     )
     # Honour the configured response language. Without this the call falls
     # through to consult()'s default `language="auto"`, which runs

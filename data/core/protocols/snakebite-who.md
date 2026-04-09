@@ -1,5 +1,17 @@
 # WHO: Snakebite Management for Community Health Workers
 
+**Common ways a CHW hears about a snakebite — also covers bites from unknown sources.**
+A community health worker rarely hears the word "snakebite" directly. They hear lay-language descriptions in any of seven languages: *"mordida"*, *"me mordió algo"*, *"no sé qué le mordió"*, *"tiene una marca y fiebre"*, *"hinchazón después de una mordedura"*, *"mordedura en la pierna con dolor"*, *"piquete que se está hinchando"*; in English *"bite from something I did not see"*, *"swelling after a bite", "bite mark with fever"*; in French *"morsure inconnue"*, *"piqûre qui gonfle"*; in Portuguese *"picada de cobra"*, *"mordida de algo no campo"*; in Swahili *"nyoka", "kuumwa", "nimeumwa na kitu sijui"*. **Any unidentified bite or sting with swelling, a mark, fever, or progressive symptoms must be treated as a potential envenomation until proven otherwise** — the differential is snakebite, scorpion, spider (latrodectus, loxosceles), or aggressive arthropod, NOT a generic insect bite or anaphylaxis. Allergic reaction is a possible secondary effect on top of envenomation, but it is not the primary diagnosis to treat first when the mechanism is "bite from unknown source".
+
+**Bite from unknown source — what to do in the first 5 minutes.**
+1. Treat as a potential snakebite or venomous arthropod bite. Do not assume it was an insect.
+2. Mark the swelling perimeter with a pen and the time, so progression can be measured every 15 minutes.
+3. Immobilize the bitten limb and keep the patient still — see the "First Aid" section below.
+4. Look for fang marks, puncture wounds, or paired punctures — but absence of visible marks does NOT rule out envenomation. Some snake fangs leave minimal visible damage.
+5. Ask the patient or witness about the setting (grass, bush, water, sleeping area) — this narrows the differential by region.
+6. **REFER URGENTLY** to the nearest health facility with antivenom. Do not delay for visual identification.
+7. If the bite is plus fever, plus systemic symptoms, plus progressive swelling, or plus bleeding from any site, this is a CONFIRMED envenoming presentation — see the "Signs of Envenoming" and "Danger Signs" sections below.
+
 **First Aid — Immediate Actions.**
 **DO:**
 1. Move away from the snake — do NOT try to catch or kill it
