@@ -55,6 +55,19 @@
 - Lethargic or unconscious
 - Blood in stool (possible dysentery)
 
+**Contraindicated Drugs for Childhood Diarrhea — Do NOT Give.**
+The following drugs are commonly requested by worried caregivers and are commonly sold over-the-counter in low-resource settings, and the CHW must actively counsel against them even when the caregiver has already started administering them. If a parent reports already giving any of these, stop the drug immediately and switch to ORS plus zinc as above.
+
+- **Loperamide (Imodium, and generic "anti-diarrheal" tablets)** is **CONTRAINDICATED in any child under 2 years of age**, and is **not recommended** in any child under 12 years with acute diarrhea. Loperamide is a peripheral opioid-receptor agonist that slows gut motility. In young infants the drug can cross an immature blood-brain barrier and cause **central nervous system depression**, it can precipitate **paralytic ileus** and **toxic megacolon** especially in bacterial dysentery, and it has been linked to fatal outcomes in infants under 2. The FDA and WHO/IMCI guidance is the same: do NOT give loperamide to a child under 2 years. If a parent has already started it, the CHW must stop the drug, begin ORS, assess for dehydration, and refer urgently if danger signs are present.
+- **Diphenoxylate-atropine (Lomotil)** and all other opioid antimotility agents are contraindicated in young children for the same reasons.
+- **Tincture of opium, paregoric** — historical antidiarrheals sometimes still stocked in rural pharmacies — are absolutely contraindicated in children.
+- **Bismuth subsalicylate (Pepto-Bismol)** — contraindicated under 12 years because of Reye syndrome risk with concurrent viral illness (same reasoning as aspirin).
+- **Kaolin-pectin and other binding agents** have no proven benefit and are not recommended in pediatric diarrhea — they add no value over ORS and delay rehydration by making the caregiver think something is being done.
+- **Routine antibiotics for watery diarrhea** are NOT recommended. Most pediatric diarrhea is viral. Antibiotics are reserved for dysentery (bloody stool), cholera, and specific parasitic infections. Giving unnecessary antibiotics contributes to resistance and does not shorten the course.
+- **Antiemetics** (metoclopramide, promethazine) are **not recommended routinely**. Metoclopramide is specifically contraindicated under 1 year (see the side-effects expected-vs-alarm protocol for the extrapyramidal reaction and FDA black box). If vomiting is severe enough that ORS cannot be retained, the child needs referral for IV fluids, not a home antiemetic.
+
+**The load-bearing rule for a CHW asking "what medicine should I give for my child's diarrhea?"** — the answer is almost always **ORS plus zinc, continue feeding, monitor for danger signs**. No antimotility drug, no binding agent, no bismuth, no routine antibiotic. That is the WHO IMCI standard and it is the single most counter-intuitive point to get across to a caregiver who sees a sick child and wants to "do something stronger than salt water".
+
 **Dysentery (bloody diarrhea).**
 1. Give ciprofloxacin 15 mg/kg twice daily for 3 days
 2. Follow up in 2 days

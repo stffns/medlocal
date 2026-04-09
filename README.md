@@ -246,14 +246,16 @@ organization.
 
 ## Acknowledgments
 
-Development of MedLocal and its retrieval engine vstash was assisted
-by Claude (Anthropic) for code generation, refactoring, and
-documentation, and by a second AI model used in a structured
-code-review loop during the hardening phase. All architectural
-decisions, algorithm choices, clinical protocol sourcing and
-validation against WHO, MSF, UNICEF, and AAP publications, retrieval
-benchmark design, safety-layer specification, and the evaluation
-methodology were authored and verified by the human author. Every
-clinical protocol in `data/core/protocols/` was cross-checked against
-its cited source before inclusion. Any clinical error in this system
-is the author's responsibility alone.
+MedLocal and its retrieval engine vstash were designed, architected,
+and validated by the author. This includes all architectural
+decisions, the 9-layer safety pipeline specification, clinical
+protocol sourcing and cross-validation against WHO, MSF, UNICEF,
+and AAP publications, the adversarial benchmark design, the
+evaluation methodology, and the manual audit of every residual
+documented in this writeup. Every clinical protocol in
+`data/core/protocols/` was authored and verified against its cited
+source before inclusion. Code generation, refactoring, and
+documentation were assisted by Claude (Anthropic), and a second AI
+model was used in the structured code-review loop described in
+[`docs/HACKATHON-WRITEUP.md`](docs/HACKATHON-WRITEUP.md) §6. Any
+clinical error in this system is the author's responsibility alone.

@@ -1434,17 +1434,18 @@ This submission follows the Kaggle Gemma 4 Good Hackathon rules
 
 ## Acknowledgments
 
-Development of MedLocal and its retrieval engine vstash was assisted
-by Claude (Anthropic) for code generation, refactoring, and
-documentation, and by a second AI model used in the structured
-code-review loop described in §6.
-All architectural decisions, algorithm choices, clinical protocol
-sourcing and validation against WHO, MSF, UNICEF, and AAP
-publications, retrieval benchmark design, safety-layer specification,
-and the evaluation methodology were authored and verified by the
-human author. Every clinical protocol in `data/core/protocols/` was
-cross-checked against its cited source before inclusion, and every
-safety rule that appears in `medlocal/safety.py` was written to
-match a specific failure case the author observed during manual
-testing. Any clinical error in this system is the author's
+MedLocal and its retrieval engine vstash were designed, architected,
+and validated by the author. This includes all architectural
+decisions, the 9-layer safety pipeline specification, clinical
+protocol sourcing and cross-validation against WHO, MSF, UNICEF,
+and AAP publications, the adversarial benchmark design, the
+evaluation methodology, and the manual audit of every residual
+documented in this writeup. Every clinical protocol in
+`data/core/protocols/` was authored and verified against its cited
+source before inclusion, and every safety rule that appears in
+`medlocal/safety.py` was written to match a specific failure case
+the author observed during manual testing. Code generation,
+refactoring, and documentation were assisted by Claude (Anthropic),
+and a second AI model was used in the structured code-review loop
+described in §6. Any clinical error in this system is the author's
 responsibility alone.
