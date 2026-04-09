@@ -35,9 +35,11 @@ from medlocal.runtime_check import (
     check_runtime_or_raise,
 )
 from medlocal.safety import (
+    check_allergies_in_answer,
     check_controlled_drugs,
     check_dosages,
     detect_emergency,
+    extract_allergies,
     extract_dosages,
 )
 
@@ -490,6 +492,133 @@ class TestStructuredLLMParseError:
         assert err.repaired == "{bad json}"
         assert err.reason == "test"
         assert "test" in str(err)
+
+
+# --------------------------------------------------------------------- #
+# Allergy guardrail — extraction + detection                            #
+# --------------------------------------------------------------------- #
+#
+# Added 2026-04-09 after the E2B ST04 bench fail. The bench showed that
+# "Nino con fiebre 39C alergia a paracetamol e ibuprofeno" sometimes
+# produced a response that recommended paracetamol anyway. The regex
+# layer must catch BOTH the extraction (question → list of drugs) and
+# the detection (answer → did the LLM recommend an allergen?).
+
+class TestExtractAllergies:
+    """extract_allergies(question) must detect user-reported allergies
+    in English and Spanish, handle multi-drug lists, and NOT fire on
+    denials."""
+
+    def test_spanish_single_drug(self):
+        assert extract_allergies("Niño con fiebre, alergia a paracetamol") == ["paracetamol"]
+
+    def test_spanish_multi_drug_list(self):
+        # ST04 exact phrasing.
+        result = extract_allergies("Nino con fiebre 39C alergia a paracetamol e ibuprofeno")
+        assert "paracetamol" in result
+        assert "ibuprofen" in result
+
+    def test_english_allergic_to(self):
+        assert extract_allergies("Child with fever, allergic to aspirin") == ["aspirin"]
+
+    def test_english_allergy_to(self):
+        assert extract_allergies("Pt has allergy to penicillin") == ["penicillin"]
+
+    def test_brand_name_paracetamol(self):
+        # Tylenol must map to paracetamol.
+        result = extract_allergies("baby has allergy to Tylenol")
+        assert result == ["paracetamol"]
+
+    def test_brand_name_ibuprofen(self):
+        assert extract_allergies("history of allergy to Motrin") == ["ibuprofen"]
+
+    def test_penicillin_class_also_blocks_amoxicillin(self):
+        # The class entry means "allergy to penicillin" should surface
+        # once as "penicillin" — the whole class is blocked in the
+        # detection step because all penicillin variants use the same
+        # regex.
+        result = extract_allergies("alergia a amoxicilina")
+        assert "penicillin" in result
+
+    def test_denial_spanish_returns_empty(self):
+        assert extract_allergies("Paciente niega alergia a medicamentos") == []
+        assert extract_allergies("No es alérgico a nada") == []
+
+    def test_denial_english_returns_empty(self):
+        assert extract_allergies("not allergic to anything") == []
+        assert extract_allergies("denies allergy to penicillin") == []
+
+    def test_no_allergy_marker_returns_empty(self):
+        assert extract_allergies("Niño con fiebre y tos") == []
+
+    def test_empty_question(self):
+        assert extract_allergies("") == []
+
+    def test_sulfa_allergy(self):
+        assert extract_allergies("allergic to sulfa drugs") == ["sulfa"]
+
+    def test_cotrimoxazole_allergy_matches_sulfa_class(self):
+        # cotrimoxazole is in the sulfa class pattern.
+        assert extract_allergies("alergia a cotrimoxazol") == ["sulfa"]
+
+
+class TestCheckAllergiesInAnswer:
+    """check_allergies_in_answer(answer, allergies) must flag the answer
+    when it recommends an allergic drug, but NOT when the drug is only
+    mentioned inside a refusal / warning."""
+
+    def test_empty_allergies_passes(self):
+        ok, viols = check_allergies_in_answer("Give paracetamol 500 mg", [])
+        assert ok
+        assert viols == []
+
+    def test_recommendation_of_allergic_drug_fails(self):
+        ok, viols = check_allergies_in_answer(
+            "Give paracetamol 10 mg/kg every 6 hours", ["paracetamol"]
+        )
+        assert not ok
+        assert any("paracetamol" in v for v in viols)
+
+    def test_brand_name_recommendation_fails(self):
+        ok, viols = check_allergies_in_answer(
+            "Give Tylenol 250 mg", ["paracetamol"]
+        )
+        assert not ok
+
+    def test_refusal_passes(self):
+        ok, viols = check_allergies_in_answer(
+            "Do NOT give paracetamol — the patient is allergic",
+            ["paracetamol"],
+        )
+        assert ok
+        assert viols == []
+
+    def test_spanish_refusal_passes(self):
+        ok, viols = check_allergies_in_answer(
+            "No dar paracetamol porque tiene alergia", ["paracetamol"]
+        )
+        assert ok
+
+    def test_multi_drug_one_violation(self):
+        ok, viols = check_allergies_in_answer(
+            "Give paracetamol 500 mg and ibuprofen 200 mg",
+            ["paracetamol", "ibuprofen"],
+        )
+        assert not ok
+        assert len(viols) >= 2
+
+    def test_penicillin_blocks_amoxicillin_in_answer(self):
+        # Class-wide: if user is allergic to penicillin, mentioning
+        # amoxicillin in the answer must trip the guard.
+        ok, viols = check_allergies_in_answer(
+            "Give amoxicillin 500 mg three times daily",
+            ["penicillin"],
+        )
+        assert not ok
+
+    def test_empty_answer(self):
+        ok, viols = check_allergies_in_answer("", ["paracetamol"])
+        assert ok
 
 
 if __name__ == "__main__":

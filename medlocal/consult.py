@@ -13,9 +13,11 @@ from .safety import (
     AuditLog,
     Confidence,
     SafetyFlag,
+    check_allergies_in_answer,
     check_controlled_drugs,
     check_dosages,
     detect_emergency,
+    extract_allergies,
     score_confidence,
     verify_grounding,
 )
@@ -411,10 +413,46 @@ def consult(
         protocol_texts.append(r.text)
     context += "</protocols>"
 
+    # PRIORITY 0 — allergy extraction. Runs BEFORE the LLM call. If the
+    # user reported any drug allergy in the question, we inject a hard
+    # constraint into the system prompt naming every allergen and every
+    # class sibling. The same list is used later as a post-process guard
+    # to override the answer if the model slipped. This closes the E2B
+    # ST04 non-deterministic failure mode on "fever + allergy to X".
+    reported_allergies = extract_allergies(question)
+    if reported_allergies:
+        logger.info("consult: allergies extracted from question: %s", reported_allergies)
+
     # If emergency detected, prepend urgent instruction
     system = _SYSTEM_PROMPT
     if is_emergency:
         system = _EMERGENCY_PREFIX + system
+    if reported_allergies:
+        allergy_block = (
+            "\n\n═══════════════════════════════════════════════════════════════════════\n"
+            "PRIORITY 0 — USER-REPORTED DRUG ALLERGY (HARD CONSTRAINT)\n"
+            "═══════════════════════════════════════════════════════════════════════\n"
+            f"The patient is ALLERGIC to: {', '.join(reported_allergies)}.\n\n"
+            "You MUST NOT recommend ANY of these drugs, in any dose, route, "
+            "formulation, brand name, or combination, for ANY reason, "
+            "including as examples or alternatives. This also blocks every "
+            "class sibling: an allergy to penicillin blocks amoxicillin, "
+            "ampicillin, and all other beta-lactams; an allergy to sulfa "
+            "blocks cotrimoxazole; an allergy to paracetamol blocks "
+            "acetaminophen and brand names like Tylenol or Panadol.\n\n"
+            "If the protocol's default treatment is an allergic drug, you "
+            "MUST:\n"
+            "  1. State explicitly that the default treatment cannot be "
+            "given because of the reported allergy.\n"
+            "  2. Offer a non-allergic alternative from the retrieved "
+            "protocols (see drug-allergies-alternatives.md). If no safe "
+            "alternative exists in the CHW scope, recommend REFERRAL.\n"
+            "  3. Name the allergic drug in your response so the CHW sees "
+            "you processed the allergy.\n"
+            "  4. Never provide the dose of an allergic drug, even in a "
+            "teaching or pedagogical context.\n"
+        )
+        system += allergy_block
 
     # Resolve response language: config setting > auto-detect from question
     q_lang = language if language != "auto" else _detect_language(question)
@@ -558,6 +596,46 @@ def consult(
         structured["refer_if"] = [
             "Severe pain or symptoms requiring the specialist drug in question."
         ]
+
+    # Allergy guard — defense in depth behind the PRIORITY 0 allergy
+    # prompt rule. If the LLM recommended a drug the user said the
+    # patient is allergic to, we OVERWRITE the answer with a hard
+    # refusal. Unlike the controlled-drug guard (which only fires when
+    # a dose token is within range), this fires on ANY mention of the
+    # allergen outside a refusal context. The E2B ST04 failure showed
+    # the small model sometimes ignores allergy context entirely; this
+    # is the hardwired backstop. See `extract_allergies` in safety.py.
+    if reported_allergies:
+        allergy_ok, allergy_violations = check_allergies_in_answer(
+            answer, reported_allergies
+        )
+        if not allergy_ok:
+            _flag(SafetyFlag.ALLERGY_VIOLATION)
+            logger.error(
+                "PRIORITY 0 allergy guard tripped — LLM recommended "
+                "allergic drug despite hard constraint: %s",
+                allergy_violations,
+            )
+            violated = ", ".join(sorted({v.split(":", 1)[0] for v in allergy_violations}))
+            refusal = (
+                f"⚠ Safety override — the patient is allergic to {violated}. "
+                f"The recommended treatment would have included this drug, "
+                f"which the safety layer has blocked. Do NOT administer any "
+                f"drug from this class. Refer the patient urgently for "
+                f"evaluation of a safe alternative. If the protocol has a "
+                f"non-allergic alternative (see drug-allergies-alternatives "
+                f"protocol), use that instead after discussing with your "
+                f"supervisor."
+            )
+            answer = refusal
+            structured["condition"] = (
+                structured.get("condition", "") + " — ALLERGY OVERRIDE"
+            ).strip(" —")
+            structured["assessment"] = refusal
+            structured["actions"] = [refusal]
+            structured["refer_if"] = [
+                f"Reported allergy to {violated} — refer for safe alternative.",
+            ]
 
     # Grounding verification (optional — costs an extra LLM call)
     grounded = None

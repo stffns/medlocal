@@ -39,6 +39,11 @@ class SafetyFlag(IntEnum):
                                 # drug (opioid, sedative, chemo, anaesthetic)
                                 # slipped past PRIORITY 0.5 and reached the
                                 # answer. Defense-in-depth behind the prompt.
+    ALLERGY_VIOLATION = 8       # The user-reported allergic drug was
+                                # recommended in the answer. PRIORITY 0
+                                # allergy guard caught it and replaced
+                                # the answer with a safety refusal.
+                                # Added 2026-04-09 after E2B ST04 failure.
 
 
 # ------------------------------------------------------------------ #
@@ -373,6 +378,179 @@ def check_controlled_drugs(answer: str) -> tuple[bool, list[str]]:
             if _CONTROLLED_DOSE_RE.search(search_span):
                 drug = match.group(0)
                 violations.append(f"{category}:{drug}")
+    return len(violations) == 0, violations
+
+
+# ------------------------------------------------------------------ #
+# Allergy guardrail — PRIORITY 0 defense-in-depth                      #
+# ------------------------------------------------------------------ #
+#
+# E2B failed ST04 (fever + allergy to both paracetamol and ibuprofen)
+# by recommending paracetamol anyway. The failure was non-deterministic
+# at temperature 0.2 — the small model simply did not propagate the
+# user-stated allergy into the plan of care when the protocol's default
+# treatment was the allergic drug. This is the exact class of failure
+# the prompt-level contraindication and controlled-drug guards were
+# designed for, and it calls for the same defense-in-depth pattern:
+# extract the allergies from the question BEFORE the LLM call, inject
+# a hard constraint into the system prompt, AND post-process the final
+# answer to refuse / override if the allergic drug is still mentioned.
+#
+# The CHW domain has ~20 drugs that account for the vast majority of
+# allergy reports. We match against an alias table rather than the
+# literal token the user wrote, so "alergia a paracetamol" AND "alergia
+# a acetaminofén" both block paracetamol, and so "allergic to penicillin"
+# also blocks amoxicillin / ampicillin (same beta-lactam class).
+
+# Drug aliases — user-facing name → canonical name + regex of all the
+# spellings and class siblings we must block when the user reports an
+# allergy. Ordered by frequency in the CHW corpus: common pediatric
+# antipyretics first, antibiotics next, then specialty classes.
+_ALLERGY_DRUG_ALIASES: dict[str, str] = {
+    "paracetamol": (
+        r"\b(?:paracetamol|acetaminophen|acetaminof[eé]n|panadol|tylenol|"
+        r"calpol|tempra)\b"
+    ),
+    "ibuprofen": r"\b(?:ibuprofen[oa]?|advil|motrin|brufen|nurofen)\b",
+    "aspirin": r"\b(?:aspirin[ae]?|acetylsalicylic|acido acetilsalic[ií]lico|aas|asa)\b",
+    "diclofenac": r"\b(?:diclofenac[oa]?|voltaren|cataflam)\b",
+    "naproxen": r"\b(?:naproxen[oa]?|naprosyn|aleve)\b",
+    # Penicillin class — allergy to any penicillin blocks the whole class
+    # because cross-reactivity is ~5-10% for true IgE-mediated reactions
+    # and the field CHW cannot tell severe from mild history. Safer to
+    # route to alternative protocol (see drug-allergies-alternatives.md).
+    "penicillin": (
+        r"\b(?:penicillin[ae]?|penicilina|amoxicill?in[ae]?|amoxicilina|"
+        r"ampicillin[ae]?|ampicilina|cloxacillin[ae]?|dicloxacilina|"
+        r"benzatinic|benzathine)\b"
+    ),
+    # Sulfa class — same whole-class logic
+    "sulfa": (
+        r"\b(?:sulfa|sulfonamid[ae]?|sulfonamida|cotrimoxazol[ae]?|"
+        r"cotrimoxazole|trimetoprim|trimethoprim|bactrim|septrin|"
+        r"tmp-smx|sulfadiazin[ae]?|sulfametoxazol)\b"
+    ),
+    # Cephalosporin class
+    "cephalosporin": (
+        r"\b(?:cephalosporin|cefalosporin[ae]?|cef[ae]lexin[ae]?|"
+        r"ceftriaxon[ae]?|cefixim[ae]?|cefotaxim[ae]?|cefuroxim[ae]?|"
+        r"cefazolin[ae]?|cefpodoxim[ae]?)\b"
+    ),
+    "macrolide": (
+        r"\b(?:macrolide|macr[oó]lido|erythromycin[ae]?|eritromicin[ae]?|"
+        r"azithromycin[ae]?|azitromicin[ae]?|clarithromycin[ae]?|"
+        r"claritromicin[ae]?)\b"
+    ),
+    "quinolone": (
+        r"\b(?:quinolon[ae]?|fluoroquinolon[ae]?|ciprofloxacin[oa]?|"
+        r"ciprofloxacino|levofloxacin[ao]?|moxifloxacin[ao]?|"
+        r"norfloxacin[ao]?)\b"
+    ),
+    "tetracycline": (
+        r"\b(?:tetracyclin[ae]?|tetraciclin[ae]?|doxycyclin[ae]?|"
+        r"doxiciclin[ae]?|minocyclin[ae]?|minociclin[ae]?)\b"
+    ),
+    "metronidazole": r"\b(?:metronidazol[ae]?|flagyl|tinidazol[ae]?)\b",
+    "aminoglycoside_allergy": (
+        # When a user reports an allergy to gentamicin specifically, we
+        # must still block it — the CHW-allowed status only applies
+        # ABSENT an allergy history.
+        r"\b(?:aminoglycoside|aminoglic[oó]sido|gentamicin[ae]?|gentamicina|"
+        r"amikacin[ae]?|amikacina|tobramycin[ae]?)\b"
+    ),
+}
+
+# Pattern that spots the "allergic to" / "alergia a" marker and captures
+# everything until the end of the sentence. We then scan the captured
+# span for any of the alias patterns above. Using a sentence-bounded
+# capture avoids pulling in the entire rest of the question when the
+# user writes a short sentence like "Nino con fiebre 39C alergia a
+# paracetamol e ibuprofeno" — the allergy list runs to the end.
+_ALLERGY_MARKER_RE = re.compile(
+    r"\b(?:allergic\s+to|allergy\s+to|al[eé]rgic[ao]?\s+a|alergia[s]?\s+a|"
+    r"alerg[ií]a\s+conocida\s+a|hypersensitivit[yi](?:e[s])?\s+to|"
+    r"intoleran[ct]e?\s+a|intolerance\s+to)\s+([^.\n;:!?]*)",
+    re.IGNORECASE,
+)
+
+# Negation cues that INVALIDATE an allergy marker — "no es alérgico a",
+# "not allergic to", "niega alergia a", etc. These look back up to 30
+# chars before the marker to avoid treating denials as allergies.
+_ALLERGY_DENIAL_CUES = [
+    "no es aler", "no es alér", "not allergic", "niega aler",
+    "denies allerg", "sin alergia", "no allergy", "no allergies",
+    "no tiene aler", "no presenta aler", "descarta aler",
+    # Short-form cues — the lookback window starts at the allergy
+    # marker, so "denies allergy to X" only shows "denies " in the
+    # preceding 30 chars. Match on the verb alone as a fallback.
+    "denies ", "niega ", "descarta ",
+]
+
+
+def extract_allergies(question: str) -> list[str]:
+    """Parse the question for user-reported drug allergies.
+
+    Returns a list of canonical drug keys from ``_ALLERGY_DRUG_ALIASES``
+    that the user said the patient is allergic to. Empty list if no
+    allergy is reported. Handles:
+
+    - English: "allergic to X", "allergy to X", "hypersensitivity to X"
+    - Spanish: "alérgico a X", "alergia a X", "intolerante a X"
+    - Negations: "no es alérgico", "not allergic", "niega alergia" → []
+    - Multi-drug lists: "alergia a paracetamol e ibuprofeno" → both
+    - Class match: "alergia a penicilina" blocks amoxicillin too
+
+    The function is deliberately fail-closed — any allergy the user
+    writes that matches an alias is blocked, even if the literal drug
+    is slightly misspelled. False positives here are preferable to
+    false negatives (silent drug administration to an allergic patient).
+    """
+    if not question:
+        return []
+    lower = question.lower()
+    found: set[str] = set()
+    for match in _ALLERGY_MARKER_RE.finditer(lower):
+        # Denial backoff — scan the 30 characters before the marker
+        # for an explicit "no / not / niega" cue. If present, the
+        # allergy marker is being denied rather than asserted.
+        context_before = lower[max(0, match.start() - 30) : match.start()]
+        if any(cue in context_before for cue in _ALLERGY_DENIAL_CUES):
+            continue
+        allergy_span = match.group(1)
+        for drug_key, pattern in _ALLERGY_DRUG_ALIASES.items():
+            if re.search(pattern, allergy_span, re.IGNORECASE):
+                found.add(drug_key)
+    return sorted(found)
+
+
+def check_allergies_in_answer(
+    answer: str, allergies: list[str]
+) -> tuple[bool, list[str]]:
+    """Scan the answer for any mention of a drug the patient is allergic
+    to. Uses the same pre-negation backoff as ``check_controlled_drugs``
+    so refusal sentences that name the allergen ("do NOT give paracetamol
+    because of the allergy") do not trigger the guard.
+
+    Returns ``(ok, violations)``. ``ok`` is ``False`` when at least one
+    allergic drug was recommended. Each violation is
+    ``"<drug_key>:<literal match>"`` for audit.
+    """
+    if not allergies or not answer:
+        return True, []
+    pre_negation = [
+        "not ", "no ", "never ", "avoid ", "don't ", "do not ", "nunca ",
+        "no dar ", "no administr", "no se debe", "no debe", "evit",
+        "contraindica", "contraindicated", "allergic", "alerg",
+    ]
+    lower = answer.lower()
+    violations: list[str] = []
+    for drug_key in allergies:
+        pattern = _ALLERGY_DRUG_ALIASES[drug_key]
+        for match in re.finditer(pattern, lower):
+            context_before = lower[max(0, match.start() - 60) : match.start()]
+            if any(neg in context_before for neg in pre_negation):
+                continue
+            violations.append(f"{drug_key}:{match.group(0)}")
     return len(violations) == 0, violations
 
 
