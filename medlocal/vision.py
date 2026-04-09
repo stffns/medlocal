@@ -199,7 +199,16 @@ def triage_and_consult(
         f"PHOTO CONTEXT (observed by CHW before asking): {visual_ctx}\n\n"
         f"CHW QUESTION: {query}"
     )
-    result = consult(enriched_query, kb, cfg.llm)
+    # Honour the configured response language. Without this the call falls
+    # through to consult()'s default `language="auto"`, which runs
+    # `_detect_language` against the enriched_query — and the enriched_query
+    # is mostly the English visual description plus a short user question.
+    # That has produced wrong-language responses (e.g. a Spanish query that
+    # included the word "ni" was mis-detected as Swahili because the
+    # word-marker regex's Swahili pattern matches `\bni\b`). Passing the
+    # config language explicitly forces the same behaviour as the text
+    # consult path.
+    result = consult(enriched_query, kb, cfg.llm, language=cfg.language)
     result["description"] = description
 
     return result

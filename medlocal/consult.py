@@ -879,12 +879,34 @@ def _detect_language(text: str) -> str:
             return "French"
 
     # --- Pass 2: Word markers (for Latin-script without distinctive chars) ---
+    # Each language list mixes function words (very common, broad coverage)
+    # with content words (distinctive but rarer). The Spanish list was too
+    # narrow before 2026-04-09 — it only had nouns and verbs, so a clinical
+    # phrase like "Mancha roja en la pierna sin dolor ni fiebre" scored 0
+    # because none of the existing markers matched, and the single
+    # collision "ni" (Spanish negation) lit up the Swahili list (where
+    # "ni" means "is/are"), making the auto-detector return Swahili for
+    # plain Spanish input. Two fixes here:
+    #   1. Broaden Spanish with function words ("en", "la", "sin", "con",
+    #      "al", "se", "ni") so common clinical phrasings hit ≥3 markers.
+    #   2. Drop "ni" from the Swahili list — it is the only marker that
+    #      collides directly with a Spanish word and the remaining seven
+    #      Swahili markers still catch the benchmark cases (XE04
+    #      "Mtoto hawezi kunywa, ana degedege" hits "ana"; ML03 "Mtoto
+    #      ana homa kali na kutapika, hawezi kunywa" hits "ana" + "na").
     text_lower = text.lower()
     _MARKERS = {
-        "Spanish": [r"\bel\b", r"\blos\b", r"\blas\b", r"\bdel\b", r"\bpero\b", r"\btiene\b", r"\btengo\b", r"\bmuy\b", r"\btambién\b", r"\bhay\b", r"\bpuede\b", r"\bduele\b", r"\bdesde\b", r"\bhace\b"],
+        "Spanish": [
+            r"\bel\b", r"\blos\b", r"\blas\b", r"\bdel\b", r"\bpero\b",
+            r"\btiene\b", r"\btengo\b", r"\bmuy\b", r"\btambién\b", r"\bhay\b",
+            r"\bpuede\b", r"\bduele\b", r"\bdesde\b", r"\bhace\b",
+            # function words (added 2026-04-09 to fix the Mancha-roja case)
+            r"\ben\b", r"\bla\b", r"\bsin\b", r"\bcon\b", r"\bal\b",
+            r"\bse\b", r"\bni\b", r"\bque\b", r"\bcomo\b", r"\bpor\b",
+        ],
         "Portuguese": [r"\bnão\b", r"\btem\b", r"\bdos\b", r"\bdas\b", r"\bmas\b", r"\bou\b", r"\bela\b", r"\bele\b", r"\bcriança\b", r"\bmuito\b", r"\btambém\b", r"\bpreciso\b", r"\bpode\b", r"\bdeve\b"],
         "French": [r"\ble\b", r"\bles\b", r"\bdes\b", r"\bdu\b", r"\bavec\b", r"\bune\b", r"\best\b", r"\bpas\b", r"\bpour\b", r"\bdans\b", r"\bje\b", r"\bne\b"],
-        "Swahili": [r"\bna\b", r"\bya\b", r"\bwa\b", r"\bkwa\b", r"\bni\b", r"\bkatika\b", r"\bana\b", r"\bhana\b"],
+        "Swahili": [r"\bna\b", r"\bya\b", r"\bwa\b", r"\bkwa\b", r"\bkatika\b", r"\bana\b", r"\bhana\b", r"\bmtoto\b", r"\bhoma\b", r"\bkunywa\b"],
     }
     scores = {}
     for lang, patterns in _MARKERS.items():

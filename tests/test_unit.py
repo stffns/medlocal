@@ -34,6 +34,7 @@ from medlocal.runtime_check import (
     RuntimePreconditionError,
     check_runtime_or_raise,
 )
+from medlocal.consult import _detect_language
 from medlocal.safety import (
     check_allergies_in_answer,
     check_controlled_drugs,
@@ -619,6 +620,81 @@ class TestCheckAllergiesInAnswer:
     def test_empty_answer(self):
         ok, viols = check_allergies_in_answer("", ["paracetamol"])
         assert ok
+
+
+# --------------------------------------------------------------------- #
+# Language auto-detection — the regex collision Jay caught from a vision #
+# case where Spanish "ni" was mis-detected as Swahili "ni"               #
+# --------------------------------------------------------------------- #
+#
+# 2026-04-09. A vision triage of "Mancha roja en la pierna sin dolor ni
+# fiebre [photo]" returned a response in Swahili instead of Spanish. Two
+# bugs in chain: vision.py was not honouring cfg.language so consult
+# fell through to auto-detect, AND the auto-detector's Swahili marker
+# list included \bni\b which collides with Spanish negation "ni" in
+# "sin dolor ni fiebre". Fixed in 2026-04-09 commit by passing the
+# config language from vision and by broadening the Spanish marker
+# list with function words ("en", "la", "sin", "con", "ni", etc.) so
+# clinical Spanish phrases reliably score above any single-marker
+# collision.
+
+class TestDetectLanguage:
+    """_detect_language must correctly classify the languages in the
+    benchmark suite without being fooled by single-word collisions
+    across language families."""
+
+    def test_spanish_clinical_phrase_with_ni_negation(self):
+        # The exact case Jay caught from a vision triage. The phrase has
+        # no Spanish content words from the original marker list — the
+        # only test the regex got was on function words. "ni" used to
+        # collide with Swahili and win.
+        assert _detect_language("Mancha roja en la pierna sin dolor ni fiebre") == "Spanish"
+
+    def test_spanish_inside_enriched_vision_query(self):
+        # The actual call vision.py used to make: a long English visual
+        # description prepended to a short Spanish question.
+        text = (
+            "PHOTO CONTEXT (observed by CHW before asking): "
+            "A reddish-brown discoloration is present on the anterior "
+            "aspect of the lower leg/calf region. The area appears "
+            "erythematous. CHW QUESTION: Mancha roja en la pierna sin "
+            "dolor ni fiebre"
+        )
+        assert _detect_language(text) == "Spanish"
+
+    def test_swahili_xe04_regression_guard(self):
+        # Bench case XE04. Must still detect Swahili after the marker
+        # list cleanup that removed \bni\b.
+        assert _detect_language("Mtoto hawezi kunywa, ana degedege") == "Swahili"
+
+    def test_swahili_ml03_regression_guard(self):
+        # Bench case ML03. Hits both \bana\b and \bna\b on the new list.
+        assert _detect_language("Mtoto ana homa kali na kutapika, hawezi kunywa") == "Swahili"
+
+    def test_spanish_with_diacritics(self):
+        assert _detect_language("Niño con fiebre y diarrea desde hace 2 dias") == "Spanish"
+
+    def test_french_with_diacritics(self):
+        assert _detect_language("Bébé ne peut pas boire, vomit tout") == "French"
+
+    def test_french_pregnancy_case(self):
+        assert _detect_language("Femme enceinte avec saignement vaginal au troisieme trimestre") == "French"
+
+    def test_portuguese_with_diacritics(self):
+        assert _detect_language("Criança inconsciente com febre alta") == "Portuguese"
+
+    def test_portuguese_clinical_phrase(self):
+        assert _detect_language("Criança de 3 anos com diarreia e vômitos há 2 dias") == "Portuguese"
+
+    def test_english_default(self):
+        assert _detect_language("What dose of morphine for a child with broken arm?") == "English"
+
+    def test_loperamide_case(self):
+        # The Case 2 demo input from the Kaggle notebook (Spanish).
+        assert _detect_language("Niño de 2 meses con diarrea, le estoy dando loperamida.") == "Spanish"
+
+    def test_empty_text(self):
+        assert _detect_language("") == "English"
 
 
 if __name__ == "__main__":
