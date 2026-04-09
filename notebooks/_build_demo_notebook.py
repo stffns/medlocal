@@ -88,16 +88,39 @@ This notebook is a **cloud-friendly demonstration of the MedLocal
 pipeline** — the pre-flight classifier, the 4-pass vstash retrieval,
 the structured output schema, the 9-layer safety defense, and the
 source-cited response that a CHW supervisor can audit. The on-device
-E2B runtime itself is demonstrated by the benchmark log files in
-`tests/` (`bench_e2b_judge.log`, `bench_e2b_judge_guardrail.log`,
-`bench_e2b_judge_post_sideeffects.log`, `bench_e2b_judge_post_enrich.log`)
-that any reviewer can reproduce locally with LM Studio and the
-commands in [`README.md`](../README.md).
+E2B / E4B runtime itself is demonstrated by the benchmark log files
+in `tests/` (`bench_e2b_judge.log`, `bench_e2b_judge_guardrail.log`,
+`bench_e2b_judge_post_sideeffects.log`, `bench_e2b_judge_post_enrich.log`,
+`bench_e4b_judge.log`) that any reviewer can reproduce locally with
+LM Studio at `n_ctx = 12 000` and the commands in
+[`README.md`](../README.md).
 
-For the Kaggle kernel, we run the same pipeline against the Gemini
-teacher model as the consult LLM. The retrieval, safety, and
-structured output layers are all identical. Only the final generation
-happens in the cloud instead of on a phone.
+For the Kaggle kernel, we run the same pipeline with **Gemma 4
+(`gemma-4-26b-a4b-it`) served via the Gemini API** as the consult
+LLM. That choice is deliberate on two counts:
+
+1. The Kaggle **Gemma 4 Good Hackathon** is specifically about
+   Gemma 4. Demonstrating the MedLocal pipeline with a non-Gemma
+   cloud model would misrepresent the submission. Running the demo
+   against a Gemma 4 cloud variant keeps the model family
+   consistent with the on-device E2B and E4B story.
+2. The `gemma-4-26b-a4b-it` variant is a 26 B mixture-of-experts
+   model with ~4 B **active** parameters per token — the same
+   design principle as the on-device E4B (4 B effective
+   parameters via nested transformers / PLE). The cloud demo
+   therefore echoes the architectural point of the submission:
+   **few active parameters, compact footprint, Gemma 4 family**.
+   The 31 B dense variant (`gemma-4-31b-it`) is available on the
+   same API endpoint as an alternative; the config cell below
+   documents the swap.
+
+The retrieval, safety, and structured output layers are all
+identical to the on-device runs reported in the benchmark logs.
+Only the final generation step moves from LM Studio on a laptop
+to Gemma 4 on Google's API. **No part of the system talks to a
+non-Gemma model on the response path** — the LLM-as-judge
+evaluator uses Gemini 2.5 Flash as a separate, independent model
+for scoring only, not for generating responses.
 
 ## Six demonstration cases
 
@@ -186,10 +209,20 @@ cells.append(code("""
 import os
 os.environ["MEDLOCAL_CONFIG"] = "./medlocal.demo.toml"
 
-# Write a demo config that uses Gemini for both the consult LLM and
-# the teacher model. Kaggle users need to add their own GEMINI_API_KEY
-# in the Kaggle Secrets panel and the cell below reads it from the
-# environment. Never commit an API key to the repo.
+# Write a demo config that uses a Gemma 4 model via the Gemini API
+# for both the consult LLM and the teacher model. This is deliberate:
+# the Kaggle Gemma 4 Good Hackathon is specifically about Gemma 4, so
+# the demo LLM is a Gemma 4 variant, not Gemini Flash. We use
+# gemma-4-26b-a4b-it (26B mixture-of-experts with ~4B active
+# parameters), which is the cloud analogue of the on-device E4B
+# design point — few active parameters, compact footprint, Gemma 4
+# family. The 31B dense variant (gemma-4-31b-it) is a valid
+# alternative if the reviewer wants to test the heavier model; change
+# the `model` field below to `gemma-4-31b-it` and re-run.
+#
+# Kaggle users need to add their own GEMINI_API_KEY in the Kaggle
+# Secrets panel and the cell below reads it from the environment.
+# Never commit an API key to the repo.
 import textwrap
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if not GEMINI_API_KEY:
@@ -200,13 +233,21 @@ if not GEMINI_API_KEY:
 config_text = textwrap.dedent(f\"\"\"\\
     language = "auto"
 
+    # Consult LLM — Gemma 4 via the Gemini API. We use the 26B MoE
+    # with ~4B active parameters as the cloud analogue of the
+    # on-device E4B/E2B story. Swap to gemma-4-31b-it for the dense
+    # 31B variant if preferred.
     [llm]
     provider = "gemini"
-    model = "gemini-2.5-flash"
+    model = "gemma-4-26b-a4b-it"
     api_key = "{GEMINI_API_KEY}"
     base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
     temperature = 0.0
 
+    # Teacher LLM — a Gemini Flash model used for the LLM-as-judge
+    # evaluator and for offline teacher-card generation. Separate from
+    # the consult LLM because the judge benefits from a slightly
+    # different calibration than the model under test.
     [teacher_llm]
     provider = "gemini"
     model = "gemini-2.5-flash"
@@ -215,7 +256,7 @@ config_text = textwrap.dedent(f\"\"\"\\
     temperature = 0.0
 \"\"\")
 Path("medlocal.demo.toml").write_text(config_text)
-print("Demo config written to ./medlocal.demo.toml")
+print("Demo config written to ./medlocal.demo.toml (consult=gemma-4-26b-a4b-it)")
 """))
 
 cells.append(code("""
