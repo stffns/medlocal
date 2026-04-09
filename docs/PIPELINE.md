@@ -628,12 +628,18 @@ textbook presentations.
 
 ---
 
-*Last updated: 2026-04-08 — corpus grew to 69 protocols with the
-`heavy_metals` (HM01) and `child_protection` (CP01) additions, the
-benchmark grew to 101 cases, smoke to 22 cases, and the silent-
-failure hardening pass landed (fail-loud JSON repair, controlled-
-drug authority check, runtime precondition check, 58 unit tests).
-E2B post-hardening bench: 99/101. The original 2026-04-07 version
-of this document described the 67-protocol / 96-case era; this
-line has been updated but the body still describes the architecture
-as it landed on 2026-04-07.*
+*Last updated: 2026-04-09 — corpus grew to 73 protocols. The
+2026-04-09 session added: `medications-pregnancy-safety-who`,
+`infant-safety-home-remedies-who`, `medication-side-effects-expected-
+vs-alarm-who`, and `drug-rash-severity-who`; `pneumonia-imci` got a
+weight-only safety floor section; `malaria-who` got explicit
+boundary examples after DA05; `fever-assessment-imci` got a
+comfort-measures-without-antipyretics section. The pipeline grew
+a ninth defense layer (Capa I — PRIORITY 0 allergy guardrail) and
+the LLM-as-judge evaluator landed as a two-layer harness on top
+of the regex fast path. Final judged bench numbers on commit HEAD:
+E4B + MedLocal 101/101, E2B + MedLocal 101/101, Gemini 3.1 Pro
+naive 100/101 (HP03 harness artefact). 79 unit tests. The body of
+this document still describes the architecture as it landed on
+2026-04-07 — the 2026-04-08 and 2026-04-09 deltas are documented
+in the hackathon writeup §6 and CHANGELOG.*

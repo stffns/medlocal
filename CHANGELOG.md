@@ -10,36 +10,219 @@ semver; we will cut 1.0.0 at Kaggle submission.
 
 ---
 
-## [Unreleased]
+## [Unreleased] — 2026-04-09 hackathon-ready sprint
 
-### AI-assistance disclosure + agent config untracked (2026-04-09)
+Candidate for version 0.7.0. Entire day of work driven by manual
+testing, honest residual audits, and the continuous-testing rule.
+The numeric result is 101/101 on both Gemma configurations and
+100/101 on the Gemini 3.1 Pro naive baseline (HP03 harness
+artefact). The architectural result is a ninth defense layer, a
+two-layer evaluation harness, five new protocols, and a hackathon
+writeup that has retracted every overclaim the earlier draft made.
 
-Added an Acknowledgments section to `README.md` and
-`docs/HACKATHON-WRITEUP.md` that explicitly discloses the use of
-Claude (Anthropic) for code generation, refactoring, and
-documentation, and the use of a second AI model in the structured
-code-review loop referenced in §6 of the hackathon writeup
-(internally named "Silt"). The disclosure makes clear that all
-architectural decisions, clinical protocol sourcing, benchmark
-design, safety-layer specification, and evaluation methodology were
-authored and verified by the human author, and that clinical error
-remains the author's sole responsibility.
+### Added — evaluation harness
 
-Untracked the repository-level `CLAUDE.md` agent configuration file
-(added to `.gitignore`, removed from tracking via `git rm --cached`).
-That file is a tool-specific config read by Claude Code at the start
-of each session and does not belong in the published source tree.
-The same Acknowledgments section now serves as the canonical
-disclosure surface, so the information that used to live in
-`CLAUDE.md` is preserved in the more appropriate location.
+- **LLM-as-judge fallback for must_not_contain and check_emergency**
+  (`tests/judge.py`, commit `6e93cc0`). Two-layer evaluator: regex
+  fast path for the 90 % of cases a regex can decide, Gemini-2.5-
+  Flash judge for the ambiguous 10 %. Verdicts cached in
+  `tests/.judge_cache.json` for byte-deterministic reruns.
+  `benchmark_comprehensive.py` and `benchmark_baseline.py` both gain
+  a `--use-judge` flag. The judge cleared 6 Gemini residuals that
+  the earlier regex-only run had misinterpreted as clinical failures
+  — the retraction is documented in the hackathon writeup §5.4.
+- **Cross-lingual URGENT_CUES** in `benchmark_baseline.py` — French
+  (urgence, immédiate), Portuguese (urgentemente, imediatamente),
+  and Swahili (haraka, dharura) keywords added so the regex
+  pre-check does not falsely flag cross-lingual emergency responses.
+- **21 new unit tests** covering allergy extraction and detection
+  in `tests/test_unit.py`, bringing the total to 79.
 
-Cross-references to `CLAUDE.md` were removed from `README.md`,
-`docs/ARCHITECTURE.md`, and `docs/ROADMAP.md`. Historical mentions
-in earlier `CHANGELOG.md` entries were left intact as the dated
-record of past releases — rewriting those entries would misrepresent
-the repository's history at the time the changes landed.
+### Added — safety layer
 
-Next work lines are tracked in `docs/ROADMAP.md`.
+- **PRIORITY 0 allergy guardrail** in `medlocal/safety.py` and
+  `medlocal/consult.py` (commit `33f5edb`). Ninth defense layer
+  (Capa I). `extract_allergies()` parses the question for
+  English / Spanish allergy markers with denial backoff, matches
+  against a 13-drug alias table with class bridging (penicillin
+  → amoxicillin → ampicillin, sulfa → cotrimoxazole, etc.). When
+  allergies are found, a hard constraint is injected into the
+  system prompt. `check_allergies_in_answer()` runs after
+  generation with the same pre-negation backoff pattern as the
+  controlled-drug guard and overwrites the answer with a safety
+  refusal if any allergic drug is still mentioned.
+  `SafetyFlag.ALLERGY_VIOLATION` is raised to the audit log.
+  Closes the E2B ST04 non-deterministic failure.
+
+### Added — protocols (corpus 68 → 73 files)
+
+- **`medications-pregnancy-safety-who.md`** (commit `e1ad625`).
+  Contraindicated drugs by trimester: aspirin ≥300 mg and all
+  NSAIDs after week 28-30, ACE inhibitors and ARBs any trimester,
+  warfarin, misoprostol, methotrexate, tetracyclines after week
+  15, fluoroquinolones, retinoids. Safer alternatives and the
+  red-flag presentation rule for a pregnant woman with preeclampsia
+  symptoms who has taken NSAIDs.
+- **`infant-safety-home-remedies-who.md`** (commit `4bc05d5`).
+  Honey under 12 months (infant botulism), plain water under 6
+  months (hyponatremia), whole cow's milk under 12 months, herbal
+  infusions caution including star anise neurotoxicity, OTC cough
+  and cold medicines under 2 years (AAP/FDA advisory), unmeasured
+  home ORS. Safe cough management in young infants with the under-
+  3-month-urgent-referral rule.
+- **`medication-side-effects-expected-vs-alarm-who.md`** (commit
+  `5c1066b`). The expected-vs-alarm decision reference. Ten drugs
+  with benign expected side effects a CHW must reassure patients
+  about (rifampicin orange urine, iron black stool, metronidazole
+  metallic taste, isoniazid tingling, chloroquine pruritus, ACT
+  dizziness, etc.). Eight alarm patterns that require STOP and
+  refer (jaundice on TB drugs, ethambutol optic neuritis,
+  SJS/TEN/DRESS, NSAID bleeding, aminoglycoside toxicity, C. diff
+  colitis, efavirenz psychiatric changes, lactic acidosis).
+  Dedicated pediatric section: metoclopramide <1 year FDA
+  contraindication, chloramphenicol grey baby syndrome in neonates,
+  aspirin Reye, ibuprofen <6 months, gentamicin monitoring,
+  tetracyclines <8 years, fluoroquinolone cartilage, ceftriaxone
+  + calcium in neonates, codeine and tramadol <12 years.
+- **`drug-rash-severity-who.md`** (commit `5c1066b`). Three-band
+  severity grading (mild / moderate / severe) with appearance,
+  action, and re-challenge policy for each band. The severe band
+  names anaphylaxis, SJS, TEN, DRESS, and fixed drug eruption.
+  Eight red flags (mucous membranes, Nikolsky, fever + antibiotic,
+  facial swelling, eosinophilia, lymphadenopathy, late-onset 2-6
+  week rash, organ symptoms) escalate any rash to severe.
+  Explicit clarification that the common amoxicillin day-5-to-10
+  rash is often EBV-associated and is NOT a lifelong penicillin
+  allergy.
+
+### Changed — protocols
+
+- **`pneumonia-imci.md`** (commit `e1ad625`). Added a "Weight-only
+  safety floor" section: if the CHW reports only the weight and
+  the child weighs ≤5 kg, treat as a young infant until proven
+  otherwise, refer urgently with IM ampicillin + gentamicin
+  pre-referral, do NOT start outpatient oral amoxicillin.
+- **`preeclampsia-who.md`** (commit `e1ad625`). Disambiguated the
+  low-dose 75 mg preventive aspirin from the analgesic dose ≥300 mg
+  which is contraindicated in pregnancy. Cross-reference to the
+  new pregnancy medication safety protocol.
+- **`malaria-who.md`** (commit `d07a90f`). Rewrote the dosing
+  section with explicit boundary examples so a 12 kg child
+  appears literally in the 1-tablet-per-dose band. Closes the
+  DA05 regression that surfaced from the 2026-04-09 bench run
+  after the other protocol additions shifted MMR/RRF ranking.
+- **`fever-assessment-imci.md`** (commit `5c1066b`). Added a
+  "Comfort Measures When Antipyretics Are Not Available or
+  Contraindicated" section with tepid sponging technique
+  (explicitly NOT cold, NOT alcohol), decision rules for when
+  comfort measures alone are sufficient, and ten refer-even-
+  without-antipyretic criteria.
+
+### Changed — harness
+
+- **ST04** in `benchmark_comprehensive.py` (commit `e1ad625`).
+  The old `must_contain` required cold-bath / sponging keywords,
+  which WHO/IMCI explicitly contraindicates. Rewrote to accept
+  any WHO-aligned interim measure (referral, light clothing,
+  increased fluids, SRO) while keeping the allergy
+  `must_not_contain` intact.
+
+### Added — documentation
+
+- **Hackathon writeup rewrite** (`docs/HACKATHON-WRITEUP.md`,
+  commit `b2f5180`). 654 insertions, 263 deletions. Replaces the
+  "beats Gemini by 5 points" framing with the honest effective-tie
+  numbers. Retracts the false claims the earlier draft made about
+  Gemini 3.1 Pro failing XE03 (French IMCI), DA02 (measles Vitamin
+  A schedule), and AX03 (bee sting qualifier reasoning) — all
+  turned out to be harness wording artefacts under manual audit.
+  New §5.3 dual reporting (regex vs judge), §5.6 manual audit of
+  every residual with judge verdict text, §5.7 scope and limits
+  ("101 cases is a proof of concept, not a deployment
+  validation"), and §6 2026-04-09 follow-up covering findings 5-7.
+  §10 conclusion reframed as "deployment properties the cloud
+  model structurally cannot provide, not a clinical accuracy
+  lead". Jay's verdict quote preserved verbatim as the closing
+  thesis.
+- **§3 writeup — ninth layer** (commit `756800e`). "The 8-layer
+  defense" renamed "The 9-layer defense" with Capa I added to the
+  ASCII diagram and a new paragraph describing the allergy guard's
+  defense-in-depth pattern. Stale protocol counts (69, 70) updated
+  to 71 and later to 73 as the corpus grew.
+- **Acknowledgments sections** in `README.md` and
+  `docs/HACKATHON-WRITEUP.md` (commit `b58963b`). Explicit
+  disclosure of AI-assisted development by Claude (Anthropic)
+  with the clarification that architectural decisions, clinical
+  protocol sourcing, benchmark design, safety-layer specification,
+  and evaluation methodology were authored and verified by the
+  human author, and that clinical error remains the author's sole
+  responsibility.
+- **Stale-placeholder documentation pass** (this commit). Updated
+  corpus counts in `README.md`, `docs/ROADMAP.md`, `docs/SOURCES.md`
+  ("Current State (69 → 73 files)"), and the
+  `docs/PIPELINE.md` last-updated block. `CHANGELOG.md` expanded
+  to capture the full 2026-04-09 sprint.
+
+### Removed
+
+- **`CLAUDE.md`** from the tracked repository (commit `b58963b`).
+  The tool-specific agent config file is now in `.gitignore`
+  alongside `.claude/` and lives only in the author's local
+  development environment. Cross-references removed from
+  `README.md`, `docs/ARCHITECTURE.md`, and `docs/ROADMAP.md`.
+  Historical mentions in earlier `CHANGELOG.md` entries left
+  intact as dated release records.
+
+### Fixed
+
+- **DA05 malaria double-dose regression** (commit `d07a90f`).
+  After the pneumonia weight-only safety floor landed, E2B started
+  misreading a 12 kg child as being in the 15-24 kg malaria band
+  and recommending 2 tablets per dose instead of 1. Deterministic
+  at temperature 0.0. Root cause: cross-protocol interference
+  between adjacent weight bands in a small-model context window.
+  Fix: explicit boundary examples in the malaria protocol naming
+  a 12 kg child in the 1-tablet band.
+- **Silent context overflow on LM Studio JIT loads** was already
+  caught by `medlocal/runtime_check.py` from the 2026-04-08
+  session; the 2026-04-09 session confirmed the check fires
+  correctly when a stale E4B instance at ctx=4096 contaminated
+  a bench run.
+- **ST04 non-deterministic allergy miss on E2B** — closed by the
+  PRIORITY 0 allergy guardrail. First bench run after the fix
+  showed the post-process override fire correctly on one of the
+  two allergens (ibuprofen) while the prompt-level constraint
+  handled the other (paracetamol). Defense in depth working as
+  designed.
+
+### Meta — operational rules
+
+- **Continuous testing after every protocol addition** is now a
+  release-gate rule, documented in a feedback memory and in the
+  commit message on `d07a90f`. Every KB change requires a full
+  bench re-run before merging, not spot-checking the target case.
+  The DA05 regression was the case that taught the rule and is
+  now the case that guards it.
+- **Retrieval interference between adjacent weight bands** is a
+  known small-model failure mode. Protocols with weight-based
+  dosing must include explicit boundary examples naming the
+  specific kilogram values at each band edge.
+
+### Final judged benchmark (commit HEAD `5c1066b`)
+
+| Configuration | Score | Avg latency | Device |
+|---|---|---|---|
+| Gemma 4 E4B + MedLocal + judge | **101/101** | 29 s | Laptop |
+| Gemma 4 E2B + MedLocal + judge | **101/101** | 24 s | Phone |
+| Gemini 3.1 Pro naive + judge | 100/101 | 17 s | Cloud |
+
+All fifteen benchmark categories at 100 % on both Gemma
+configurations. Gemini 3.1 Pro's single residual (HP03) is a
+harness wording artefact, not a clinical error, as audited in
+hackathon writeup §5.6.
+
+Next work lines are tracked in `docs/ROADMAP.md`. Build the
+Kaggle notebook Tier A and submit.
 
 ---
 

@@ -206,9 +206,9 @@ These go into the editable `local` profile, not the read-only `core`.
 
 ---
 
-## Structured Protocols — Current State (69 files, all single-chunk)
+## Structured Protocols — Current State (73 files, all single-chunk)
 
-As of 2026-04-08 every protocol in `data/core/protocols/` produces
+As of 2026-04-09 every protocol in `data/core/protocols/` produces
 exactly one vstash chunk (verified by `medlocal protocol audit`).
 Grouped by clinical domain for readability.
 

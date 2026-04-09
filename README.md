@@ -60,7 +60,7 @@ gap. Cloud-only tools are useless where they are most needed.
 
 MedLocal runs the full pipeline — retrieval, reasoning, vision, training
 — on a single device. The build-time cost (downloading and chunking
-~70 protocols, generating training cards with a teacher model) happens
+73 protocols, generating training cards with a teacher model) happens
 once with internet. The runtime cost is zero.
 
 ## Quick start

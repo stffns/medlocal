@@ -46,7 +46,7 @@ is one of four pillars:
    NDCG@10 = 0.7255 on SciFact; four retrieval improvements discovered
    during MedLocal development landed upstream in vstash 0.26.0 during
    the same week as this writeup
-3. **Structured, bounded WHO/MSF protocols** (71 files, one vstash
+3. **Structured, bounded WHO/MSF protocols** (73 files, one vstash
    chunk per file, every one traceable to an official source)
 4. **A 9-layer anti-hallucination pipeline** that catches scope
    violations, dose authority failures, silent parse errors,
@@ -1101,7 +1101,7 @@ follow-ups that surfaced new work rather than as deferred items.
    studies, shows the structured output live with source citations.
 
 7. **Pre-built `core.db` for distribution** — the one-file install.
-   Ship the SQLite database with all 71 protocols pre-ingested so
+   Ship the SQLite database with all 73 protocols pre-ingested so
    that the end user downloads, installs, and runs offline in three
    commands.
 
@@ -1169,12 +1169,12 @@ one last time:**
    and landed upstream in vstash 0.26.0 during the same week.
    The retrieval engine and the clinical deployment are strongest
    together.
-2. **Structured, bounded protocols** — 71 files, one chunk each,
+2. **Structured, bounded protocols** — 73 files, one chunk each,
    every one traceable to a WHO, MSF, UNICEF, or AAP source,
    every one editable by a clinician with a text editor. When
    WHO updates a guideline next week, a non-ML clinician fixes
    MedLocal in 30 seconds without a fine-tuning run.
-3. **An 8-layer anti-hallucination pipeline that is loud by
+3. **A 9-layer anti-hallucination pipeline that is loud by
    default** — when something fails, it fails loudly, the failure
    is flagged, the audit log records it, and the CHW sees a
    refusal instead of a silent empty answer. The PRIORITY 0

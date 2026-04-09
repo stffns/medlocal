@@ -107,7 +107,7 @@ Qwen 3.5 9B           90.5%     18.6s      6/6      10/10
    - 2-3 minutes max
 
 7. **Pre-built core.db for distribution**
-   - Ship the SQLite with all 54 protocols pre-ingested
+   - Ship the SQLite with all 73 protocols pre-ingested
    - User just installs + runs, no ingestion step
 
 ### P2 — Post-Hackathon
