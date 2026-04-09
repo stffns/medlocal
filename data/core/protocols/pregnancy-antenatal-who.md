@@ -39,6 +39,40 @@ Minimum 8 antenatal contacts:
 - **IPTp for malaria:** Sulfadoxine-pyrimethamine at each ANC visit from 2nd trimester, ≥1 month apart, minimum 3 doses (endemic areas)
 - **Insecticide-treated bed net** — for all pregnant women in malaria areas
 
+**Common Pregnancy Discomforts — Safe Management.**
+These symptoms are common and not dangerous on their own, but the CHW must offer interim management AND know the red flags that turn a discomfort into an emergency. See the pregnancy medication safety protocol for drug-level detail. When in doubt, always refer.
+
+**Constipation.** Very common, often worsened by iron supplements and reduced physical activity.
+- First line (no drug needed): drink 8-10 glasses of water a day, eat fruits with skin, vegetables, whole grains, prunes or papaya, regular gentle walking.
+- If insufficient, SAFE laxatives in any trimester: lactulose 15-30 mL once or twice daily, psyllium (isphagula) 1 tablespoon in a glass of water once or twice daily with plenty of fluids, or glycerin suppositories as needed. Docusate sodium is also safe.
+- **AVOID in pregnancy:** mineral oil (reduces fat-soluble vitamin absorption and may harm fetus), castor oil (can trigger uterine contractions), senna and other stimulant laxatives in the third trimester, bisacodyl in large doses.
+- **Do NOT stop iron supplements** because of constipation — take them with food, increase fluids and fibre, add lactulose if needed. Iron deficiency in pregnancy is more dangerous than constipation.
+- **Refer if:** severe abdominal pain, inability to pass stool or gas (possible obstruction), rectal bleeding beyond small streaks from hemorrhoids, vomiting, abdominal distension, or any constipation with fever.
+
+**Nausea and vomiting.** Common in the first trimester, usually resolves by week 12-16.
+- Small frequent meals, avoid empty stomach, dry bland foods (crackers, toast) on waking, ginger tea (safe), vitamin B6 (pyridoxine) 10-25 mg three times daily is the WHO first-line pharmacological option, plenty of fluids.
+- **Refer if:** unable to keep fluids down for >24 hours, signs of dehydration (dry mouth, reduced urine, dizziness), weight loss, vomiting blood, vomiting with severe headache or right upper quadrant pain (possible pre-eclampsia/HELLP), vomiting after week 20 (not normal morning sickness).
+
+**Heartburn and reflux.** Common in second and third trimester as the uterus enlarges.
+- Smaller more frequent meals, avoid lying down right after eating, elevate the head of the bed, avoid spicy / fatty / very acidic foods. Calcium carbonate antacids (Tums) are safe. **AVOID** sodium bicarbonate (fluid retention) and magnesium trisilicate in high doses.
+- **Refer if:** heartburn with severe epigastric pain, vomiting blood, black stool, or right upper quadrant pain (could be pre-eclampsia / HELLP, not heartburn).
+
+**Back pain and pelvic pain.** Common from second trimester onwards.
+- Good posture, supportive footwear, pregnancy support belt if available, gentle stretching, warm (not hot) compress, rest on left side. Paracetamol 500 mg-1 g every 6 hours as needed is safe throughout pregnancy. **Do NOT** give NSAIDs (ibuprofen, diclofenac) in the third trimester — see pregnancy medication safety protocol.
+- **Refer if:** back pain with fever (pyelonephritis), pain radiating to abdomen with uterine tightening (labor), inability to walk, loss of bladder or bowel control (cauda equina), or any back pain in a woman with known pre-eclampsia.
+
+**Hemorrhoids.** Common in late pregnancy and postpartum.
+- Increase fibre and fluids (same as constipation), sitz bath in warm water for 10-15 minutes two or three times daily, cold compress for swelling, avoid straining during bowel movements, topical witch hazel pads are safe. Avoid prolonged standing or sitting.
+- **Refer if:** heavy bleeding, severe pain that doesn't improve with conservative measures, signs of infection (fever, pus), or a hard tender lump (possible thrombosed hemorrhoid).
+
+**Leg cramps.** Common at night in late pregnancy.
+- Calf stretching before bed, stay hydrated, adequate calcium and magnesium in diet, massage the cramping muscle, warm compress.
+- **Refer if:** leg cramp is actually one-sided leg swelling, pain, or redness (possible deep vein thrombosis — DVT is a pregnancy emergency).
+
+**Swelling of feet and ankles.** Common at end of day in third trimester.
+- Rest with legs elevated, avoid prolonged standing, compression stockings if available, lie on left side to improve venous return.
+- **REFER IMMEDIATELY if:** swelling extends to face or hands, sudden onset, accompanied by headache, visual changes, upper abdominal pain, or decreased urine output — **this is pre-eclampsia until proven otherwise**.
+
 **Danger Signs in Pregnancy — Refer Immediately.**
 - Vaginal bleeding at any stage
 - Severe headache with blurred vision (pre-eclampsia)
