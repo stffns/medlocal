@@ -55,6 +55,9 @@ Count for a full 60 seconds when the child is calm.
 - Pre-referral: IM ampicillin 50 mg/kg + IM gentamicin 7.5 mg/kg
 - Keep warm, breastfeed frequently
 
+**Weight-only queries — safety floor.**
+If the CHW reports only the weight of a child with pneumonia and the child weighs **≤5 kg**, treat as a young infant (<2 months) until proven otherwise: **REFER URGENTLY**, give IM ampicillin 50 mg/kg + IM gentamicin 7.5 mg/kg before referral, do **NOT** start outpatient oral amoxicillin. A healthy 2-month-old at the 50th percentile weighs ~5 kg, so ≤5 kg without a known age implies either a young infant or severe malnutrition — both require referral. If only weight is known and weight is 4-10 kg but the child is confirmed ≥2 months and not malnourished, the standard oral amoxicillin band (250 mg twice daily) applies.
+
 **Danger Signs — Refer Immediately.**
 - Unable to drink or breastfeed
 - Vomits everything

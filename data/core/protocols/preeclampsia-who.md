@@ -61,7 +61,7 @@
 
 **Prevention.**
 - Calcium supplementation: 1.5-2g/day in areas with low calcium intake
-- Low-dose aspirin 75mg/day from 12 weeks if high risk
+- Low-dose aspirin 75mg/day from 12 weeks if high risk (PREVENTIVE dose ONLY — analgesic or cardiac doses ≥300 mg are CONTRAINDICATED in pregnancy, especially third trimester; see pregnancy medication safety protocol)
 - Regular antenatal visits with BP monitoring
 
 **After Delivery.**
