@@ -106,6 +106,15 @@ minor, age-inappropriate sexual knowledge) is ALWAYS an urgent
 referral to a specialist. Do NOT examine the genital area yourself;
 that is forensic medical work. HIV PEP decisions and emergency
 contraception are time-sensitive (within 72 hours) — refer fast.
+**Medical red flags for sexual abuse in children:**
+- Recurrent urinary tract infections (UTI) without anatomical cause
+- Genital or anal pain, bleeding, discharge, or itching
+- Unexplained STI at any age
+- Behavioural regression (bedwetting in a toilet-trained child,
+  thumb-sucking, fear of specific adults, sleep disturbances,
+  sexualized play or language beyond developmental stage)
+- Combination of recurrent UTI + behavioural change in a child is
+  a HIGH-PRIORITY red flag — treat the UTI AND refer for safeguarding
 
 **Neglect.** Severe malnutrition with available food at home,
 untreated medical conditions, lack of immunisation, poor hygiene
