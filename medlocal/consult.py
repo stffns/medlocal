@@ -364,16 +364,16 @@ def consult(
     has_clinical_content = bool(pf_terms_set - _DEMOGRAPHIC_ONLY)
     force_assessment = not has_clinical_content and not has_triage and not is_emergency
     if force_assessment:
-        system += "\n\nThe user has NOT stated a condition, symptoms, or drug name. You MUST use assessment mode and ask what they need treatment for. Do NOT guess from the protocols."
-        logger.info("consult: vague query detected (no clinical terms beyond demographics) — forcing assessment")
+        system += "\n\nThe user has NOT stated a condition, symptoms, or drug name. You MUST use assessment mode and ask what they need treatment for. Do NOT guess a condition."
+        logger.info("consult: vague query detected (no clinical terms beyond demographics) — forcing assessment, withholding protocols")
 
     messages = [{"role": "system", "content": system}]
     if history:
         messages.extend(history)
-    messages.append({
-        "role": "user",
-        "content": f"{context}\n\n[Respond in {q_lang}]\n{question}",
-    })
+    # Withhold protocols for vague queries — sending them causes the
+    # model to latch onto whatever condition appears in the context.
+    user_content = f"{context}\n\n[Respond in {q_lang}]\n{question}" if not force_assessment else f"[Respond in {q_lang}]\n{question}"
+    messages.append({"role": "user", "content": user_content})
 
     schema = _CONSULT_SCHEMA_GUIDANCE if (has_triage or is_emergency) else _CONSULT_SCHEMA
     try:
