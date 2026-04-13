@@ -18,7 +18,10 @@
 - **Codeine and opioids near delivery** — neonatal respiratory depression and withdrawal
 
 **Safe With Conditions (requires trimester check).**
-- **Metronidazole** — safe in 2nd and 3rd trimester for bacterial vaginosis (BV) and trichomoniasis. Defer treatment to after first trimester when possible. Dose for BV in pregnancy: 500 mg twice daily for 7 days (NOT the 2g single dose — lower recurrence with 7-day course). For trichomoniasis: 2g single dose is acceptable at any stage per CDC/WHO. Not teratogenic based on studies of >5,000 exposed pregnancies (https://pmc.ncbi.nlm.nih.gov/articles/PMC2364581/). In first trimester with vaginal candida, use Clotrimazole topically instead.
+- **Metronidazole** — ALWAYS state the trimester rule when recommending this drug in pregnancy:
+  - **1st trimester (weeks 1-12): AVOID.** Defer metronidazole until 2nd trimester when possible. For vaginal symptoms in 1st trimester, use Clotrimazole pessary topically instead. If trichomoniasis is confirmed and symptomatic, 2g single dose is acceptable per CDC but discuss with clinician first.
+  - **2nd and 3rd trimester: SAFE.** Dose for BV: 500 mg twice daily for 7 days (NOT the 2g single dose — 7-day course has lower recurrence). For trichomoniasis: 2g single dose is acceptable.
+  - Not teratogenic based on >5,000 exposed pregnancies (https://pmc.ncbi.nlm.nih.gov/articles/PMC2364581/), but the 1st trimester caution is standard practice.
 
 **Safer Alternatives.**
 - **Pain and fever:** Paracetamol (acetaminophen) is first-line throughout pregnancy at standard doses
