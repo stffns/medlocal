@@ -121,8 +121,9 @@ contraception are time-sensitive (within 72 hours) — refer fast.
 - Behavioural regression (bedwetting in a toilet-trained child,
   thumb-sucking, fear of specific adults, sleep disturbances,
   sexualized play or language beyond developmental stage)
-- Combination of recurrent UTI + behavioural change in a child is
-  a HIGH-PRIORITY red flag — treat the UTI AND refer for safeguarding
+- Combination of recurrent UTI + behavioural change in a child
+  warrants investigation for possible abuse — treat the UTI AND
+  refer for safeguarding evaluation
 
 **Neglect.** Severe malnutrition with available food at home,
 untreated medical conditions, lack of immunisation, poor hygiene

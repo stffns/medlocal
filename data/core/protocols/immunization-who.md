@@ -92,7 +92,7 @@
 5. May repeat epinephrine after 5-15 minutes if no improvement
 
 **Vaccine Contraindications in HIV / Immunocompromised Patients.**
-LIVE vaccines are CONTRAINDICATED in severely immunocompromised patients (CD4 <200 or <15% in children, symptomatic AIDS). Live vaccines include: BCG, oral polio (OPV), measles-rubella (MR/MMR), yellow fever, oral rotavirus, varicella, oral typhoid (Ty21a).
+LIVE vaccines are CONTRAINDICATED in severely immunocompromised patients (CD4 <200 cells/mm³ in adults/children ≥5 years, or CD4% <25% in children under 5; symptomatic AIDS). Live vaccines include: BCG, oral polio (OPV), measles-rubella (MR/MMR), yellow fever, varicella, oral typhoid (Ty21a).
 INACTIVATED vaccines are SAFE in HIV patients regardless of immune status: DPT/Pentavalent, injectable polio (IPV), hepatitis B, PCV (pneumococcal), influenza (injectable), tetanus, HPV, meningococcal.
 **Special rules:**
 - **BCG:** Do NOT give to any infant known to be HIV-infected. If HIV status unknown at birth, give BCG per schedule (benefit outweighs risk in high-TB settings).
@@ -108,4 +108,4 @@ INACTIVATED vaccines are SAFE in HIV patients regardless of immune status: DPT/P
 - Never restart vaccination series — just continue from where stopped
 - Any dose given counts, regardless of interval
 
-Source: WHO Immunization in Practice Module (2015, updated 2023); WHO Position Papers on Vaccines
+Source: WHO Immunization in Practice Module (2015, updated 2023); WHO Position Papers on Vaccines; WHO BCG Position Paper 2018 (https://www.who.int/teams/immunization-vaccines-and-biologicals/policies/position-papers/bcg); WHO Consolidated HIV Guidelines — Table 6.6 HIV-specific vaccine guidance (https://www.ncbi.nlm.nih.gov/books/NBK572723/table/ch6.tab7/); WHO IMCI Module 5: Management of Sick Young Infant (https://cdn.who.int/media/docs/default-source/mca-documents/child/imci-integrated-management-of-childhood-illness/imci-in-service-training/imci_in_servicetraining_mod05.pdf).
