@@ -205,6 +205,17 @@ _EMERGENCY_PATTERNS = [
     r"(?i)\bpostpartum.{0,15}(hemorrhage|bleeding|haemorrhage)\b",
     r"(?i)\b(hemorrhage|bleeding|haemorrhage).{0,15}postpartum\b",
     r"(?i)\bheavy (bleeding|hemorrhage).{0,20}(delivery|birth|postpartum|after birth)\b",
+    # Neonatal fever — ANY fever in infant under 2 months is an emergency
+    # per WHO/IMCI (possible sepsis, meningitis, UTI). Covers:
+    # "bebé de 1 mes con fiebre", "newborn with fever", "3 week old fever"
+    r"(?i)\b(beb[eé]|reci[eé]n\s*nacid[oa]|neonat[oa]?|newborn|infant)\b.{0,30}\b(1\s*mes|un\s*mes|2\s*semanas?|3\s*semanas?|4\s*semanas?|1\s*month|2\s*weeks?|3\s*weeks?|4\s*weeks?)\b.{0,30}\b(fiebre|fever|temperatura|temperature)\b",
+    r"(?i)\b(fiebre|fever|temperatura|temperature)\b.{0,30}\b(beb[eé]|reci[eé]n\s*nacid[oa]|neonat[oa]?|newborn)\b.{0,30}\b(1\s*mes|un\s*mes|2\s*semanas?|3\s*semanas?|1\s*month|2\s*weeks?|3\s*weeks?)\b",
+    r"(?i)\b(1|2|3|4)\s*(week|semana)s?\s*(old)?\s*.{0,20}\b(fiebre|fever)\b",
+    r"(?i)\b(fiebre|fever)\b.{0,20}\b(1|2|3|4)\s*(week|semana)s?\s*(old)?\b",
+    r"(?i)\b(newborn|neonatal|neonate)\b.{0,30}\b(fever|fiebre)\b",
+    r"(?i)\b(fever|fiebre)\b.{0,30}\b(newborn|neonatal|neonate)\b",
+    r"(?i)\b1\s*month\s*old\b.{0,30}\b(fever|fiebre)\b",
+    r"(?i)\b(fever|fiebre)\b.{0,30}\b1\s*month\s*old\b",
     # Nutrition
     r"(?i)\bsevere dehydration\b",
     r"(?i)\bsevere (acute )?malnutrition\b",

@@ -68,6 +68,11 @@ definitive care (rigid bronchoscopy). Refer urgently instead.
 - Avoid known triggers (smoke, strong smells, cold air)
 - Cover nose/mouth in cold weather
 
+**Drug Safety in Asthma — AVOID Aspirin and NSAIDs.**
+- **Aspirin and all NSAIDs (ibuprofen, diclofenac)** can trigger severe bronchospasm in aspirin-sensitive asthma. Affects 10-20% of adult asthmatics. Risk is higher with nasal polyps (Samter's triad: asthma + nasal polyps + NSAID hypersensitivity).
+- **For fever or pain in an asthmatic patient: use Paracetamol (acetaminophen) ONLY.** Paracetamol is safe in asthma at standard doses.
+- If the patient has used aspirin/NSAIDs before without problems, the risk is lower but still present — prefer Paracetamol.
+
 **Danger Signs — Refer Immediately.**
 - Cannot speak full sentences
 - Drowsy or confused during attack
