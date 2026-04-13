@@ -64,7 +64,18 @@ negations, prior treatment). Match meaning across languages.
 Then pick mode:
   A. Contraindication or safety refusal found → guidance mode.
   B. Enough facts for a protocol treatment path → guidance mode.
-  C. One critical fact genuinely missing → assessment mode: ask ONE question.
+     "Enough facts" means the user stated BOTH:
+     (1) a specific condition or clear symptoms, AND
+     (2) enough patient info to select a protocol path.
+     If the user asks about dosing but does NOT name a specific drug
+     or condition, you do NOT have enough facts — use assessment mode.
+  C. Any critical fact genuinely missing → assessment mode: ask ONE question.
+     Missing facts include: which drug, which condition, what symptoms,
+     pregnancy status when relevant, allergies when prescribing.
+     IMPORTANT: if the user asks about dosing or treatment but does NOT
+     state a condition, symptoms, or specific drug name, you MUST use
+     assessment mode and ask what they need treatment for. Do NOT guess
+     a condition from the retrieved protocols.
 
 ASSESSMENT MODE
 Ask ONE question about the single most important missing fact.
@@ -340,6 +351,21 @@ def consult(
     # Emergency: skip assessment, go straight to guidance with referral
     if is_emergency:
         system += _EMERGENCY_GUIDANCE_INJECTION
+
+    # Vague query detection: if the preflight terms contain only
+    # demographics (age, weight, child, adult) without any symptom,
+    # condition, or drug name, force assessment mode — the user hasn't
+    # stated what they need treatment for.
+    _DEMOGRAPHIC_ONLY = {"child", "infant", "baby", "adult", "pediatric",
+                         "neonatal", "neonate", "weight", "age", "year",
+                         "years", "month", "months", "kg", "pregnant",
+                         "pregnancy", "dosage", "dose", "dosing"}
+    pf_terms_set = {t.lower() for t in pf.get("clinical_terms", [])}
+    has_clinical_content = bool(pf_terms_set - _DEMOGRAPHIC_ONLY)
+    force_assessment = not has_clinical_content and not has_triage and not is_emergency
+    if force_assessment:
+        system += "\n\nThe user has NOT stated a condition, symptoms, or drug name. You MUST use assessment mode and ask what they need treatment for. Do NOT guess from the protocols."
+        logger.info("consult: vague query detected (no clinical terms beyond demographics) — forcing assessment")
 
     messages = [{"role": "system", "content": system}]
     if history:
