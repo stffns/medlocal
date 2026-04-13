@@ -1161,6 +1161,32 @@ def _multi_query_search(
         except Exception:
             pass
 
+    # 3b. Drug-safety boost — if the query names a common drug, run an
+    # extra FTS pass with the drug name + "contraindicated" + known safety
+    # keywords. This is deterministic (no LLM dependency) and ensures
+    # contraindication protocols surface even when the LLM keyword
+    # expansion omits safety terms. Fixes non-deterministic aspirin/Reye.
+    import re as _re_drugs
+    _DRUG_SAFETY = {
+        _re_drugs.compile(r"\b(?:aspirin[ae]?)\b", _re_drugs.IGNORECASE):
+            "aspirin child Reye contraindicated fever",
+        _re_drugs.compile(r"\b(?:ibuprofen[oa]?)\b", _re_drugs.IGNORECASE):
+            "ibuprofen infant contraindicated age fever",
+        _re_drugs.compile(r"\b(?:paracetamol|acetaminoph[eé]n)\b", _re_drugs.IGNORECASE):
+            "paracetamol acetaminophen overdose hepatotoxicity dosage weight",
+        _re_drugs.compile(r"\b(?:metformin[ae]?)\b", _re_drugs.IGNORECASE):
+            "metformin diabetes contraindicated kidney",
+        _re_drugs.compile(r"\b(?:enalapril)\b", _re_drugs.IGNORECASE):
+            "enalapril ACE inhibitor contraindicated pregnancy",
+    }
+    for pattern, safety_terms in _DRUG_SAFETY.items():
+        if pattern.search(question):
+            try:
+                _merge(kb.search(safety_terms, top_k=5, fts_only=True))
+            except Exception:
+                pass
+            break  # one drug match is enough
+
     # 4. Safety net — pure FTS/BM25 on the English expansion. Catches chunks
     #    the hybrid retriever drags down because the embedder put their vector
     #    far from the query (e.g. organophosphate for "pesticide exposure").
