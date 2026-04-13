@@ -50,20 +50,33 @@ valproate, ACT, penicillin...). If you find one:
      contraindicated <6 months", "aspirin is contraindicated in
      children with fever", "enalapril is contraindicated in pregnancy").
 
-  3. If you find a matching contraindication, you are DONE gathering
-     information. You must refuse.
+  3. If you find a matching contraindication, you are DONE. STOP HERE.
+     IGNORE every other protocol — do NOT mention conditions, danger
+     signs, or treatments from unrelated protocols. Your ENTIRE
+     response is the refusal + alternative + source. Nothing else.
+     - urgency MUST be "routine" (a contraindication refusal is not
+       an emergency — the CHW simply needs to use a different drug)
      - mode MUST be "guidance"
-     - actions[0] MUST be the refusal, exactly naming the drug and the
-       reason ("NO administrar Ibuprofeno. Contraindicado en bebés
-       menores de 6 meses según el protocolo")
-     - actions[1..] MUST recommend the protocol-approved alternative
+     - assessment MUST summarise the contraindication decision in one
+       sentence: name the drug, the reason, and the alternative.
+       Example: "Aspirin is contraindicated in children under 12 due
+       to Reye syndrome risk. Use Paracetamol instead."
+       NEVER say "insufficient data" or "not enough information" —
+       the contraindication IS the data; no further info is needed.
+     - actions MUST have EXACTLY 2-3 items:
+       actions[0] = the refusal, naming the drug and the reason
+         ("Do NOT give Aspirin. Contraindicated in children under 12
+         — risk of Reye syndrome")
+       actions[1] = the protocol-approved alternative with dose
+         ("Give Paracetamol 10-15 mg/kg every 6 hours")
+       actions[2] = (optional) if the alternative needs one more
+         fact, ask for it here ("Weigh the child to calculate the
+         exact Paracetamol dose")
+     - Do NOT add referral actions, danger sign lists, or screening
+       questions. The CHW asked about a drug — answer about that drug.
      - You MUST NOT ask for any further information about the
        contraindicated drug. Do NOT ask for the patient's weight
-       to calculate its dose. Do NOT say "necesito saber el peso para
-       darle Ibuprofeno". The drug is off the table.
-     - If the ALTERNATIVE needs one more fact (e.g. weight for
-       paracetamol), state it as a single sentence in the LAST action
-       — but mode stays "guidance" and triage_questions stays empty.
+       to calculate its dose. The drug is off the table.
      - The contradiction of refusing a drug while also asking for its
        dose is a FAILURE. Never do both in the same response.
 
@@ -157,7 +170,7 @@ already stated), then:
   - actions[1..] MUST list the protocol-approved alternative.
   - If the alternative treatment dose requires one more fact (e.g.
     weight), the LAST action asks for that single fact in the user's
-    language ("Para calcular la dosis de Y, por favor mida el peso").
+    language ("Please weigh the patient to calculate the Y dose").
     This is a statement inside guidance mode, NOT a reason to switch
     to assessment mode.
   - triage_questions MUST be empty. The CHW has already received the
@@ -1220,11 +1233,16 @@ _KEYWORDS_PROMPT = """\
 Rewrite this question using ENGLISH medical terminology for protocol search.
 Translate ALL terms to English, regardless of the input language.
 Do NOT diagnose — only translate symptoms to clinical search terms.
+If a drug is asked about for a specific population (child, pregnant, infant),
+include the drug name AND the known safety concern keyword so the search can
+find the right contraindication protocol.
 Example: "baby not breathing after birth" → "newborn apnea birth resuscitation ventilation"
 Example: "niño con fiebre y sarpullido" → "pediatric febrile exanthem rash measles"
 Example: "secreción uretral purulenta, diplococos gramnegativos" → "urethral discharge gonorrhea STI ceftriaxone"
 Example: "pregnant woman convulsions" → "pregnancy seizure eclampsia magnesium sulfate"
 Example: "hombre fumigando cultivo, pupilas pequeñas, sudando" → "pesticide poisoning organophosphate cholinergic miosis diaphoresis atropine"
+Example: "puedo darle aspirina a mi hijo de 4 años con fiebre" → "aspirin child fever contraindicated Reye syndrome antipyretic"
+Example: "ibuprofeno para bebé de 3 meses" → "ibuprofen infant contraindicated age fever paracetamol"
 Return ONLY English terms separated by spaces.
 Question: """
 
