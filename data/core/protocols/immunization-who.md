@@ -91,6 +91,17 @@
 4. **REFER URGENTLY** to hospital
 5. May repeat epinephrine after 5-15 minutes if no improvement
 
+**Vaccine Contraindications in HIV / Immunocompromised Patients.**
+LIVE vaccines are CONTRAINDICATED in severely immunocompromised patients (CD4 <200 or <15% in children, symptomatic AIDS). Live vaccines include: BCG, oral polio (OPV), measles-rubella (MR/MMR), yellow fever, oral rotavirus, varicella, oral typhoid (Ty21a).
+INACTIVATED vaccines are SAFE in HIV patients regardless of immune status: DPT/Pentavalent, injectable polio (IPV), hepatitis B, PCV (pneumococcal), influenza (injectable), tetanus, HPV, meningococcal.
+**Special rules:**
+- **BCG:** Do NOT give to any infant known to be HIV-infected. If HIV status unknown at birth, give BCG per schedule (benefit outweighs risk in high-TB settings).
+- **Measles:** Give to HIV+ children who are NOT severely immunocompromised (CD4 ≥15%). Measles kills more HIV+ children than the vaccine risk.
+- **Yellow Fever:** Contraindicated if CD4 <200. Refer to clinician for risk-benefit if travel to endemic area.
+- **Rotavirus:** Can be given to HIV-exposed infants per routine schedule.
+- **All inactivated vaccines:** Follow the normal schedule. HIV+ patients may have weaker immune response — this is NOT a reason to skip vaccination.
+- **When in doubt:** refer to a clinician. Do NOT withhold inactivated vaccines from an HIV+ patient.
+
 **Defaulter Tracking.**
 - Keep immunization register updated
 - Home visit within 1 week if child misses appointment
