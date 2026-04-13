@@ -24,6 +24,14 @@ discharge to the suspected caregiver.**
   old, purple/red fresh) — repeated trauma, not a single accident.
 - Patterned marks: hand slap, belt, cord, bite marks, cigarette
   burns, stocking/glove burns, linear whip marks.
+- **Burns — non-accidental patterns (forced immersion / inflicted):**
+  Bilateral symmetrical burns (both hands, both feet, buttocks),
+  sharp demarcation lines ("stocking" or "glove" distribution up to
+  wrist or ankle), NO splash marks (accidental scalds have irregular
+  borders and splashes), burns on protected areas (buttocks, perineum,
+  soles), cigarette-shaped circular burns. Any burn in a child with
+  these features is ABUSE until proven otherwise — treat the burn AND
+  refer urgently for safeguarding. Do NOT discharge to the caregiver.
 - **Sentinel injuries in pre-verbal infants, babies, lactantes, and
   newborns**: any bruise, bruise on the ear (moretón en la oreja),
   frenulum tear (frenillo), cheek bruise, eyelid bruise, any burn,
