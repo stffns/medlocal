@@ -14,6 +14,7 @@
 **Severe Dehydration (2 or more signs):**
 - Lethargic or unconscious
 - Sunken eyes
+- Sunken fontanelle in infants (fontanela hundida — indicates fluid loss, NOT meningitis; a bulging fontanelle suggests meningitis)
 - Not able to drink or drinking poorly
 - Skin pinch goes back very slowly (≥2 seconds)
 
