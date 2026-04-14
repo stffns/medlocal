@@ -1,276 +1,129 @@
 # MedLocal
 
-**Offline-first clinical consultation and training for community health workers.**
+**Offline clinical AI for community health workers.** Ask a question in any language, get a structured response with drug dosages, danger signs, and a traceable WHO protocol citation — no internet required.
 
 Built for the [Kaggle Gemma 4 Good Hackathon 2026](https://www.kaggle.com/competitions/gemma-4-good-hackathon).
 Impact tracks: Health & Sciences · Global Resilience · Digital Equity & Inclusivity.
 
-> Works without internet. Fits in your pocket. Every answer is traceable to a
-> WHO or MSF protocol, no fine-tuning, no hallucinated dosing, no cloud
-> dependency. Validated against a 101-case clinical benchmark.
+> ⚠️ **Medical disclaimer** — MedLocal is a research and educational
+> demonstration. It is **not** a medical device, not regulatory-approved,
+> and not intended for clinical decision-making without supervision by
+> a qualified healthcare professional. See [`LICENSE`](LICENSE) for the
+> full disclaimer.
 
-> ⚠️ **MEDICAL DISCLAIMER** — MedLocal is a research and educational
-> demonstration of retrieval-augmented clinical reference tooling. It
-> is **NOT a medical device**, is **NOT FDA, EMA, or otherwise
-> regulatory-approved**, and is **NOT intended for clinical
-> decision-making without supervision by a qualified healthcare
-> professional**. The information retrieved is sourced from published
-> WHO and MSF protocols for reference and educational purposes only
-> and does not constitute medical advice. MedLocal does not replace
-> clinical judgement, physical examination, laboratory testing, or
-> consultation with a qualified healthcare provider. Any use in a
-> live patient-care context is at the sole discretion and risk of the
-> healthcare professional or organization deploying it. The author
-> assumes no liability for any decisions made on the basis of this
-> software. See [`LICENSE`](LICENSE) for the full disclaimer of
-> warranty and limitation of liability.
+## Why This Exists
 
-## What it does
+37% of the world has no reliable internet. The community health workers who would benefit most from clinical AI live and work in exactly that gap. Cloud-only tools are useless where they are most needed.
 
-A community health worker (CHW) asks a question, in any language, on any
-device, without internet. MedLocal retrieves the relevant published clinical
-protocol and presents a structured response with assessment, numbered
-actions, dosages, danger signs, and a source citation.
+MedLocal runs entirely on-device — retrieval, reasoning, vision, safety checks — on a phone or laptop. One download, zero ongoing cost.
 
-- **69 structured WHO/MSF protocols** covering pediatrics, maternal health,
-  emergencies, infectious diseases, NCDs, toxicology, heavy-metal
-  poisoning, and child protection / safeguarding
-- **Zero-hallucination architecture** — vstash retrieves, the model formats.
-  If a fact is not in a protocol it does not appear in the answer.
-- **Pre-flight translator** — one structured LLM call classifies scope and
-  emergency status before retrieval, in any language, with no hardcoded
-  keywords
-- **Safety layer** — regex emergency fast path, dosage cross-check against
-  source protocols, confidence scoring, optional grounding verification,
-  audit log
-- **Spaced repetition training** — 201 cards across 15 clinical topics
-  (FSRS-6) with a teacher/judge double-grounding loop
-- **Vision mode** — photo of wound, medication package, or scanned document,
-  combined with the CHW's text context
-- **Multilingual** — answers in the language of the question (verified for
-  ES, FR, SW, HA, PT, AR, HI, AM)
-- **`medlocal protocol` skill** — author, validate, and audit clinical
-  protocols with the same rigor as the rest of the pipeline
+## What It Does
 
-## Why offline matters
+A CHW asks: *"Puedo darle aspirina a un niño de 4 años con fiebre?"*
 
-37% of the world has no reliable internet. The community health workers
-who would benefit most from clinical AI live and work in exactly that
-gap. Cloud-only tools are useless where they are most needed.
+MedLocal responds:
+```
+Condition: Fiebre
+Assessment: Aspirina está contraindicada en niños menores de 12 años
+            por riesgo de síndrome de Reye.
+Actions:
+  1. No dar aspirina a este niño.
+  2. Administrar Paracetamol 10-15 mg/kg cada 6 horas.
+  3. Pesar al niño para calcular la dosis exacta.
+Source: WHO/UNICEF IMCI Guidelines
+```
 
-MedLocal runs the full pipeline — retrieval, reasoning, vision, training
-— on a single device. The build-time cost (downloading and chunking
-73 protocols, generating training cards with a teacher model) happens
-once with internet. The runtime cost is zero.
+Every fact traces to a published protocol. The model never invents.
 
-## Quick start
+## Key Features
+
+- **75+ WHO/MSF protocols** — pediatrics, maternal health, emergencies, infectious disease, toxicology, child protection
+- **Anti-hallucination pipeline** — 9 safety layers including contraindication scan, controlled drug guard, dosage cross-check, allergy detection
+- **Multilingual** — works in Spanish, French, Swahili, Portuguese, Hindi, Arabic, English
+- **Vision mode** — photograph a wound, medication package, or document
+- **Spaced repetition training** — 201 clinical training cards with FSRS-6 scheduling
+- **99/101 (98%)** on a 15-category adversarial clinical safety benchmark
+
+## How It Works
+
+1. **CHW asks a question** in any language
+2. **Pre-flight** classifies scope and emergency status
+3. **Retrieval** searches 75+ local WHO/MSF protocols (4-pass FTS-boosted hybrid search)
+4. **Gemma 4** reads the protocols and generates a structured response
+5. **Safety layer** verifies dosages, blocks contraindications, catches controlled drugs
+
+If the protocols don't cover a question, MedLocal says so and refers. No guessing.
+
+## Quick Start
 
 ```bash
 git clone https://github.com/stffns/medlocal.git
 cd medlocal
 pip install -e ".[dev]"
 
-# Start LM Studio with gemma-4-e4b-it loaded at n_ctx >= 8192
-# Then ingest the bundled protocols and start the server
+# Load Gemma 4 E4B in LM Studio (ctx=10000, temperature=0)
 medlocal ingest data/core/protocols --profile core
 medlocal serve
-
-# Open http://localhost:8765 in any browser, on any device on the LAN.
+# Open http://localhost:8765
 ```
-
-CLI examples:
 
 ```bash
-# One-shot consultation
+# CLI examples
 medlocal consult-cmd "Niño de 2 meses con fiebre, ¿qué le doy?"
-
-# Validate or audit clinical protocols
-medlocal protocol validate data/core/protocols/measles-who.md
-medlocal protocol audit
-
-# Author a new protocol with retrieval reachability checks
-medlocal protocol new drafts/new-protocol.md \
-  -q "Lay-language CHW query 1" \
-  -q "Adversarial reword 2"
-
-# Direct knowledge-base search
 medlocal search "pesticide poisoning organophosphate"
+medlocal protocol validate data/core/protocols/measles-who.md
 ```
+
+## Architecture
+
+![MedLocal pipeline diagram](image.png)
+
+The model never generates from general knowledge. It reads retrieved protocol text and formats a structured response. If retrieval confidence is low, it returns a referral instead of guessing.
+
+**Technical deep-dive:** [ARCHITECTURE.md](docs/ARCHITECTURE.md) · [PIPELINE.md](docs/PIPELINE.md)
+
+## Benchmarks
+
+| Configuration | Score | Offline | Model |
+|---|---|---|---|
+| Gemma 4 E4B + MedLocal | **99/101 (98%)** | ✅ | 4B params, 6.3 GB |
+| Gemma 4 E2B + MedLocal | validated | ✅ | 2B params, 4.4 GB |
+
+15 categories: safety · emergency · clinical · dosage · hallucination · contraindication · multilingual · cross-lingual emergency · child protection · rabies · anaphylaxis · and more.
 
 ## Dependencies
 
-MedLocal is built on top of the following open-source projects,
-installed as external dependencies from PyPI. **None of these are
-bundled into this repository** — all are procured via `pip install`
-at setup time. Under the Kaggle Gemma 4 Good Hackathon rules
-(Section 3.6.c), only OSI-approved open-source licenses that allow
-commercial use are used.
+| Package | License | Role |
+|---|---|---|
+| [vstash](https://github.com/stffns/vstash) | MIT | Local hybrid retrieval (vector + FTS5) |
+| [Gemma 4 E4B/E2B](https://ai.google.dev/gemma) | Apache 2.0 | On-device LLM (loaded by LM Studio) |
+| [FastAPI](https://github.com/fastapi/fastapi) | MIT | Web server |
+| [py-fsrs](https://github.com/open-spaced-repetition/py-fsrs) | MIT | Spaced repetition |
 
-| Package | Version | License | Role |
-|---|---|---|---|
-| [**vstash**](https://github.com/stffns/vstash) | ≥ 0.26.0 | MIT | Local hybrid retrieval substrate (vector + FTS5 + adaptive RRF) — a separate open-source project, used here as a library dependency in the same way as numpy or fastembed |
-| [fastembed](https://github.com/qdrant/fastembed) | — | Apache 2.0 | ONNX embedding model runtime *(transitive via vstash)* |
-| [sqlite-vec](https://github.com/asg017/sqlite-vec) | — | Apache 2.0 | SQLite vector search extension *(transitive via vstash)* |
-| [typer](https://github.com/fastapi/typer) | ≥ 0.9 | MIT | CLI framework |
-| [rich](https://github.com/Textualize/rich) | ≥ 13 | MIT | Terminal formatting |
-| [pydantic](https://github.com/pydantic/pydantic) | ≥ 2.0 | MIT | Data models |
-| [openai](https://github.com/openai/openai-python) | ≥ 1.0 | Apache 2.0 | OpenAI-compatible client (LM Studio / Ollama / OpenRouter) |
-| [FastAPI](https://github.com/fastapi/fastapi) | ≥ 0.100 | MIT | HTTP server |
-| [uvicorn](https://github.com/encode/uvicorn) | ≥ 0.20 | BSD-3 | ASGI runtime |
-| [py-fsrs](https://github.com/open-spaced-repetition/py-fsrs) | ≥ 6.0 | MIT | Spaced repetition scheduler |
+Full dependency list and license audit in [docs/SOURCES.md](docs/SOURCES.md).
 
-### Pretrained models and input data
+## Project Structure
 
-The following **are not bundled** with this repository. Under Section
-2.5 of the hackathon rules, pretrained models and input data with
-independent licenses do not need to be re-licensed as part of any
-winner license grant.
-
-- **Gemma 4 E2B / E4B** (Apache 2.0, released by Google on 2026-03-31)
-  — loaded at runtime by LM Studio, Ollama, or llama.cpp. The user
-  procures the model file independently from
-  [ai.google.dev/gemma](https://ai.google.dev/gemma) or
-  [huggingface.co/google/gemma-4](https://huggingface.co/google).
-- **Embedding models** — `BAAI/bge-small-en-v1.5` and
-  `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` are
-  downloaded on first use by fastembed from HuggingFace and cached
-  locally.
-- **Clinical content sources** — WHO, MSF, and Hesperian publications
-  are cited in [`docs/SOURCES.md`](docs/SOURCES.md). MedLocal does
-  **not** redistribute source documents; it redistributes only
-  original protocol documents authored by the MedLocal project that
-  describe the same factual medical content using original wording.
-  See [`docs/SOURCES.md`](docs/SOURCES.md) for the originality and
-  copyright disclosure.
-
-## Architecture in one diagram
-
-![MedLocal build-time ingest pipeline and offline runtime consult pipeline — WHO/MSF protocols flow through vstash into a single core.db, then the CHW question is classified by preflight, retrieved via the 4-pass FTS-boosted pipeline, and answered with schema-enforced structured output plus a safety layer.](image.png)
-
-The deep dive lives in [`docs/PIPELINE.md`](docs/PIPELINE.md), including
-the four compounding retrieval bugs we fixed in the organophosphate
-poisoning case and the upstream vstash improvements that came out of
-the debugging.
-
-## Benchmarks (2026-04-09 final, LLM-judge verified)
-
-All on-device runs use `n_ctx = 12 000`, temperature 0.0, LM Studio
-Q4_K_S quantisation, on an Apple Silicon laptop.
-
-| Configuration                       | Cases   | Score                | Avg latency |
-|-------------------------------------|---------|----------------------|-------------|
-| Gemma 4 E4B + MedLocal + judge      | 101     | **101 / 101 (100%)** | 29 s        |
-| Gemma 4 E2B + MedLocal + judge      | 101     | **101 / 101 (100%)** | **19 s**    |
-| Gemini 3.1 Pro naive + judge        | 101     | 100 / 101 ( 99%)     | 17 s        |
-| Smoke suite (`smoke_critical.py`)   | 20      | **20 / 20 PASS**     | ~5 min      |
-
-15 categories on the comprehensive suite, **all at 100% on both
-Gemma configurations**: safety · emergency · clinical · dosage ·
-hallucination · protocol · contraindication · multilingual ·
-emergency_skip · age_safety · rabies · anaphylaxis · cross_lingual_emerg
-· heavy_metals · child_protection. The Gemini 3.1 Pro residual
-(HP03) is a harness wording artefact confirmed by the LLM-as-judge
-audit, not a clinical error — see [`docs/HACKATHON-WRITEUP.md`](docs/HACKATHON-WRITEUP.md)
-§5.4 for the explicit retraction of the earlier draft's overclaims
-and §5.6 for the case-by-case audit.
-
-The numeric story is **an effective tie** between the on-device
-Gemma configurations and the cloud frontier model. The
-architectural story — offline operation, source-grounded
-verifiability, editability without retraining — is in the writeup.
-
-vstash retrieval (the engine underneath) holds NDCG@10 = 0.7255 on
-SciFact, +9.1 % over BM25 and +4.7 % over ColBERTv2 — see ARCHITECTURE.md
-for the BEIR table.
-
-## Two principles that explain every design decision
-
-1. **Knowledge lives in documents, not in model weights.** No
-   fine-tuning. No memorised answers. The LLM formats and selects;
-   vstash retrieves; the protocols are the source of truth. If a fact
-   is not in a protocol it should not appear in the answer.
-2. **Double grounding on everything that validates.** The judge
-   compares both the model answer and the expected answer against the
-   source protocol chunk. Either link failing drops confidence to LOW
-   and the safety layer raises a "verify with supervisor" banner.
-
-These two rules govern when to refuse, when to defer, and what to put
-in front of a CHW at 2 a.m. in a clinic with no signal.
-
-## Documentation
-
-- [`docs/PIPELINE.md`](docs/PIPELINE.md) — full pipeline deep dive,
-  retrieval internals, debugging playbook, hackathon narrative source
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system overview,
-  benchmarks, lessons learned
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — current state and next steps
-- [`docs/SOURCES.md`](docs/SOURCES.md) — source-document traceability
-- [`docs/constitution.md`](docs/constitution.md) — vision and principles
-- [`CHANGELOG.md`](CHANGELOG.md) — release history (keep-a-changelog)
+```
+medlocal/
+  consult.py      # Consultation pipeline with safety layer
+  preflight.py    # Scope + emergency classifier
+  knowledge.py    # Protocol retrieval (vstash)
+  safety.py       # Emergency detection, dosage check, allergy guard
+  vision.py       # Visual triage, medication ID, document scan
+  training.py     # FSRS spaced repetition
+  api.py          # FastAPI endpoints
+  web.py          # Mobile-first web UI
+data/core/protocols/  # 75+ structured WHO/MSF protocols
+tests/
+  smoke_critical.py           # 22 critical cases (~5 min)
+  benchmark_comprehensive.py  # 101 cases, 15 categories (~25 min)
+```
 
 ## License
 
-MedLocal is licensed under the **Apache License 2.0**. See the
-[`LICENSE`](LICENSE) file for the full text.
+Apache 2.0. See [LICENSE](LICENSE).
 
-Copyright © 2026 Jayson Steffens.
+---
 
-### Hackathon winner license obligation
-
-This project is an entry in the
-[Kaggle Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gemma-4-good-hackathon).
-Per Section 2.5 of the competition rules, if MedLocal is awarded a
-prize, the winning Submission and the source code used to generate
-the Submission will additionally be licensed under
-[**CC-BY 4.0**](https://creativecommons.org/licenses/by/4.0/) as an
-additional license alongside Apache 2.0. This additional license
-applies only to the snapshot of MedLocal as submitted to the
-hackathon. Pretrained models and input data with incompatible
-licenses (e.g., Gemma 4 weights under Apache 2.0, cited WHO/MSF
-publications) are explicitly carved out by Section 2.5 of the rules
-and are not subject to the winner license. Dependencies installed
-from PyPI retain their original licenses — see the Dependencies
-section above. Future development of MedLocal after the hackathon
-submission remains under Apache 2.0 at the author's sole discretion.
-
-### Content sources and originality
-
-Clinical protocol documents in `data/core/protocols/` are **original
-works** authored by the MedLocal project, based on **factual
-medical information** from published WHO, MSF, and Hesperian
-guidelines cited in [`docs/SOURCES.md`](docs/SOURCES.md). Factual
-medical information (diagnostic criteria, drug dosages, clinical
-thresholds, epidemiological data) is not subject to copyright
-protection under U.S. law (17 U.S.C. § 102(b)) or most
-international jurisdictions. The specific wording, structure,
-clinical decision logic, and cross-references of the protocol
-documents in this repository are original creative expression by
-the author and are licensed under Apache 2.0 along with the rest
-of the MedLocal codebase. No portion of any cited source document
-is reproduced verbatim. See [`docs/SOURCES.md`](docs/SOURCES.md)
-for the full originality and attribution disclosure.
-
-### Medical disclaimer
-
-MedLocal is a research and educational tool and is NOT a medical
-device. See the disclaimer at the top of this README and the
-warranty and liability sections of the [`LICENSE`](LICENSE) file
-for the full terms. Use in any clinical setting is at the sole
-discretion and risk of the deploying healthcare professional or
-organization.
-
-## Acknowledgments
-
-MedLocal and its retrieval engine vstash were designed, architected,
-and validated by the author. This includes all architectural
-decisions, the 9-layer safety pipeline specification, clinical
-protocol sourcing and cross-validation against WHO, MSF, UNICEF,
-and AAP publications, the adversarial benchmark design, the
-evaluation methodology, and the manual audit of every residual
-documented in this writeup. Every clinical protocol in
-`data/core/protocols/` was authored and verified against its cited
-source before inclusion. Code generation, refactoring, and
-documentation were assisted by Claude (Anthropic), and a second AI
-model was used in the structured code-review loop described in
-[`docs/HACKATHON-WRITEUP.md`](docs/HACKATHON-WRITEUP.md) §6. Any
-clinical error in this system is the author's responsibility alone.
+*Hackathon writeup: [docs/HACKATHON-WRITEUP.md](docs/HACKATHON-WRITEUP.md) · Sources: [docs/SOURCES.md](docs/SOURCES.md)*
