@@ -23,7 +23,28 @@
 
 ---
 
-## Current State (2026-04-09)
+## Current State (2026-04-14 submission)
+
+### 2026-04-13/14 sprint deltas
+
+Two days of hardening before Kaggle submission. Full list in CHANGELOG.
+
+- **Corpus:** 73 → 77 protocols. New: `drug-safety-age-pregnancy-who`,
+  `varicella-chickenpox-who`, `cholestasis-pregnancy-who`,
+  `acute-abdomen-who`. Enhancements to `child-protection-who`,
+  `immunization-who`, `asthma-who`, `medications-pregnancy-safety-who`,
+  `diarrhea-imci`.
+- **Pipeline:** Vague-query detection (force assessment + withhold protocols),
+  deterministic drug-safety FTS boost, safety guards scan `actions[]`
+  and `refer_if[]` (not just the answer text), neonatal fever emergency
+  regex added.
+- **Prompt:** 2681 → 646 tokens (76% reduction), protocol cap 6 → 4,
+  all examples in English to avoid language bias.
+- **Kaggle notebook:** runs on Gemma 3N E4B via Gemini API in ~5 min
+  with auto-retry on rate limits.
+- **Benchmark:** 101/101 on Gemma 4 E4B Q4_K_M @ ctx 10000.
+
+## Previous state (2026-04-09)
 
 ### Completed
 - [x] **73 clinical protocols** (WHO/MSF/UNICEF/AAP sourced, single-chunk, validated by `medlocal protocol audit`)

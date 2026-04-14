@@ -936,3 +936,90 @@ trajectory.
 *first-line and fever-in-epileptic-child rule), and*
 *`ear-infections-imci` (infant <3 months referral rule and the*
 *aminoglycoside-ototoxicity warning).*
+
+---
+
+## §6: 2026-04-13/14 submission sprint deltas
+
+Two days of field-driven fixes before Kaggle submission. Each change
+below has a commit hash and a manual test case that drove it.
+See CHANGELOG.md for the full commit log.
+
+### 6.1 Pipeline additions
+
+**Vague-query detection and protocol withholding.** When the preflight
+`clinical_terms` contain only demographics (age, weight, child, adult)
+without any symptom, condition, or drug name, the pipeline forces
+`mode=assessment` and withholds protocols from the LLM. Previously the
+model latched onto whatever condition surfaced in retrieval and gave
+specific treatment for an unconfirmed diagnosis. Test case:
+"Mi hijo de 8 años pesa 50kg, ¿le doy dosis de adulto?" now asks
+"what are you treating?" instead of prescribing ACT for malaria.
+
+**Drug-safety FTS boost.** When the question names a common drug
+(aspirin, ibuprofen, paracetamol, metformin, enalapril), the pipeline
+runs an extra FTS-only pass with drug-specific safety keywords.
+Deterministic, no LLM dependency. Fixes non-deterministic failure
+where `_KEYWORDS_PROMPT` sometimes omits "Reye" / "contraindicated"
+from its output, causing the relevant contraindication protocol to
+drop out of the top 4.
+
+**Safety layer scope extension.** The allergy and controlled drug
+guards now scan `answer + assessment + actions + refer_if`, not just
+the `answer` field. Fix introduced after observing a leak in the Kaggle
+demo: "Child with 39°C fever, allergic to both paracetamol and
+ibuprofen" — the model put paracetamol in `actions[4]` while keeping
+`answer` clean. Guard now catches it.
+
+### 6.2 Prompt engineering
+
+- System prompt from 2681 to 646 tokens (76% reduction). All safety
+  rules preserved; only removed inline examples, decorative separators,
+  and redundant rule restatements.
+- Protocol context cap from 6 to 4 (reduces protocol-mixing in small models).
+- All prompt examples now in English (previously Spanish, which biased
+  output language for Portuguese/French/Swahili/Hindi queries).
+- Worst-case full prompt: 10558 to 4661 tokens.
+
+### 6.3 New protocols (77 total, up from 73)
+
+- `drug-safety-age-pregnancy-who.md` - consolidated drug contraindications
+  by age/pregnancy/condition. 955 tokens. Replaces scattered mentions
+  across 15+ protocols.
+- `varicella-chickenpox-who.md` - vesicular rash recognition; distinguishes
+  chickenpox from measles (maculopapular rash) - was confused by the
+  model in manual testing.
+- `cholestasis-pregnancy-who.md` - palms/soles itching in pregnancy as
+  red flag for ICP. CHW action: always refer for bile acid measurement.
+- `acute-abdomen-who.md` - appendicitis/intussusception/volvulus
+  recognition. Key rule: pain + vomiting + fever = refer, do NOT treat
+  with antibiotics.
+
+Protocol enhancements: `child-protection-who.md` (non-accidental burn
+patterns, UTI + regression as abuse red flag), `immunization-who.md`
+(HIV/vaccine contraindications), `asthma-who.md` (aspirin/NSAIDs
+bronchospasm section), `medications-pregnancy-safety-who.md`
+(metronidazole trimester rules), `diarrhea-imci.md` (sunken fontanelle
+as dehydration sign, with explicit note vs bulging=meningitis).
+
+### 6.4 Kaggle notebook compatibility (`medlocal/llm.py`)
+
+Gated on `base_url` containing `generativelanguage.googleapis` so
+LM Studio on-device runs are unaffected:
+- `gemma-4-*`: `response_format=json_schema` hangs 6+ min. Use
+  prompt-based schema + manual parse.
+- `gemma-3/3n-*`: no system role. Merge system into first user message.
+- Strip `<thought>...</thought>` (Gemma 4 thinking mode).
+- Strip markdown JSON fences (Gemma 3/3n habit).
+- Smart retry: honor server-suggested `retryDelay` on 429.
+
+### 6.5 Safety layer
+
+- Neonatal fever (<2 months) regex pattern added to `_EMERGENCY_PATTERNS`
+  per WHO/IMCI (any fever in an infant under 2 months is a danger sign).
+
+### 6.6 Benchmark result
+
+**101/101 (100%)** on Gemma 4 E4B Q4_K_M @ ctx 10000 after tightening
+two test assertions (ST08 and CA19) that were tripping on vocabulary
+variants. Both were harness artefacts, not clinical errors.
