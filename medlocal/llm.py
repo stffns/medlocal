@@ -42,8 +42,10 @@ def chat(
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
 
     # Gemma quirks: merge system into user for gemma-3/3n (no system role).
+    # Only applies when using Gemini API, not LM Studio / Ollama.
     model_lower = cfg.model.lower()
-    if ("gemma-3" in model_lower or "gemma-4" in model_lower) and messages and messages[0].get("role") == "system":
+    is_gemini_api = "generativelanguage.googleapis" in (base_url or "")
+    if is_gemini_api and ("gemma-3" in model_lower or "gemma-4" in model_lower) and messages and messages[0].get("role") == "system":
         messages = [dict(m) for m in messages]
         no_think = (
             "Respond directly. Do NOT emit <thought> or reasoning blocks. "
@@ -189,12 +191,13 @@ def chat_structured(
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
 
-    # Gemma models via Gemini API quirks:
+    # Gemma models via Gemini API quirks (ONLY apply when base_url is Gemini):
     # - gemma-4-*: response_format=json_schema hangs (6+ min). Use prompt-based schema.
     # - gemma-3n-*: does not support system role. Concatenate system into user.
-    # Both strip <thought> reasoning blocks post-hoc.
+    # LM Studio / Ollama handle Gemma 4 json_schema fine - do not apply workaround.
     model_lower = cfg.model.lower()
-    is_gemma_quirky = (
+    is_gemini_api = "generativelanguage.googleapis" in (base_url or "")
+    is_gemma_quirky = is_gemini_api and (
         "gemma-4" in model_lower
         or "gemma-3n" in model_lower
         or "gemma-3-" in model_lower
