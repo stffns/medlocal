@@ -263,11 +263,27 @@ These go into the editable `local` profile, not the read-only `core`.
 
 ---
 
-## Structured Protocols - Current State (73 files, all single-chunk)
+## Structured Protocols - Current State (77 files, all single-chunk)
 
-As of 2026-04-09 every protocol in `data/core/protocols/` produces
+As of 2026-04-14 every protocol in `data/core/protocols/` produces
 exactly one vstash chunk (verified by `medlocal protocol audit`).
 Grouped by clinical domain for readability.
+
+### New in 2026-04-13/14 submission sprint
+
+| File | Sources with URLs |
+|------|-------------------|
+| `drug-safety-age-pregnancy-who.md` | WHO Model Formulary for Children (2010, https://www.who.int/publications/i/item/9789241159227); WHO/UNICEF IMCI Chart Booklet (2014); Reye Syndrome StatPearls (https://www.ncbi.nlm.nih.gov/books/NBK526101/); GINA 2023 Pocket Guide (https://ginasthma.org/wp-content/uploads/2023/07/GINA-2023-Pocket-Guide-WMS.pdf); Samter's Triad review (https://pmc.ncbi.nlm.nih.gov/articles/PMC5951071/) |
+| `varicella-chickenpox-who.md` | Varicella-Zoster Virus StatPearls (https://www.ncbi.nlm.nih.gov/books/NBK448191/); Cochrane Acyclovir for varicella (https://pmc.ncbi.nlm.nih.gov/articles/PMC8407192/); WHO Pocket Book of Hospital Care for Children (2013) |
+| `cholestasis-pregnancy-who.md` | ICP StatPearls (https://www.ncbi.nlm.nih.gov/books/NBK551503/); ICP review PMC2678574 (https://pmc.ncbi.nlm.nih.gov/articles/PMC2678574/); SMFM/ACOG ICP management guidelines (https://pmc.ncbi.nlm.nih.gov/articles/PMC11384812/) |
+| `acute-abdomen-who.md` | Acute Abdomen StatPearls (https://www.ncbi.nlm.nih.gov/books/NBK459328/); Pediatric Appendicitis StatPearls (https://www.ncbi.nlm.nih.gov/books/NBK441864/); WSES Jerusalem Guidelines 2020 (https://pmc.ncbi.nlm.nih.gov/articles/PMC7386163/); WHO Pocket Book of Hospital Care for Children (2013) |
+
+Enhancements to existing protocols in the same sprint:
+- `immunization-who.md`: HIV/immunocompromised section citing WHO BCG Position Paper 2018 (https://www.who.int/teams/immunization-vaccines-and-biologicals/policies/position-papers/bcg) and WHO Consolidated HIV Guidelines (https://www.ncbi.nlm.nih.gov/books/NBK572723/table/ch6.tab7/)
+- `child-protection-who.md`: recurrent UTI + behavioral regression section (WHO Clinical Handbook 2022, PMC4846719, PMC6345137); non-accidental burn patterns (WHO Clinical Handbook 2022)
+- `medications-pregnancy-safety-who.md`: metronidazole trimester section (PMC2364581)
+- `asthma-who.md`: Drug Safety in Asthma section (GINA 2023, PMC5951071)
+- `diarrhea-imci.md`: sunken fontanelle as severe dehydration sign (WHO IMCI Module 5, https://cdn.who.int/media/docs/default-source/mca-documents/child/imci-integrated-management-of-childhood-illness/imci-in-service-training/imci_in_servicetraining_mod05.pdf)
 
 ### Maternal & Newborn
 

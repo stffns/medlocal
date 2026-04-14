@@ -470,7 +470,14 @@ def consult(
     # OVERWRITE the answer with a hard refusal rather than shipping it.
     # This is the check `check_dosages` cannot make — it only validates
     # dose VALUES, not dose AUTHORITY. See Silt's review on 2026-04-08.
-    controlled_ok, controlled_violations = check_controlled_drugs(answer)
+    # Check answer + actions + refer_if for controlled drug doses
+    _controlled_scan_text = "\n".join([
+        answer,
+        structured.get("assessment", ""),
+        "\n".join(structured.get("actions", [])),
+        "\n".join(structured.get("refer_if", [])),
+    ])
+    controlled_ok, controlled_violations = check_controlled_drugs(_controlled_scan_text)
     if not controlled_ok:
         _flag(SafetyFlag.CONTROLLED_DRUG_DOSE_COMPUTED)
         logger.error(
@@ -506,8 +513,16 @@ def consult(
     # the small model sometimes ignores allergy context entirely; this
     # is the hardwired backstop. See `extract_allergies` in safety.py.
     if reported_allergies:
+        # Check answer + actions + refer_if — the LLM may recommend an
+        # allergic drug in actions[] even when answer is clean.
+        full_text = "\n".join([
+            answer,
+            structured.get("assessment", ""),
+            "\n".join(structured.get("actions", [])),
+            "\n".join(structured.get("refer_if", [])),
+        ])
         allergy_ok, allergy_violations = check_allergies_in_answer(
-            answer, reported_allergies
+            full_text, reported_allergies
         )
         if not allergy_ok:
             _flag(SafetyFlag.ALLERGY_VIOLATION)

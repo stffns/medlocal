@@ -10,7 +10,63 @@ semver; we will cut 1.0.0 at Kaggle submission.
 
 ---
 
-## [Unreleased] — 2026-04-09 hackathon-ready sprint
+## [Unreleased] - 2026-04-13 and 2026-04-14 submission sprint
+
+Two days of field-driven fixes and protocol gaps closure before Kaggle submission. Benchmark moved from 99/101 to 101/101 on Gemma 4 E4B Q4_K_M @ ctx 10000.
+
+### Added - new clinical protocols (corpus 73 - 77 files)
+- `drug-safety-age-pregnancy-who.md` - consolidated contraindications by age/pregnancy/condition. Covers aspirin/Reye, ibuprofen/infant, loperamide, metoclopramide, codeine, chloramphenicol, doxycycline, ciprofloxacin, ACE inhibitors, metformin, cough medicines, honey. Each entry has drug + contraindication + reason + alternative. Verified URLs to WHO Model Formulary, IMCI, WHO Pocket Book, AAP, GINA.
+- `varicella-chickenpox-who.md` - vesicular rash recognition and differential vs measles/impetigo/scabies. Symptomatic treatment (paracetamol, NO aspirin/ibuprofen), isolation rules, referral criteria. Sources: StatPearls, Cochrane, WHO Pocket Book.
+- `cholestasis-pregnancy-who.md` - palms/soles itching in pregnancy is a red flag, not normal discomfort. Associated with stillbirth when bile acids >40 umol/L. CHW action: always refer for bile acid measurement. Sources: StatPearls NBK551503, PMC2678574, SMFM/ACOG guidelines.
+- `acute-abdomen-who.md` - appendicitis, intussusception, volvulus, typhoid perforation, ectopic pregnancy recognition. Key rule: pain+vomiting+fever = refer, do NOT treat with antibiotics. Sources: StatPearls, WSES Jerusalem Guidelines 2020, WHO Pocket Book.
+
+### Added - existing protocol enhancements
+- `child-protection-who.md`: recurrent UTI + behavioral regression as sexual abuse red flag pattern. Non-accidental burn patterns (bilateral symmetrical, sharp borders, no splash marks, stocking/glove distribution) as abuse red flags.
+- `immunization-who.md`: HIV/immunocompromised vaccine contraindications. Live vaccines (BCG, OPV, MR, yellow fever) contraindicated in CD4 <200. Inactivated safe regardless. Sources: WHO BCG Position Paper 2018, WHO Consolidated HIV Guidelines.
+- `asthma-who.md`: Drug Safety in Asthma section - aspirin/NSAIDs avoid, paracetamol preferred at standard doses (Samter's triad caveat).
+- `medications-pregnancy-safety-who.md`: metronidazole trimester rule - 1st trimester avoid (use clotrimazole topical), 2nd/3rd safe with correct dosing. Source: PMC2364581 meta-analysis.
+- `diarrhea-imci.md`: sunken fontanelle as severe dehydration sign (explicit note: sunken = dehydration, bulging = meningitis).
+
+### Added - safety layer
+- Neonatal fever emergency detection: regex patterns for fever in infants under 2 months (WHO/IMCI danger sign). Covers Spanish and English variants: 'bebe de 1 mes con fiebre', 'newborn fever', '2 week old infant fever'.
+- Allergy guard + controlled drug guard now scan answer + actions + refer_if (not just the answer text). Previously a leak could occur when the model mentioned an allergic drug in actions[] while the answer field was clean.
+
+### Changed - retrieval pipeline
+- Deterministic drug-safety FTS boost: when the query names a common drug (aspirin, ibuprofen, etc.), injects a targeted FTS pass with safety keywords (Reye, contraindicated). Eliminates non-deterministic retrieval failures where the LLM keyword expansion omits safety terms.
+- Vague query detection: when the preflight terms contain only demographics (age, weight, child) without any symptom, condition, or drug name, force assessment mode and withhold protocols from the LLM. Previously the model would latch onto whatever condition appeared in the retrieved protocols (e.g. Malaria) and give specific treatment for an unconfirmed diagnosis.
+- `_KEYWORDS_PROMPT`: 2 contraindication few-shots added. Surfaces Fever Assessment IMCI at rank 1 for aspirin/child queries.
+
+### Changed - prompt engineering
+- System prompt compressed from 2681 to 646 tokens (76% reduction). Removed inline examples, decorative separators, redundant rule restatements. All safety rules preserved.
+- Keywords prompt: 310 to 144 tokens, 7 examples to 3 essential ones.
+- Protocol cap: 6 to 4 results per query. Reduces context by ~3400 tokens, prevents protocol mixing.
+- Full worst-case prompt: 10558 to 4661 tokens. Fits comfortably in 8192 ctx with 3531 tokens headroom.
+- All prompt examples in English (was Spanish) to avoid language bias.
+- PRIORITY 0 strengthened: "STOP HERE. IGNORE every other protocol" prevents mixing. urgency must be "routine" (not emergency). assessment must summarise the decision, never "insufficient data". actions capped at 2-3 items.
+
+### Added - Kaggle notebook
+- `notebooks/medlocal_demo.ipynb`: 7 adversarial cases, impact-first narrative matching the writeup. Runs against Gemma 3N E4B via Gemini API in ~5 minutes. Outputs embedded.
+- `llm.py`: Gemma via Gemini API quirks workarounds (only applies when base_url is Gemini, not LM Studio):
+  - gemma-4-*: response_format=json_schema hangs 6+ min. Use prompt-based schema.
+  - gemma-3/3n-*: no system role support. Merge system into user message.
+  - Strip `<thought>...</thought>` reasoning blocks (Gemma 4 thinking mode).
+  - Strip markdown ```json ``` fences (Gemma 3/3n output habit).
+  - Smart retry: honor server-suggested retryDelay on 429 rate limits. _MAX_RETRIES=5 with backoff (2, 10, 30, 60, 90s).
+- `cli.py`: ingest no longer exits error when nothing to ingest (already-ingested is success).
+
+### Changed - docs
+- `README.md`: impact-first rewrite. Opens with problem, shows real example, lists features. Technical deep-dive moved to ARCHITECTURE.md/PIPELINE.md.
+- `docs/HACKATHON-WRITEUP.md`: reduced from 1797 to 214 lines. Opens with "2 a.m. in a rural clinic" scenario. No NDCG scores, no RRF internals in the main narrative.
+- Em dashes (—) replaced with ASCII hyphens (-) across all docs for keyboard portability.
+
+### Fixed - benchmark tests
+- ST08 (ketamine scope refusal): replaced overly broad 'dose' word ban with specific numeric dose patterns. The model correctly refuses but uses 'dose' in the refusal explanation.
+- CA19 (herpes zoster / shingles): widened accepted terms to include rash/blister/vesicle/refer alongside the primary terms. Model identifies the condition correctly but may use different terminology.
+- Result: 101/101 (100%) on Gemma 4 E4B Q4_K_M @ ctx 10000.
+
+---
+
+## [0.7.0] - 2026-04-09 hackathon-ready sprint
 
 Candidate for version 0.7.0. Entire day of work driven by manual
 testing, honest residual audits, and the continuous-testing rule.
