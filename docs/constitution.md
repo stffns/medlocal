@@ -1,16 +1,16 @@
-# MedLocal — Project Constitution
+# MedLocal - Project Constitution
 
 **Offline Clinical Consultation & Training for Community Health Workers**
 
 *Kaggle Gemma 4 Good Hackathon 2026*
-*Jayson Steffens — Independent Researcher & QA Lead*
+*Jayson Steffens - Independent Researcher & QA Lead*
 *April 2026*
 
 ---
 
 ## 1. Vision
 
-MedLocal is an offline medical consultation and training system designed for community health workers operating in areas without internet connectivity. It brings clinical guidelines, medication references, and adaptive learning to any device — from smartphones to laptops — without requiring cloud services, API subscriptions, or continuous connectivity.
+MedLocal is an offline medical consultation and training system designed for community health workers operating in areas without internet connectivity. It brings clinical guidelines, medication references, and adaptive learning to any device - from smartphones to laptops - without requiring cloud services, API subscriptions, or continuous connectivity.
 
 **Core principle:** No internet? No problem. Clinical knowledge should be as accessible as the device in your pocket.
 
@@ -71,16 +71,16 @@ The knowledge base uses a dual-profile architecture ensuring medical safety:
 | **Core** (read-only) | Pre-built with WHO guidelines, essential medicines list, clinical protocols. Distributed with the application. Cannot be modified by end users. Updated only via official releases. |
 | **Local** (editable) | Country-specific protocols, regional guidelines, scanned documents. Managed by local administrators. Can be added to or removed without affecting core. |
 
-Search queries both profiles transparently via federated retrieval. Results compete on relevance regardless of source — the best answer wins whether it comes from a WHO guideline or a national protocol.
+Search queries both profiles transparently via federated retrieval. Results compete on relevance regardless of source - the best answer wins whether it comes from a WHO guideline or a national protocol.
 
 ### 4.2 Technology Stack
 
 | Component | Role & Details |
 |-----------|---------------|
 | **vstash** | Hybrid retrieval engine (vector + keyword via Reciprocal Rank Fusion). Benchmarked: NDCG@10 = 0.7255 on BEIR SciFact, surpassing ColBERTv2 (+4.7%) and BM25 (+9.1%). Single SQLite file, 4.7ms latency on 3.6K docs. |
-| **Gemma 4 (E2B and E4B)** | On-device multimodal LLMs by Google, released 2026-03-31. Apache 2.0 license. Supports text, image, audio. Gemma 4 E2B (~2 GB RAM at Q4_K_S quantisation) is the phone-class design point; Gemma 4 E4B (~5 GB RAM) is the laptop / tablet option. Both score 101/101 on MedLocal's 101-case adversarial clinical benchmark with the MedLocal pipeline and the LLM-as-judge evaluator — the on-device pipeline is the determinant of clinical safety across the 2B-4B range, not the parameter count. See the hackathon writeup §5.5 for the full trade-off comparison between the two configurations. |
+| **Gemma 4 (E2B and E4B)** | On-device multimodal LLMs by Google, released 2026-03-31. Apache 2.0 license. Supports text, image, audio. Gemma 4 E2B (~2 GB RAM at Q4_K_S quantisation) is the phone-class design point; Gemma 4 E4B (~5 GB RAM) is the laptop / tablet option. Both score 101/101 on MedLocal's 101-case adversarial clinical benchmark with the MedLocal pipeline and the LLM-as-judge evaluator - the on-device pipeline is the determinant of clinical safety across the 2B-4B range, not the parameter count. See the hackathon writeup §5.5 for the full trade-off comparison between the two configurations. |
 | **py-fsrs (FSRS-6)** | Spaced repetition scheduling algorithm. Determines optimal review intervals based on learner performance. MIT license. |
-| **FastAPI** | Lightweight web server for the mobile-first interface. Serves locally on the device — no external connectivity. |
+| **FastAPI** | Lightweight web server for the mobile-first interface. Serves locally on the device - no external connectivity. |
 | **SQLite** | All data stored in portable single files. Core knowledge base, local additions, training progress, and review history. |
 
 ### 4.3 Retrieval Performance
@@ -108,7 +108,7 @@ Search queries both profiles transparently via federated retrieval. Results comp
 
 The project addresses all three official Kaggle Gemma 4 Good Hackathon impact tracks simultaneously:
 
-- **Health & Sciences:** Clinical decision support with protocol-backed answers, structured triage, dosage cross-check against source protocols, and visual medication identification — grounded in published WHO and MSF guidelines.
+- **Health & Sciences:** Clinical decision support with protocol-backed answers, structured triage, dosage cross-check against source protocols, and visual medication identification - grounded in published WHO and MSF guidelines.
 - **Global Resilience:** Offline-first architecture for health workers in crisis zones, rural clinics, and communities with intermittent or no connectivity. The full pipeline (retrieval, reasoning, vision, training) runs on a single device without cloud dependency.
 - **Digital Equity & Inclusivity:** 37% of the world lacks reliable internet; MedLocal targets exactly that gap. Runs on phone-class hardware with a 2-billion-parameter model (Gemma 4 E2B), supports 7 languages (ES, FR, SW, HA, PT, AR, HI, AM), and is Apache 2.0 so health ministries and NGOs can deploy and adapt it without license friction.
 

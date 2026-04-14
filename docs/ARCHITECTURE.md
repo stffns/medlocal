@@ -1,11 +1,11 @@
-# MedLocal — Product Roadmap & Architecture
+# MedLocal - Product Roadmap & Architecture
 
 ## Project Overview
 
-MedLocal is an offline-first clinical consultation and training system for community health workers (CHWs). It combines vstash (hybrid retrieval engine with SOTA benchmarks), Gemma 4 (E2B and E4B, on-device multimodal LLMs released 2026-03-31), and FSRS (spaced repetition) to deliver clinical decision support, adaptive training, and visual triage — all without internet. As of the 2026-04-09 sprint, both the E2B (~2 GB RAM at Q4_K_S) and E4B (~5 GB RAM) configurations score 101/101 on the 101-case adversarial clinical benchmark with the LLM-as-judge evaluator, tied with each other and within one harness-wording-artefact case of Gemini 3.1 Pro. The pipeline, not the model size, is the determinant of clinical safety across the 2B-4B range.
+MedLocal is an offline-first clinical consultation and training system for community health workers (CHWs). It combines vstash (hybrid retrieval engine with SOTA benchmarks), Gemma 4 (E2B and E4B, on-device multimodal LLMs released 2026-03-31), and FSRS (spaced repetition) to deliver clinical decision support, adaptive training, and visual triage - all without internet. As of the 2026-04-09 sprint, both the E2B (~2 GB RAM at Q4_K_S) and E4B (~5 GB RAM) configurations score 101/101 on the 101-case adversarial clinical benchmark with the LLM-as-judge evaluator, tied with each other and within one harness-wording-artefact case of Gemini 3.1 Pro. The pipeline, not the model size, is the determinant of clinical safety across the 2B-4B range.
 
-**Repository:** Private — github.com/stffns/medlocal
-**Hackathon:** Kaggle Gemma 4 Good — Deadline May 18, 2026
+**Repository:** Private - github.com/stffns/medlocal
+**Hackathon:** Kaggle Gemma 4 Good - Deadline May 18, 2026
 **License:** Apache 2.0
 
 ---
@@ -13,7 +13,7 @@ MedLocal is an offline-first clinical consultation and training system for commu
 ## Architecture Principles
 
 1. **Offline is sacred.** Everything must work without internet. No exceptions.
-2. **Connectivity is opportunistic.** When available, use it to update and enrich — never to gate functionality.
+2. **Connectivity is opportunistic.** When available, use it to update and enrich - never to gate functionality.
 3. **Knowledge lives in documents, not in model weights.** No fine-tuning. vstash retrieves, the model reasons over context.
 4. **Degrade gracefully.** Full hybrid search when embeddings are available, keyword-only when they're not.
 
@@ -129,7 +129,7 @@ audit.log()               SQLite record
 | Web UI | `medlocal/web.py` | Unified conversational UI, mobile-first, camera integration |
 | API | `medlocal/api.py` | FastAPI REST endpoints for all features |
 | CLI | `medlocal/cli.py` | Typer CLI with all commands |
-| Indexer | `medlocal/indexer.py` | Consultation index generator (tested, removed from pipeline — caused contamination) |
+| Indexer | `medlocal/indexer.py` | Consultation index generator (tested, removed from pipeline - caused contamination) |
 
 ### PLANNED (not yet implemented)
 
@@ -146,12 +146,12 @@ audit.log()               SQLite record
 ## Dual-Profile Knowledge Base
 
 ### core.db (read-only, distributed with app)
-- **73 WHO / MSF / UNICEF / AAP protocols** — structured markdown with dosages,
+- **73 WHO / MSF / UNICEF / AAP protocols** - structured markdown with dosages,
   steps, danger signs. Authoring rule: ≤1 `##` per file, prefer bold labels,
   so each protocol fits in one vstash chunk. Validated by
   `medlocal protocol audit`. Long sources are split into focused sub-files
   (e.g. `poisoning-organophosphate-who.md` + `poisoning-general-who.md`).
-- **28 CHT workflows** — decision trees from PIH Malawi + default reference app
+- **28 CHT workflows** - decision trees from PIH Malawi + default reference app
 - **Total:** 101 documents, all single-chunk
 - **Format:** SQLite + vec_chunks (384d, paraphrase-multilingual-mpnet-base-v2)
   + fts_chunks (FTS5 Porter stemming)
@@ -195,7 +195,7 @@ MedLocal (assessment mode):
 CHW: "3 years old, breathing 48 times per minute"
 
 MedLocal (guidance mode):
-  Assessment: Pneumonia — fast breathing (48 > 40 threshold for age 3)
+  Assessment: Pneumonia - fast breathing (48 > 40 threshold for age 3)
   Actions:
   1. Amoxicillin 750mg twice daily for 5 days
   2. Follow up in 3 days
@@ -205,14 +205,14 @@ MedLocal (guidance mode):
 
 ### Schema
 The structured output has a `mode` field:
-- `"assessment"` — needs more info, includes `next_question`
-- `"guidance"` — enough info, includes full `actions` + `refer_if`
+- `"assessment"` - needs more info, includes `next_question`
+- `"guidance"` - enough info, includes full `actions` + `refer_if`
 
 ---
 
 ## Model Safety Benchmarks
 
-### 101-Case Comprehensive Benchmark — 2026-04-09 final (LLM-judge verified)
+### 101-Case Comprehensive Benchmark - 2026-04-09 final (LLM-judge verified)
 
 ```
 Overall: 101/101 (100%) on both E2B and E4B with the MedLocal pipeline.
@@ -231,12 +231,12 @@ child_protection     1/1  (100%)
 
 | Config | Score | Avg latency | Params (effective) | Target device | Tested on | Offline |
 |---|---|---|---|---|---|---|
-| **A — E4B + MedLocal** | **101/101 (100 %)** | 29 s | 4 B | Laptop / tablet | laptop (llama.cpp Q4_K_S, ctx=12000) | ✅ |
-| **B — E2B + MedLocal** | **101/101 (100 %)** | **19 s** | **2 B** | **phone-class memory profile** | laptop (llama.cpp Q4_K_S, ctx=12000) | ✅ |
-| **C — Gemini 3.1 Pro naive** | 100/101 (99 %) | 17 s | not disclosed | Cloud only | Google API | ❌ |
+| **A - E4B + MedLocal** | **101/101 (100 %)** | 29 s | 4 B | Laptop / tablet | laptop (llama.cpp Q4_K_S, ctx=12000) | ✅ |
+| **B - E2B + MedLocal** | **101/101 (100 %)** | **19 s** | **2 B** | **phone-class memory profile** | laptop (llama.cpp Q4_K_S, ctx=12000) | ✅ |
+| **C - Gemini 3.1 Pro naive** | 100/101 (99 %) | 17 s | not disclosed | Cloud only | Google API | ❌ |
 
 The Gemini 3.1 Pro residual (HP03) is a harness wording artefact
-confirmed by the LLM-as-judge audit, not a clinical error — see
+confirmed by the LLM-as-judge audit, not a clinical error - see
 hackathon writeup §5.4 for the explicit retraction of the earlier
 draft's overclaims and §5.6 for the case-by-case audit.
 
@@ -324,14 +324,14 @@ allergy gap so E2B now ties E4B at 101/101.
 | Lesson | Detail |
 |--------|--------|
 | Consultation index worsened quality | Q&A pairs caused false positive matches. Removed. Raw protocols + clean retrieval wins. |
-| ≤1 H2 per file is load-bearing (retraction of the earlier chunk_size row) | Earlier versions of this table said `chunk_size=2048` resolved the retrieval gaps. That was a partial truth — the deeper rule is that vstash's chunker splits at every markdown header BEFORE checking size, so a 1500-char file with five `##` sections produces five independently-ranked fragments. 64 of 67 protocols had to be flattened to bold-labels structure during the 2026-04-08 session. The authoring rule is "≤1 `##` per file, prefer bold labels, one chunk per protocol". Validated by `medlocal protocol audit`. |
+| ≤1 H2 per file is load-bearing (retraction of the earlier chunk_size row) | Earlier versions of this table said `chunk_size=2048` resolved the retrieval gaps. That was a partial truth - the deeper rule is that vstash's chunker splits at every markdown header BEFORE checking size, so a 1500-char file with five `##` sections produces five independently-ranked fragments. 64 of 67 protocols had to be flattened to bold-labels structure during the 2026-04-08 session. The authoring rule is "≤1 `##` per file, prefer bold labels, one chunk per protocol". Validated by `medlocal protocol audit`. |
 | Keyword expansion must NOT diagnose | Only translate symptoms to clinical terms. Diagnostic expansion = hidden hallucination. |
 | E2B is viable with the right pipeline (retraction) | Earlier versions of this table said "E2B is not viable for generative mode, fails drug allergy safety". That observation was correct for E2B with a naive prompt but is no longer true: with the PRIORITY 0 allergy guardrail (Capa I, commit `33f5edb`), E2B scores 101/101 on the 101-case judged benchmark. The pipeline is the determinant of clinical safety across the 2B-4B range. The E2B vs E4B trade-off is about response richness, not viability. See the hackathon writeup §5.5. |
-| "Bigger model != safer" retraction | Earlier versions said "Gemini Pro failed the allergy test" as evidence. The LLM-as-judge audit in the 2026-04-09 session found that the alleged failure was a harness wording artefact. Gemini 3.1 Pro scores 100/101 on the same suite with a naive prompt (the single residual HP03 is also a wording artefact). The honest version of the lesson is: "a cloud frontier model and a 2B on-device model can produce clinically equivalent answers on the same suite if both are evaluated under a non-brittle harness — what differentiates them is deployment properties, not clinical capability on this corpus". |
+| "Bigger model != safer" retraction | Earlier versions said "Gemini Pro failed the allergy test" as evidence. The LLM-as-judge audit in the 2026-04-09 session found that the alleged failure was a harness wording artefact. Gemini 3.1 Pro scores 100/101 on the same suite with a naive prompt (the single residual HP03 is also a wording artefact). The honest version of the lesson is: "a cloud frontier model and a 2B on-device model can produce clinically equivalent answers on the same suite if both are evaluated under a non-brittle harness - what differentiates them is deployment properties, not clinical capability on this corpus". |
 | Specific safety rules create bias | Hardcoded rules ("don't diagnose measles from fever alone") biased other queries. Generic rules work better. |
-| Continuous testing after every protocol change | Adding a protocol shifts the MMR/RRF ranking for every other case. DA05 (malaria dose for a 12 kg child) silently regressed from PASS to FAIL after the pneumonia safety-floor landed — cross-protocol weight-band content confused the small model's band-boundary reasoning. Fix: every KB edit requires a full bench re-run, not spot-checking the target case. See commit `d07a90f` and the feedback_continuous_testing memory. |
-| User-reported constraints need a PRIORITY 0 guard, not a prompt hope | Allergies live in the user's question, not in any retrieved protocol. The small model sometimes propagated the constraint and sometimes did not — non-deterministic at temperature 0.0. Fix: extract before the LLM call, inject a hard prompt constraint, post-process the answer and override if the model slipped. Same defense-in-depth pattern as the controlled-drug guard. |
-| The protocol must be explicit enough that a small model cannot misread it | DA05 was not a retrieval failure — the right chunk was at rank 1. It was a reading failure at the boundary between two weight bands. Fix: rewrite the protocol with worked examples naming the specific boundary values ("a 12 kg child receives 1 tablet"), not "fix the model". |
+| Continuous testing after every protocol change | Adding a protocol shifts the MMR/RRF ranking for every other case. DA05 (malaria dose for a 12 kg child) silently regressed from PASS to FAIL after the pneumonia safety-floor landed - cross-protocol weight-band content confused the small model's band-boundary reasoning. Fix: every KB edit requires a full bench re-run, not spot-checking the target case. See commit `d07a90f` and the feedback_continuous_testing memory. |
+| User-reported constraints need a PRIORITY 0 guard, not a prompt hope | Allergies live in the user's question, not in any retrieved protocol. The small model sometimes propagated the constraint and sometimes did not - non-deterministic at temperature 0.0. Fix: extract before the LLM call, inject a hard prompt constraint, post-process the answer and override if the model slipped. Same defense-in-depth pattern as the controlled-drug guard. |
+| The protocol must be explicit enough that a small model cannot misread it | DA05 was not a retrieval failure - the right chunk was at rank 1. It was a reading failure at the boundary between two weight bands. Fix: rewrite the protocol with worked examples naming the specific boundary values ("a 12 kg child receives 1 tablet"), not "fix the model". |
 | LLM-as-judge closes the whack-a-mole regex failure mode | The 2026-04-08 whack-a-mole row was a partial fix (widened lookback + unit tests for wordings that had broken the regex). The real fix is the two-layer evaluator in `tests/judge.py`: regex fast path for the 90 % a regex can decide, Gemini 2.5 Flash judge for the ambiguous 10 %. Verdicts cached in `tests/.judge_cache.json` for byte-deterministic reruns. The judge cleared six Gemini regex artefacts in the 2026-04-09 run. |
 | Be honest about the residuals, including the ones that look good | The earlier draft of the hackathon writeup claimed Gemini 3.1 Pro failed several cases that turned out to be harness artefacts. Retracting those claims was uncomfortable and the right thing to do. A medical app cannot afford a writeup that over-promises, even in its own favour. |
 | Vision needs CHW context | Image alone insufficient. Combined image + text context produces correct diagnoses. |
@@ -341,11 +341,11 @@ allergy gap so E2B now ties E4B at 101/101.
 | Preflight owns scope/emergency only, not retrieval keywords | Passing preflight's clinical terms to vstash caused dose-lookup regressions. Keeping the legacy `_KEYWORDS_PROMPT` expansion for retrieval preserves baseline quality. Preflight does the classification work the regex cannot. |
 | Context overflow masquerades as model variability | A cluster of "flaky" failures (ST03, PA06, CC04, CA15, ES04) were all symptoms of silent truncation when preflight + consult + schema overflowed 4096 tokens. Raising ctx to 8192 fixed them all and also reduced latency. Check context before chasing "flaky" tests. |
 | `_check_absent` must strip markdown | The benchmark's negation lookback failed on `**do not**` because the markdown asterisks broke the `"do not "` substring match. Strip `* _ ~` before the lookback so "**DO NOT** give water" is correctly recognised as negated guidance, not a prescription. |
-| Danger signs include envenomation with progression | IMCI lists neuro/resp/circ/dehydration/toxicology — but a snake/scorpion bite with spreading swelling or ascending red streaks also qualifies. Added as an explicit preflight category. |
-| Multilingual embedder is the weakest link for cross-lingual clinical retrieval | `paraphrase-multilingual` did not bridge "fumigando papas + miosis + sudando" to the organophosphate protocol — the chunk fell outside the top-87 vector candidates. BM25 found it at rank 1/83. Fix: FTS-boosted weights (0.3/0.7) + a dedicated 4th `fts_only=True` pass. See `docs/PIPELINE.md` §3.3. |
+| Danger signs include envenomation with progression | IMCI lists neuro/resp/circ/dehydration/toxicology - but a snake/scorpion bite with spreading swelling or ascending red streaks also qualifies. Added as an explicit preflight category. |
+| Multilingual embedder is the weakest link for cross-lingual clinical retrieval | `paraphrase-multilingual` did not bridge "fumigando papas + miosis + sudando" to the organophosphate protocol - the chunk fell outside the top-87 vector candidates. BM25 found it at rank 1/83. Fix: FTS-boosted weights (0.3/0.7) + a dedicated 4th `fts_only=True` pass. See `docs/PIPELINE.md` §3.3. |
 | MMR dedup at default 0.5 silently drops single-chunk documents | vstash's `_mmr_dedup` eliminated a single-chunk protocol, blaming "another chunk from the same document" that did not exist. Fix: always pass `mmr_lambda=1.0` for clinical-protocol corpora where every file is already a focused concept. |
 | `Memory.search()` does not forward `vec_weight`/`fts_weight`/`mmr_lambda` | Medlocal now calls `_store.search` directly with a manually-computed `embed_query`. Documented as `TODO(vstash-upstream)` in `knowledge.py`. |
-| Safety flag dedup via helper, not scattered guards | Four code paths can flag the same consult as an emergency. Scattering `if flag not in safety_flags` guards is fragile — a new path can regress. Centralised in a local `_flag()` helper so the invariant lives in one place. |
+| Safety flag dedup via helper, not scattered guards | Four code paths can flag the same consult as an emergency. Scattering `if flag not in safety_flags` guards is fragile - a new path can regress. Centralised in a local `_flag()` helper so the invariant lives in one place. |
 | Split protocols at authoring time, not at retrieval time | A 2557-char `poisoning-who.md` split at `## Immediate Actions` and the atropine block ended up in the non-matching chunk. Fix was to split the file into focused sub-files, each ≤2000 chars → 1 chunk. The ≤2000 char authoring rule is load-bearing, not stylistic. |
 
 ---
@@ -356,7 +356,7 @@ allergy gap so E2B now ties E4B at 101/101.
 medlocal/
 ├── pyproject.toml
 ├── README.md
-├── medlocal.toml                 # Runtime config (gitignored — has API keys)
+├── medlocal.toml                 # Runtime config (gitignored - has API keys)
 ├── medlocal/
 │   ├── __init__.py
 │   ├── config.py                 # Pydantic config, LLM + teacher_llm
@@ -385,7 +385,7 @@ medlocal/
 │   ├── test_unit.py                   # 79 unit tests (JSON repair, negation, allergy, runtime, structured-LLM-parse)
 │   ├── test_e2e.py                    # 22 E2E test cases (legacy)
 │   ├── benchmark_models.py            # 24-scenario model comparison (legacy)
-│   ├── benchmark_comprehensive.py     # 101-case suite — 15 categories, release gate (~30 min on E2B)
+│   ├── benchmark_comprehensive.py     # 101-case suite - 15 categories, release gate (~30 min on E2B)
 │   ├── benchmark_baseline.py          # Cloud baseline (Gemini 3.1 Pro naive prompt + judge)
 │   ├── judge.py                       # LLM-as-judge fallback (regex fast path + Gemini Flash judge)
 │   ├── .judge_cache.json              # Cached judge verdicts for byte-deterministic reruns
@@ -396,7 +396,7 @@ medlocal/
 ├── CHANGELOG.md                   # Version history (keep-a-changelog format)
 └── docs/
     ├── constitution.md            # Project vision and hackathon objective
-    ├── ARCHITECTURE.md            # This file — system overview + benchmarks + lessons
+    ├── ARCHITECTURE.md            # This file - system overview + benchmarks + lessons
     ├── PIPELINE.md                # Deep dive on consult flow + retrieval internals
     ├── ROADMAP.md                 # Phase plan with next steps
     └── SOURCES.md                 # Source documents with URLs and validation
@@ -407,7 +407,7 @@ medlocal/
 ## Hackathon Submission Checklist
 
 - [x] Working web demo with clinical scenarios
-- [x] **101-case adversarial benchmark with LLM-judge evaluator** — E4B 101/101, E2B 101/101, Gemini 3.1 Pro 100/101 (HP03 wording artefact)
+- [x] **101-case adversarial benchmark with LLM-judge evaluator** - E4B 101/101, E2B 101/101, Gemini 3.1 Pro 100/101 (HP03 wording artefact)
 - [x] vstash BEIR benchmarks (5 datasets + Chroma head-to-head)
 - [x] Vision mode demo (progressive disclosure)
 - [x] Constitution document
@@ -417,7 +417,7 @@ medlocal/
 - [x] **79 unit tests** (`tests/test_unit.py`)
 - [x] **Hackathon writeup honest rewrite** with §5.4 Gemini overclaim retraction, §5.6 manual residual audit, §5.7 scope-and-limits
 - [x] **AI-assistance disclosure** with protagonist framing in README, writeup, and notebook Acknowledgments
-- [x] **Kaggle Tier A demo notebook** (`notebooks/medlocal_demo.ipynb`) — 7 representative cases, switched to Gemma 4 (`gemma-4-26b-a4b-it`) as the cloud-demo consult LLM
+- [x] **Kaggle Tier A demo notebook** (`notebooks/medlocal_demo.ipynb`) - 7 representative cases, switched to Gemma 4 (`gemma-4-26b-a4b-it`) as the cloud-demo consult LLM
 - [x] Open source repository (Apache 2.0)
 - [ ] Pre-built core.db for distribution (P1, blocks the Android APK)
-- [ ] **Android-native APK running Gemma 4 E2B on a real phone** (the headline next step — see the hackathon writeup §9 item 1 and ROADMAP.md "The one that matters most")
+- [ ] **Android-native APK running Gemma 4 E2B on a real phone** (the headline next step - see the hackathon writeup §9 item 1 and ROADMAP.md "The one that matters most")

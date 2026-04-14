@@ -1,11 +1,11 @@
 # MedLocal
 
-**Offline clinical AI for community health workers.** Ask a question in any language, get a structured response with drug dosages, danger signs, and a traceable WHO protocol citation — no internet required.
+**Offline clinical AI for community health workers.** Ask a question in any language, get a structured response with drug dosages, danger signs, and a traceable WHO protocol citation - no internet required.
 
 Built for the [Kaggle Gemma 4 Good Hackathon 2026](https://www.kaggle.com/competitions/gemma-4-good-hackathon).
 Impact tracks: Health & Sciences · Global Resilience · Digital Equity & Inclusivity.
 
-> ⚠️ **Medical disclaimer** — MedLocal is a research and educational
+> ⚠️ **Medical disclaimer** - MedLocal is a research and educational
 > demonstration. It is **not** a medical device, not regulatory-approved,
 > and not intended for clinical decision-making without supervision by
 > a qualified healthcare professional. See [`LICENSE`](LICENSE) for the
@@ -15,7 +15,7 @@ Impact tracks: Health & Sciences · Global Resilience · Digital Equity & Inclus
 
 37% of the world has no reliable internet. The community health workers who would benefit most from clinical AI live and work in exactly that gap. Cloud-only tools are useless where they are most needed.
 
-MedLocal runs entirely on-device — retrieval, reasoning, vision, safety checks — on a phone or laptop. One download, zero ongoing cost.
+MedLocal runs entirely on-device - retrieval, reasoning, vision, safety checks - on a phone or laptop. One download, zero ongoing cost.
 
 ## What It Does
 
@@ -37,11 +37,11 @@ Every fact traces to a published protocol. The model never invents.
 
 ## Key Features
 
-- **75+ WHO/MSF protocols** — pediatrics, maternal health, emergencies, infectious disease, toxicology, child protection
-- **Anti-hallucination pipeline** — 9 safety layers including contraindication scan, controlled drug guard, dosage cross-check, allergy detection
-- **Multilingual** — works in Spanish, French, Swahili, Portuguese, Hindi, Arabic, English
-- **Vision mode** — photograph a wound, medication package, or document
-- **Spaced repetition training** — 201 clinical training cards with FSRS-6 scheduling
+- **75+ WHO/MSF protocols** - pediatrics, maternal health, emergencies, infectious disease, toxicology, child protection
+- **Anti-hallucination pipeline** - 9 safety layers including contraindication scan, controlled drug guard, dosage cross-check, allergy detection
+- **Multilingual** - works in Spanish, French, Swahili, Portuguese, Hindi, Arabic, English
+- **Vision mode** - photograph a wound, medication package, or document
+- **Spaced repetition training** - 201 clinical training cards with FSRS-6 scheduling
 - **99/101 (98%)** on a 15-category adversarial clinical safety benchmark
 
 ## How It Works

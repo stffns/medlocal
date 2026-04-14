@@ -1,4 +1,4 @@
-# MedLocal — Pipeline Deep Dive
+# MedLocal - Pipeline Deep Dive
 
 > Companion to `ARCHITECTURE.md`. Where `ARCHITECTURE.md` is the *what*,
 > this document is the *how* and *why*: the end-to-end request flow, the
@@ -60,14 +60,14 @@ Pregunta CHW (texto ± foto, cualquier idioma)
 └──────────────────────────────┬──────────────────────────────────┘
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ [C] preflight()  — 1 structured LLM call                        │
+│ [C] preflight()  - 1 structured LLM call                        │
 │ Returns: {clinical_terms, intent, out_of_scope,                 │
 │           rejection_reason, vital_emergency}                    │
 │                                                                 │
 │ Responsibilities (owned exclusively by preflight):              │
 │   • Cross-lingual scope classification (CHW vs licensed MD)     │
 │   • Cross-lingual emergency reasoning (IMCI danger signs        │
-│     translated by reasoning, not keywords — "respira rápido y   │
+│     translated by reasoning, not keywords - "respira rápido y   │
 │     se le hunden las costillas" fires regardless of language)   │
 │   • Symptom → English clinical term translation (not diagnosis) │
 │                                                                 │
@@ -75,13 +75,13 @@ Pregunta CHW (texto ± foto, cualquier idioma)
 │ few-shots teach the shape (qualifier downgrades, IMCI signs,    │
 │ diagnostic planning vs protocol execution) and the model        │
 │ generalises from there. Earlier versions with 8-9 hardcoded     │
-│ cases regressed on unseen inputs — the "reference over          │
+│ cases regressed on unseen inputs - the "reference over          │
 │ memorisation" rule is load-bearing.                             │
 │                                                                 │
 │ NOTE: preflight does NOT own retrieval keyword expansion.       │
 │ That stays in the legacy `_KEYWORDS_PROMPT` which is tuned      │
 │ for the corpus. Passing preflight terms to vstash caused        │
-│ dose-lookup regressions — preflight's job is classification,    │
+│ dose-lookup regressions - preflight's job is classification,    │
 │ not query engineering.                                          │
 └──────────────┬──────────────────────────────────┬───────────────┘
                │ out_of_scope=true?               │ out_of_scope=false
@@ -92,11 +92,11 @@ Pregunta CHW (texto ± foto, cualquier idioma)
      │ generation, no     │       │ Four passes against vstash,     │
      │ cost. Orient user  │       │ merged by chunk_id keeping the  │
      │ to who can help    │       │ max score per chunk. See §3     │
-     │ ("lab planning →   │       │ for the internals — this is     │
+     │ ("lab planning →   │       │ for the internals - this is     │
      │ ask your clinic"). │       │ where most of the interesting   │
      │ This is what fixed │       │ engineering lives.              │
      │ HP03 "what blood   │       └──────────────┬──────────────────┘
-     │ tests?" — the      │                      ▼
+     │ tests?" - the      │                      ▼
      │ system should      │       ┌─────────────────────────────────┐
      │ refuse cleanly     │       │ [E] Relevance filter            │
      │ before vstash, not │       │ threshold = best_score * 0.03   │
@@ -141,7 +141,7 @@ Pregunta CHW (texto ± foto, cualquier idioma)
                                                  ▼
                         ┌────────────────────────────────────────────┐
                         │ [I] Safety layer (safety.py)               │
-                        │  1. check_dosages — every dose in the      │
+                        │  1. check_dosages - every dose in the      │
                         │     answer must match a dose in one of     │
                         │     the protocol chunks, verbatim. If any  │
                         │     unmatched, append a "verify dosages"   │
@@ -222,7 +222,7 @@ cases. Removing any pass re-breaks at least one benchmark case:
 
 - **Pass 4 is the insight of 2026-04-07.** See §3.3.
 
-### 3.3 The FTS-only safety net — the key insight
+### 3.3 The FTS-only safety net - the key insight
 
 We discovered this debugging a textbook organophosphate poisoning case:
 *"Hombre de 35 años, estaba fumigando papas hace 2 horas. Llega con
@@ -247,21 +247,21 @@ by stage:
 | mmr_dedup    | FAIL    | **Silently eliminated a single-chunk doc** at         |
 |              |         | `mmr_lambda=0.5`, blaming "another chunk from the     |
 |              |         | same document" that did not exist.                    |
-| top_k_cutoff | —       | Never reached because MMR already dropped it.         |
+| top_k_cutoff | -       | Never reached because MMR already dropped it.         |
 
 Four compounding failures. Fixing any one alone wasn't enough. The
 fixes we shipped:
 
 1. **Bypass `Memory.search()` and call `_store.search()` directly**
    with `vec_weight=0.3, fts_weight=0.7, adaptive_rrf=False,
-   mmr_lambda=1.0`. `Memory.search()` does not expose those knobs —
+   mmr_lambda=1.0`. `Memory.search()` does not expose those knobs -
    we manually compute the query embedding via `vstash.embed.embed_query`
    and pass it through. This biases hybrid retrieval toward BM25
    because the corpus is small, densely-termed, and the multilingual
    embedder is the weak link for cross-lingual clinical queries.
 
 2. **Disable MMR dedup (`mmr_lambda=1.0`).** At 1.0 MMR degrades to
-   pure per-document dedup with no diversity penalty — exactly what
+   pure per-document dedup with no diversity penalty - exactly what
    we want for a corpus where every document is already a single
    focused concept. This alone stopped the single-chunk protocol
    from being silently dropped.
@@ -308,9 +308,9 @@ A single `chat_structured()` call returns five fields:
 
 | Field             | Type    | Role                                                  |
 |-------------------|---------|-------------------------------------------------------|
-| `clinical_terms`  | str[]   | English clinical search terms. TRANSLATION only — never a diagnosis. Hard rule: no "-itis / -emia / -osis" labels the user did not literally use. |
+| `clinical_terms`  | str[]   | English clinical search terms. TRANSLATION only - never a diagnosis. Hard rule: no "-itis / -emia / -osis" labels the user did not literally use. |
 | `intent`          | enum    | `protocol_execution` \| `open_diagnosis` \| `specific_treatment` \| `general_information` \| `out_of_domain` |
-| `out_of_scope`    | bool    | `true` only when the CHW is being asked to design a lab workup, interpret imaging, prescribe a specialist drug, or perform an invasive procedure. **Default FALSE** — permissive. |
+| `out_of_scope`    | bool    | `true` only when the CHW is being asked to design a lab workup, interpret imaging, prescribe a specialist drug, or perform an invasive procedure. **Default FALSE** - permissive. |
 | `rejection_reason`| str     | One-sentence explanation when `out_of_scope=true`.    |
 | `vital_emergency` | bool    | IMCI danger signs and equivalents, reasoned cross-lingually. Qualifiers DOWNgrade (`"only localised swelling"` → not emergency); explicit signs UPgrade (`"chest indrawing"` → emergency). |
 
@@ -332,7 +332,7 @@ A single `chat_structured()` call returns five fields:
 
 - **Reference examples teach the reasoning pattern.** Three few-shots
   (routine in-scope, emergency in-scope, open-diagnosis out-of-scope)
-  teach the model HOW to classify — not WHAT to answer for specific
+  teach the model HOW to classify - not WHAT to answer for specific
   cases. Earlier versions with 8-9 memorised cases regressed when
   they saw any unseen wording. The 3-example version generalises.
 
@@ -341,7 +341,7 @@ A single `chat_structured()` call returns five fields:
 Retrieval query construction. The legacy `_KEYWORDS_PROMPT` is tuned
 for the 54-protocol corpus and handling that with preflight caused
 dose-lookup regressions. Preflight's clinical_terms are an OPTIONAL
-additive input to `_multi_query_search` pass 3 — never a replacement
+additive input to `_multi_query_search` pass 3 - never a replacement
 for pass 2. This separation is load-bearing.
 
 ---
@@ -352,35 +352,35 @@ Seven checks, in order of cost and frequency. Checks 6 and 7 were
 added in the 2026-04-08 and 2026-04-09 sessions respectively; the
 rest are the original 2026-04-07 design.
 
-1. **`detect_emergency()` regex** — zero-cost, runs before any LLM
+1. **`detect_emergency()` regex** - zero-cost, runs before any LLM
    call. Matches "no respira", "convulsiones", "sangrado severo", and
    similar. False negatives are OK (preflight catches the rest);
    false positives would cost one unnecessary guidance response and
    are acceptable in an emergency system.
 
-2. **Confidence scoring** — derived from retrieval score spread. A
+2. **Confidence scoring** - derived from retrieval score spread. A
    tight cluster of high-scoring chunks → HIGH. A diffuse low-score
    mess → LOW. This feeds the UI banner and the benchmark's
    "hallucination probe" category (a LOW confidence + "refer to
    specialist" response on HP03 counts as a PASS, not a failure).
 
-3. **`check_dosages()` cross-check** — every mg, mg/kg, g, mL, IU in
+3. **`check_dosages()` cross-check** - every mg, mg/kg, g, mL, IU in
    the answer is regex-extracted and verified against the source
    chunks. An unmatched dose appends a "verify dosages" banner and
    flags `DOSAGE_MENTIONED`. This catches hallucinated dosing even
    when everything else in the answer is correct.
 
-4. **`verify_grounding()` (optional)** — one extra LLM call that
+4. **`verify_grounding()` (optional)** - one extra LLM call that
    asks the model to confirm each claim is supported by the chunks.
    Off by default for latency; on for the benchmark's release gate
    and available as a per-request flag.
 
-5. **Audit log (SQLite)** — every consultation becomes one row with
+5. **Audit log (SQLite)** - every consultation becomes one row with
    question, answer, sources, confidence, flags, and timestamps. This
    is what a CHW supervisor reviews at end of shift to spot drift.
    It is also how we retroactively catch failures discovered later.
 
-6. **`check_controlled_drugs()` — added 2026-04-08 (commit
+6. **`check_controlled_drugs()` - added 2026-04-08 (commit
    `a6aed81`).** Defense-in-depth behind the PRIORITY 0.5 prompt
    rule. Scans the answer for opioids, parenteral diazepam,
    sedative-anaesthetics (ketamine, propofol, midazolam),
@@ -388,17 +388,17 @@ rest are the original 2026-04-07 design.
    (vancomycin, teicoplanin). Any mention within the dose-token
    window, minus a 60-char pre-negation backoff that catches
    refusals like "do NOT give morphine 0.1 mg/kg", is treated as
-   a PRIORITY 0.5 bypass — `consult()` OVERWRITES the answer with
+   a PRIORITY 0.5 bypass - `consult()` OVERWRITES the answer with
    a static refusal rather than ship a half-trusted response. Adds
    `SafetyFlag.CONTROLLED_DRUG_DOSE_COMPUTED` to the audit log.
    Aminoglycosides (gentamicin, amikacin) are deliberately NOT in
    the list because pre-referral parenteral aminoglycosides are
    CHW-allowed in the LMIC context.
 
-7. **`extract_allergies()` + `check_allergies_in_answer()` — added
+7. **`extract_allergies()` + `check_allergies_in_answer()` - added
    2026-04-09 (commit `33f5edb`). Capa I, the ninth defense
    layer.** User-reported drug allergies live only in the question
-   text, not in any retrieved protocol — the other six checks have
+   text, not in any retrieved protocol - the other six checks have
    no protocol-level ground truth to compare against. The layer
    runs twice: once BEFORE the LLM call, parsing the question for
    English and Spanish allergy markers ("allergic to X", "alergia
@@ -423,11 +423,11 @@ rest are the original 2026-04-07 design.
 ```
 Query
   │
-  ├──► core (read-only)  —  73 WHO/MSF/UNICEF/AAP protocols,
+  ├──► core (read-only)  -  73 WHO/MSF/UNICEF/AAP protocols,
   │                          curated, single-chunk, ships with
   │                          the app, never edited live
   │
-  └──► local (editable)  —  country-specific protocols, scanned
+  └──► local (editable)  -  country-specific protocols, scanned
                              docs, CHT workflows. The CHW
                              (or their supervisor) can add
                              documents at runtime via
@@ -444,7 +444,7 @@ WHO.
 ### 6.2 Chunk size & why it matters
 
 `chunk_size=2048`, `chunk_overlap=256`. But the load-bearing rule is
-NOT a char count — we learned this the hard way on 2026-04-08 when the
+NOT a char count - we learned this the hard way on 2026-04-08 when the
 `medlocal protocol audit` skill revealed that 64 of 67 protocols were
 silently multi-chunk despite most being under 2500 chars.
 
@@ -460,11 +460,11 @@ silently multi-chunk despite most being under 2500 chars.
 
 > **Use at most ONE `##` header per protocol file. Prefer `**bold
 > labels**` for sub-sections.** Each file stays as one vstash chunk,
-> and the whole protocol — diagnosis, dosing, complications, danger
-> signs — reaches the LLM together on every query.
+> and the whole protocol - diagnosis, dosing, complications, danger
+> signs - reaches the LLM together on every query.
 
 `poisoning-organophosphate-who.md` is the template. It has one H1 and
-uses `**Step 1 — Protect yourself.**`, `**Step 2 — Decontaminate ...**`
+uses `**Step 1 - Protect yourself.**`, `**Step 2 - Decontaminate ...**`
 etc. as its sub-section headers. Result: one chunk, atropine dose
 always visible. A rewrite of `measles-who.md` on 2026-04-08 followed
 the same pattern and immediately fixed the pregnant-measles case that
@@ -473,7 +473,7 @@ had been missing the Vitamin A dose.
 **When content is genuinely too large for one flat file** (e.g. a
 dermatology protocol covering five distinct NTDs), split into focused
 **sibling files**, one per topic. Split only when the sub-topics are
-independent enough that only one is relevant to any given query —
+independent enough that only one is relevant to any given query -
 otherwise flatten with bold labels so both sides come through together.
 
 **Validate before committing.** `medlocal protocol validate <path>`
@@ -495,8 +495,8 @@ schema. The schema fields are:
 | `actions[]`        | Numbered, one per action. The CHW does these in order. Rendering as a checklist makes the workflow obvious. |
 | `refer_if[]`       | Bullet list of red flags that escalate to referral. |
 | `source`           | Protocol title for attribution. Post-processed to strip protocol ref numbers that the model likes to invent. |
-| `mode`             | `guidance` \| `assessment` — assessment triggers follow-up question generation. |
-| `urgency`          | `routine` \| `urgent` \| `emergency` — used for banner color and to upgrade-only flag cases where the regex missed and the model caught. |
+| `mode`             | `guidance` \| `assessment` - assessment triggers follow-up question generation. |
+| `urgency`          | `routine` \| `urgent` \| `emergency` - used for banner color and to upgrade-only flag cases where the regex missed and the model caught. |
 | `triage_questions[]` | Only populated in assessment mode. Yes/no questions in the user's language. |
 
 The schema is what makes the output **actionable**. A paragraph like
@@ -511,8 +511,8 @@ criterion, and a source is actionable.
 > Added 2026-04-09. The earlier version of this document only
 > mentioned vision in passing in §6 (the local-profile document
 > ingest path). Vision is one of the load-bearing capabilities of
-> MedLocal — the same Gemma 4 weights that handle text consultations
-> handle images on-device — and it deserves its own section.
+> MedLocal - the same Gemma 4 weights that handle text consultations
+> handle images on-device - and it deserves its own section.
 
 The vision module exposes three workflows on top of the same
 multimodal Gemma 4 model the consult path uses. There is no
@@ -521,7 +521,7 @@ ship, and no parallel safety layer to maintain. Every
 vision-derived recommendation is routed through the same
 9-layer pipeline a text question goes through.
 
-### 7.5.1 `triage(image, cfg, user_context)` — visual triage
+### 7.5.1 `triage(image, cfg, user_context)` - visual triage
 
 The simplest workflow. Takes an image path and an optional
 short text context from the CHW ("hace 3 días", "duele al
@@ -532,11 +532,11 @@ clinical-language description plus suggested search terms.
 
 The prompt instructs the model to **describe in clinical
 language, in the user's language, in under 150 words, and to
-suggest retrieval terms** — the goal is a description that is
+suggest retrieval terms** - the goal is a description that is
 specific enough to drive `vstash.search` to the right protocol,
 not a discharge summary.
 
-### 7.5.2 `triage_and_consult(image, kb, cfg, user_context)` — full vision pipeline
+### 7.5.2 `triage_and_consult(image, kb, cfg, user_context)` - full vision pipeline
 
 This is the workflow the mobile UI calls. It chains
 `triage()` into `consult()` so the visual findings become
@@ -546,28 +546,28 @@ context for the standard consult pipeline:
 image + user_context (any language)
     │
     ▼
-triage()                — Gemma 4 multimodal call
+triage()                - Gemma 4 multimodal call
     │                     returns visual description in user's language
     ▼
-extract suggested       — regex pulls "Suggested search terms: ..."
-search terms            — out of the description if present
+extract suggested       - regex pulls "Suggested search terms: ..."
+search terms            - out of the description if present
     │
     ▼
-build enriched_query    — "PHOTO CONTEXT (observed by CHW before
+build enriched_query    - "PHOTO CONTEXT (observed by CHW before
     │                     asking): {visual_findings}\n\nCHW QUESTION:
     │                     {user_context or search_terms}"
     │                     The visual findings are PREMISES of the
     │                     question, not optional decoration.
     ▼
-consult(enriched_query, — same call the text path uses, with
-        kb,             — language=cfg.language so the response
-        cfg.llm,        — language is honoured (the 2026-04-09 fix)
+consult(enriched_query, - same call the text path uses, with
+        kb,             - language=cfg.language so the response
+        cfg.llm,        - language is honoured (the 2026-04-09 fix)
         language=cfg.language)
     │
     ▼
 Capa A → B → C → D → E → F → G → H → I
-    │                        — full 9-layer safety pipeline runs
-    │                        — exactly the same way as text
+    │                        - full 9-layer safety pipeline runs
+    │                        - exactly the same way as text
     ▼
 structured response + visual description + cited sources → mobile UI
 ```
@@ -577,27 +577,27 @@ request, the consult call runs once per request, and they use
 the same Gemma 4 weights from the same loaded model in the
 same llama.cpp / Ollama / LM Studio runtime. There is no
 network. There is no second model. The PRIORITY 0 allergy
-guardrail (Capa I) sees the enriched query — so if the user
+guardrail (Capa I) sees the enriched query - so if the user
 photographs a rash AND says "le di amoxicilina, es alérgico a
 penicilina", the allergy extractor catches the constraint
 exactly the same way it does in a text-only consult.
 
-The 2026-04-09 review surfaced two real bugs in this path —
+The 2026-04-09 review surfaced two real bugs in this path -
 the language parameter was not being passed to `consult()` and
-the auto-detector regex had a Spanish/Swahili "ni" collision —
+the auto-detector regex had a Spanish/Swahili "ni" collision -
 both fixed in commit `4c19a63` with twelve new unit tests as
 the regression guard. The lesson: **even the bugs in vision
 were caught by the same engineering discipline that drove the
 text side**, and the fix path was identical (manual test →
 audit → unit test → commit).
 
-### 7.5.3 `identify_medication(image, cfg)` — medication ID
+### 7.5.3 `identify_medication(image, cfg)` - medication ID
 
 A single-call workflow that takes a photo of a pill, blister
 pack, vial, or packaging label and asks Gemma 4 to identify
-the drug. The known limitation listed in §9 — the triage
+the drug. The known limitation listed in §9 - the triage
 prompt was tuned to "describe what you see" rather than "read
-text first" — is a gap that bites this workflow specifically:
+text first" - is a gap that bites this workflow specifically:
 photos of medication labels currently come back as scene
 descriptions ("a white box with blue text") rather than as
 extracted text ("AMOXICILLIN 500 mg"). The fix is scoped (an
@@ -611,11 +611,11 @@ resolved against the retrieved formulary entries via the same
 catches age contraindications, allergies, and dose-authority
 violations the same way.
 
-### 7.5.4 `scan_document(image, cfg)` and `scan_and_ingest(image, kb, cfg)` — document scanning
+### 7.5.4 `scan_document(image, cfg)` and `scan_and_ingest(image, kb, cfg)` - document scanning
 
 The third workflow turns a photo of a printed clinical
-document — a national protocol page, a hand-written ward
-instruction, a referral form, a posted IMCI chart — into
+document - a national protocol page, a hand-written ward
+instruction, a referral form, a posted IMCI chart - into
 structured markdown that gets ingested into the **`local`**
 profile of the dual-profile knowledge base. The CHW's
 supervisor can take a photo of a country-specific protocol the
@@ -625,7 +625,7 @@ protocols, and the new content becomes searchable from the
 next consultation onwards.
 
 This is the architectural answer to "what if my country has
-its own protocol that is not in the WHO core?" — the local
+its own protocol that is not in the WHO core?" - the local
 profile is editable by the deploying organisation, the core
 profile is read-only and ships with the app, and federated
 search merges results from both with the best score winning.
@@ -639,8 +639,8 @@ image-grounded test cases requires curated clinical
 photographs we do not have a shareable license to ship.
 Building a reproducible vision benchmark suite is on the
 backlog as part of the 300-case field validation work named
-in the hackathon writeup §5.7. The architectural claim — same
-model, same safety layer, same offline runtime — stands on
+in the hackathon writeup §5.7. The architectural claim - same
+model, same safety layer, same offline runtime - stands on
 the code in `medlocal/vision.py` and on the manual smoke
 tests during development. The benchmark-grade clinical
 accuracy claim for vision specifically is not part of this
@@ -682,7 +682,7 @@ time. Step by step:
    enriching the protocol before realising the multilingual embedder
    was structurally unable to bridge "fumigando papas" to
    "organophosphate". The embedder is the slowest moving part of the
-   system — fix retrieval around it, not inside it.
+   system - fix retrieval around it, not inside it.
 
 5. **Re-ingest cleanly.** `vstash` does not delete orphans when a
    source file disappears from disk. Use
@@ -698,7 +698,7 @@ draft of this document (2026-04-07) contained a row claiming "E2B
 is not viable for the consult path (fails allergy safety)". That
 row was a correct observation of E2B's behaviour **before** the
 PRIORITY 0 allergy guardrail landed in commit `33f5edb`. With the
-guardrail in place, E2B scores 101/101 on the judged bench — tied
+guardrail in place, E2B scores 101/101 on the judged bench - tied
 with E4B and within one harness-artefact case of Gemini 3.1 Pro.
 The row is retired because it is no longer accurate.
 
@@ -713,12 +713,12 @@ The row is retired because it is no longer accurate.
 
 ---
 
-## 10. Hackathon narrative — the stories worth telling
+## 10. Hackathon narrative - the stories worth telling
 
 These are the concrete stories we earned the right to tell, each
 backed by code and benchmark evidence. They should anchor the writeup.
 
-### Story 1: "The system is as good as its protocols — feature, not bug"
+### Story 1: "The system is as good as its protocols - feature, not bug"
 
 MedLocal's failure modes are almost always traceable to a missing or
 badly-chunked protocol, not to the LLM. That is exactly what an
@@ -731,7 +731,7 @@ a wrong answer by editing a markdown file, the system has succeeded.
 When asked in French about cooling an infant with fever, the model
 proactively refused alcohol baths ("**ne pas** appliquer d'alcool")
 because the WHO protocol in the context window said so. No hardcoded
-rule, no safety layer keyword match — just the double-grounding
+rule, no safety layer keyword match - just the double-grounding
 architecture working as designed. The prompt's contraindication scan
 rule forced the model to check every action against the protocol's
 "do not" lists before emitting it.
@@ -745,7 +745,7 @@ supervisor" banner. This is the correct behaviour: we would rather
 raise a yellow flag than produce a confidently wrong answer in a
 language where the retrieval is weak. Silence beats hallucination.
 
-### Story 4: HP03 — turning a hallucination into a refusal
+### Story 4: HP03 - turning a hallucination into a refusal
 
 "What blood tests should I order for this patient?" was a known
 failure for months: the system retrieved noise and generated a
@@ -753,18 +753,18 @@ plausible-looking lab panel. The fix was architectural: the preflight
 translator classifies this as `out_of_scope=true` and short-circuits
 before retrieval. The response is now a clean orientation message
 ("lab selection requires clinician-level judgement; CHWs run only
-protocol-defined point-of-care tests"). Same model, same corpus — the
+protocol-defined point-of-care tests"). Same model, same corpus - the
 classifier was the missing piece.
 
-### Story 5: Organophosphate poisoning — four compounding retrieval bugs
+### Story 5: Organophosphate poisoning - four compounding retrieval bugs
 
 (The story in §3.3.) What looked like one bug was four. We only
 untangled it because `vstash.miss_analysis()` told us exactly which
 stage dropped the chunk at each step. The fix was not to tune the
 embedder; it was to add a BM25-only rescue channel that runs
-alongside hybrid retrieval. The broader lesson — for small
+alongside hybrid retrieval. The broader lesson - for small
 multilingual clinical corpora the embedder is the weakest link, and
-dedicated FTS passes are a structural fix, not a workaround — is the
+dedicated FTS passes are a structural fix, not a workaround - is the
 one insight from this project that probably generalises to other
 offline clinical assistants.
 
@@ -775,10 +775,10 @@ WHO meningococcemia protocol with the glass-test instruction.
 Before/after comparison with a naive single-query retrieval shows the
 difference: the diagnosis is unchanged but the CLINICAL ACTION
 appears only with the full protocol in context. This is the
-demonstration that "the protocol IS the answer" — the model is a
+demonstration that "the protocol IS the answer" - the model is a
 format layer, not a diagnostician.
 
-### Story 7: Neonate sepsis — cognitive traps in the input
+### Story 7: Neonate sepsis - cognitive traps in the input
 
 A first-time mother's description of a septic neonate includes
 reassuring framings ("he's an angel", "lets me sleep a lot") and a
@@ -794,11 +794,11 @@ textbook presentations.
 ## 11. What would we build next?
 
 Updated for the 2026-04-09 state. Items marked ✅ landed during
-the hackathon sprint itself — they are kept here as "was on the
+the hackathon sprint itself - they are kept here as "was on the
 backlog, now done" rather than deleted so the reader can see the
 trajectory.
 
-### The one that matters most — field deployment on a real phone
+### The one that matters most - field deployment on a real phone
 
 1. **Android-native MedLocal APK running Gemma 4 E2B entirely
    on-device.** This is the single work line that turns the
@@ -821,7 +821,7 @@ trajectory.
    - MediaPipe LLM Inference as the on-device runtime with a
      thin Kotlin wrapper around `consult()`; OR
    - llama.cpp compiled for ARM with a JNI bridge and a
-     Jetpack Compose UI — the most work, the most control.
+     Jetpack Compose UI - the most work, the most control.
 
    The Kaggle Gemma 4 Good Hackathon judges care about exactly
    this deployment target. **If the phone APK ships, the
@@ -832,16 +832,16 @@ trajectory.
 
 ### The rest of the backlog
 
-2. ✅ **LLM-as-judge fallback for `must_not_contain`** — landed
+2. ✅ **LLM-as-judge fallback for `must_not_contain`** - landed
    2026-04-09 as commit `6e93cc0`. Two-layer evaluator: regex
    fast path plus Gemini-2.5-Flash judge for the ambiguous cases.
    Cached verdicts in `tests/.judge_cache.json`.
 
-3. ✅ **PRIORITY 0 allergy guardrail** — landed 2026-04-09 as
+3. ✅ **PRIORITY 0 allergy guardrail** - landed 2026-04-09 as
    commit `33f5edb`. Extract, inject, post-process. Closed E2B
    ST04.
 
-4. ✅ **Continuous-testing rule after every protocol change** —
+4. ✅ **Continuous-testing rule after every protocol change** -
    landed 2026-04-09 as a feedback memory and the commit message
    on `d07a90f` (malaria DA05 fix). Every KB edit now requires a
    full bench re-run, not spot-checking the target case.
@@ -865,12 +865,12 @@ trajectory.
 7. **Vision triage text-reading pass.** Add an OCR-intent prompt
    before scene description so photos of medication packages produce
    drug identification, not scene descriptions. Still pending from
-   the 2026-04-07 backlog — the image cases surfaced during manual
+   the 2026-04-07 backlog - the image cases surfaced during manual
    testing but no one has paged this in yet.
 
 8. **Pre-built core.db for distribution** so the CHW install is one
    download, no ingest step, works on first boot offline. This is a
-   prerequisite for the Android APK in item 1 — the APK bundles a
+   prerequisite for the Android APK in item 1 - the APK bundles a
    pre-ingested SQLite snapshot rather than running ingest on the
    phone at first launch.
 
@@ -883,7 +883,7 @@ trajectory.
    validation requires breadth authored by the people who will
    actually use the system.
 
-10. **Intimate-partner violence protocol** — parallel to child
+10. **Intimate-partner violence protocol** - parallel to child
     protection, based on WHO RESPECT women framework and the LIVES
     protocol (Listen, Inquire, Validate, Enhance safety, Support).
     Adult safeguarding is the missing companion to CP01.
@@ -907,7 +907,7 @@ trajectory.
 *retrieval-interference lesson from DA05. §11 What would we build*
 *next marks LLM-judge, allergy guardrail, and continuous testing as*
 *landed, elevates Android phone deployment as the headline next*
-*step (item 1 — the one that matters most), and names the 300-case*
+*step (item 1 - the one that matters most), and names the 300-case*
 *field validation suite as the single biggest gap to deployment*
 *readiness.*
 
@@ -916,7 +916,7 @@ trajectory.
 *output schema, §6.2 chunk-size rationale, §7 preflight translator,*
 *§8 retrieval playbook, §10 hackathon-narrative stories. Those*
 *sections describe the architecture as it landed on 2026-04-07 and*
-*remain accurate for what they cover — the 2026-04-08 and*
+*remain accurate for what they cover - the 2026-04-08 and*
 *2026-04-09 deltas are documented in the hackathon writeup §6*
 *(the two debugging-session subsections) and in CHANGELOG.*
 

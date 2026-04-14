@@ -1,4 +1,4 @@
-# MedLocal — Offline Clinical AI for Community Health Workers
+# MedLocal - Offline Clinical AI for Community Health Workers
 
 **Kaggle Gemma 4 Good Hackathon 2026**
 **Impact tracks:** Health & Sciences · Global Resilience · Digital Equity & Inclusivity
@@ -40,12 +40,12 @@ No hallucination. No improvisation. Every fact traces to a published protocol.
 MedLocal uses **Gemma 4 E4B** (4 billion parameters, Q4_K_M quantization, ~6.3 GB) running entirely on-device through LM Studio or LiteRT-LM on Android. The same model handles:
 
 - **Text consultations** in 7+ languages (Spanish, French, Swahili, Portuguese, Hindi, Arabic, English)
-- **Visual triage** — photo of a wound, medication package, or printed document
-- **Clinical reasoning** — contraindication detection, emergency classification, triage screening
+- **Visual triage** - photo of a wound, medication package, or printed document
+- **Clinical reasoning** - contraindication detection, emergency classification, triage screening
 
 One model, one download, zero cloud dependency. The multimodal capability means a CHW can photograph a medication package and ask "is this safe for my pregnant patient?" without switching tools.
 
-We also validated with **Gemma 4 E2B** (2 billion parameters, ~4.4 GB) — the phone-friendly configuration that runs on a Samsung Galaxy S24 with 6.2 second consultation latency.
+We also validated with **Gemma 4 E2B** (2 billion parameters, ~4.4 GB) - the phone-friendly configuration that runs on a Samsung Galaxy S24 with 6.2 second consultation latency.
 
 ---
 
@@ -54,10 +54,10 @@ We also validated with **Gemma 4 E2B** (2 billion parameters, ~4.4 GB) — the p
 MedLocal is not a chatbot. It is a **retrieval system with a safety layer**.
 
 1. **The CHW asks a question** in any language
-2. **Pre-flight check** — a fast classifier determines: is this in scope? Is it an emergency? What clinical terms should we search for?
-3. **Protocol retrieval** — searches a local database of 75+ structured WHO/MSF protocols using a 4-pass search strategy that works across languages
+2. **Pre-flight check** - a fast classifier determines: is this in scope? Is it an emergency? What clinical terms should we search for?
+3. **Protocol retrieval** - searches a local database of 75+ structured WHO/MSF protocols using a 4-pass search strategy that works across languages
 4. **The model reads the protocols and responds** with structured output: condition, assessment, specific actions with dosages, referral criteria, and source citation
-5. **Post-generation safety checks** — verifies dosages match the source protocol, catches controlled drug doses, checks for allergy violations
+5. **Post-generation safety checks** - verifies dosages match the source protocol, catches controlled drug doses, checks for allergy violations
 
 The critical design principle: **the model never invents**. It formats and selects from retrieved protocols. If the protocols don't cover a question, MedLocal says so and refers to a clinician. This is what makes it safe enough for a CHW to use alone.
 
@@ -93,7 +93,7 @@ The two residual failures are non-deterministic edge cases in the Q4 quantized m
 
 ---
 
-## Protocols — The Knowledge Base
+## Protocols - The Knowledge Base
 
 MedLocal ships with **75+ structured clinical protocols** covering:
 
@@ -105,7 +105,7 @@ MedLocal ships with **75+ structured clinical protocols** covering:
 - **Child protection:** maltreatment recognition, non-accidental burn patterns, sexual abuse red flags
 - **Chronic disease:** diabetes, hypertension, asthma, epilepsy, depression
 
-Every protocol cites its WHO/MSF source with verifiable URLs. Protocols are plain markdown files that a clinician can edit with a text editor — no retraining, no re-deployment, just edit and re-ingest.
+Every protocol cites its WHO/MSF source with verifiable URLs. Protocols are plain markdown files that a clinician can edit with a text editor - no retraining, no re-deployment, just edit and re-ingest.
 
 ---
 
@@ -113,17 +113,17 @@ Every protocol cites its WHO/MSF source with verifiable URLs. Protocols are plai
 
 This is the core of MedLocal. A medical AI that occasionally invents a drug dose is worse than no AI at all. Our defense has multiple layers:
 
-1. **Pre-flight scope check** — out-of-scope questions (lab test ordering, imaging interpretation, surgical procedures) are rejected before retrieval
-2. **Retrieval, not generation** — the model only sees protocol text, never generates from general knowledge
-3. **Confidence scoring** — if retrieval quality is low, MedLocal returns "refer to a clinician" instead of guessing
-4. **Vague query detection** — if the CHW doesn't state a condition or symptoms, MedLocal asks instead of assuming
-5. **Contraindication scan** — drug + patient characteristics are checked against protocols before anything else
-6. **Controlled drug guard** — refuses to compute doses for opioids, sedatives, chemotherapy, etc.
-7. **Dosage cross-check** — every dosage in the answer is verified against the source protocol text
-8. **Allergy guard** — if the CHW reports an allergy, the system blocks that drug and all class siblings
-9. **Emergency fast-path** — regex patterns detect IMCI danger signs, poisoning, neonatal fever at zero LLM cost
+1. **Pre-flight scope check** - out-of-scope questions (lab test ordering, imaging interpretation, surgical procedures) are rejected before retrieval
+2. **Retrieval, not generation** - the model only sees protocol text, never generates from general knowledge
+3. **Confidence scoring** - if retrieval quality is low, MedLocal returns "refer to a clinician" instead of guessing
+4. **Vague query detection** - if the CHW doesn't state a condition or symptoms, MedLocal asks instead of assuming
+5. **Contraindication scan** - drug + patient characteristics are checked against protocols before anything else
+6. **Controlled drug guard** - refuses to compute doses for opioids, sedatives, chemotherapy, etc.
+7. **Dosage cross-check** - every dosage in the answer is verified against the source protocol text
+8. **Allergy guard** - if the CHW reports an allergy, the system blocks that drug and all class siblings
+9. **Emergency fast-path** - regex patterns detect IMCI danger signs, poisoning, neonatal fever at zero LLM cost
 
-When a layer catches a violation, it **overwrites the model's answer** with a safe refusal. The model doesn't get a vote on safety — the pipeline does.
+When a layer catches a violation, it **overwrites the model's answer** with a safe refusal. The model doesn't get a vote on safety - the pipeline does.
 
 ---
 
@@ -131,11 +131,11 @@ When a layer catches a violation, it **overwrites the model's answer** with a sa
 
 This project would not exist without the Gemma 4 release on March 31, 2026. Specifically:
 
-- **E2B/E4B size** — 2-4B parameters is the sweet spot for phone deployment with clinical-quality instruction following
-- **Multimodal in one checkpoint** — visual triage without a second model or network call
-- **Multilingual capability** — CHWs work in Spanish, French, Swahili, Portuguese, Hindi, not just English
-- **Structured output** — JSON schema enforcement produces consistent, parseable responses
-- **Apache 2.0 license** — deployable in health ministries, NGOs, and government programs without legal friction
+- **E2B/E4B size** - 2-4B parameters is the sweet spot for phone deployment with clinical-quality instruction following
+- **Multimodal in one checkpoint** - visual triage without a second model or network call
+- **Multilingual capability** - CHWs work in Spanish, French, Swahili, Portuguese, Hindi, not just English
+- **Structured output** - JSON schema enforcement produces consistent, parseable responses
+- **Apache 2.0 license** - deployable in health ministries, NGOs, and government programs without legal friction
 
 ---
 
@@ -144,18 +144,18 @@ This project would not exist without the Gemma 4 release on March 31, 2026. Spec
 - **Not a medical device.** MedLocal is a research demonstration, not an approved clinical tool
 - **Model variability.** Q4 quantization on a 4B model means occasional non-deterministic responses. The safety pipeline catches most issues, but not all
 - **Protocol coverage.** 75 protocols cover the most common CHW scenarios but not everything. Rare conditions may return "refer to a clinician"
-- **Language quality.** Multilingual capability degrades for low-resource languages — French and Spanish are strong, Swahili and Hindi are acceptable, Amharic is marginal
-- **No longitudinal context.** Each consultation is independent — no patient records, no follow-up tracking
+- **Language quality.** Multilingual capability degrades for low-resource languages - French and Spanish are strong, Swahili and Hindi are acceptable, Amharic is marginal
+- **No longitudinal context.** Each consultation is independent - no patient records, no follow-up tracking
 - **Android port is proof-of-concept.** The web UI on a local server is production-quality; the native Android app works but with lower response quality due to on-device inference constraints
 
 ---
 
 ## What's Next
 
-1. **Field pilot** — partner with an NGO operating CHW programs to test with real users in a supervised setting
-2. **Protocol expansion** — add country-specific formularies and facility-level guidelines
-3. **Spaced repetition training** — 201 training cards with FSRS-6 scheduling are built but need field validation
-4. **Android native** — the LiteRT-LM port runs Gemma 4 E2B on a Samsung S24 in 6.2 seconds. Three-week port to production quality is planned
+1. **Field pilot** - partner with an NGO operating CHW programs to test with real users in a supervised setting
+2. **Protocol expansion** - add country-specific formularies and facility-level guidelines
+3. **Spaced repetition training** - 201 training cards with FSRS-6 scheduling are built but need field validation
+4. **Android native** - the LiteRT-LM port runs Gemma 4 E2B on a Samsung S24 in 6.2 seconds. Three-week port to production quality is planned
 
 ---
 

@@ -1,13 +1,13 @@
-# MedLocal — Source Documents
+# MedLocal - Source Documents
 
 ## Copyright, originality, and license compatibility
 
 The clinical protocol documents in `data/core/protocols/` are
 **original works** authored by the MedLocal project, based on
 **factual medical information** from the publicly available
-guidelines cited in this document. Factual medical information —
+guidelines cited in this document. Factual medical information -
 diagnostic criteria, drug dosages, clinical thresholds, dose
-schedules, epidemiological data, and similar facts — is not
+schedules, epidemiological data, and similar facts - is not
 subject to copyright protection under U.S. law
 ([17 U.S.C. § 102(b)](https://www.law.cornell.edu/uscode/text/17/102))
 or most international jurisdictions, which protect only the
@@ -40,7 +40,7 @@ any CC-BY-NC-SA content. MedLocal redistributes only original
 documents authored by the MedLocal project that describe the same
 factual medical content using different wording. This is the same
 relationship a textbook, review article, or encyclopedia entry
-has with its cited primary sources — the author draws on them for
+has with its cited primary sources - the author draws on them for
 facts and cites them for attribution, but does not reproduce their
 expression.
 
@@ -71,7 +71,7 @@ author (Jayson Steffens) as independent MIT-licensed projects,
 and both were written or extended during MedLocal development:
 
 - **vstash** (MIT, [`github.com/stffns/vstash`](https://github.com/stffns/vstash))
-  — the hybrid SQLite + FTS5 + vector retrieval engine that sits
+  - the hybrid SQLite + FTS5 + vector retrieval engine that sits
   under the MedLocal `knowledge.py` layer. Four retrieval
   improvements discovered while debugging the organophosphate
   cholinergic toxidrome case (2026-04-07) landed upstream in
@@ -84,7 +84,7 @@ and both were written or extended during MedLocal development:
   retrieval deep dive.
 
 - **snapvec** (MIT, [`github.com/stffns/snapvec`](https://github.com/stffns/snapvec))
-  — an optional pluggable vector backend for vstash. Pure NumPy,
+  - an optional pluggable vector backend for vstash. Pure NumPy,
   no scipy, no FAISS, no C extensions. Implements the TurboQuant
   compression pipeline from Zandieh et al. (ICLR 2026,
   [arXiv:2504.19874](https://arxiv.org/abs/2504.19874)): a
@@ -95,7 +95,7 @@ and both were written or extended during MedLocal development:
   ~8 × on-disk compression of a float32 vector index with
   ≈0.95 recall@10 on BGE-small embeddings. MedLocal does not
   enable snapvec for this hackathon submission (at 73 protocols
-  the savings are ~100 KB on a 3 MB database — immaterial) but
+  the savings are ~100 KB on a 3 MB database - immaterial) but
   the engine supports the swap via a one-line config change in
   `VstashStore(vector_backend="snapvec")`, and at a plausible
   deployment scale of 5 000 protocols per country the same swap
@@ -166,7 +166,7 @@ Gemma 4        chunk_id        data/core/protocols/      verifiable URL
 
 ---
 
-## Authoring rule (load-bearing — updated 2026-04-08)
+## Authoring rule (load-bearing - updated 2026-04-08)
 
 The original `≤2000 chars per file` rule was wrong. The real rule
 discovered by the `medlocal protocol audit` skill on 2026-04-08 is:
@@ -186,7 +186,7 @@ the whole corpus with `medlocal protocol audit` before release.
 
 ---
 
-## Tier 1 — Primary Sources (WHO)
+## Tier 1 - Primary Sources (WHO)
 
 Official documents from the World Health Organization. Highest
 authority level.
@@ -223,9 +223,9 @@ authority level.
 
 ---
 
-## Tier 2 — MSF (Médecins Sans Frontières)
+## Tier 2 - MSF (Médecins Sans Frontières)
 
-The single best practical source — written for exactly the field
+The single best practical source - written for exactly the field
 context MedLocal targets.
 
 | Document | Status | URL |
@@ -237,7 +237,7 @@ context MedLocal targets.
 
 ---
 
-## Tier 3 — Hesperian Health Guides
+## Tier 3 - Hesperian Health Guides
 
 Classic reference for community health workers. Creative Commons.
 
@@ -249,7 +249,7 @@ Classic reference for community health workers. Creative Commons.
 
 ---
 
-## Tier 4 — Regional Sources (`local` profile)
+## Tier 4 - Regional Sources (`local` profile)
 
 These go into the editable `local` profile, not the read-only `core`.
 
@@ -263,7 +263,7 @@ These go into the editable `local` profile, not the read-only `core`.
 
 ---
 
-## Structured Protocols — Current State (73 files, all single-chunk)
+## Structured Protocols - Current State (73 files, all single-chunk)
 
 As of 2026-04-09 every protocol in `data/core/protocols/` produces
 exactly one vstash chunk (verified by `medlocal protocol audit`).
@@ -284,7 +284,7 @@ Grouped by clinical domain for readability.
 | `newborn-resuscitation-who.md` | WHO/HBB Newborn Resuscitation |
 | `family-planning-who.md` | WHO MEC for Contraceptives |
 
-### Pediatrics — IMCI core
+### Pediatrics - IMCI core
 
 | File | Source |
 |------|--------|
@@ -404,7 +404,7 @@ Before any new protocol is included in `core.db`:
 
 ---
 
-*Last updated: 2026-04-08 — corpus flatten, heavy-metals protocol
+*Last updated: 2026-04-08 - corpus flatten, heavy-metals protocol
 (case HM01), and child-protection protocol (case CP01) all landed
 on the same day. Copyright and originality disclosure added
 reflecting the hackathon rules review.*
