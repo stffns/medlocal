@@ -40,8 +40,8 @@ def ingest(
         chunks = kb.ingest_local(source, force=force)
 
     if chunks == 0:
-        console.print("[yellow]No content ingested.[/yellow]")
-        raise typer.Exit(1)
+        console.print("[yellow]No new content ingested (already up to date).[/yellow]")
+        return
 
     console.print(f"[green]Ingested {chunks} chunks[/green] into {profile} profile")
 

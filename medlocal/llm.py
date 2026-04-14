@@ -13,8 +13,17 @@ from .config import LLMConfig
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = int(os.getenv("MEDLOCAL_LLM_TIMEOUT", "120"))
-_MAX_RETRIES = 3
-_RETRY_BACKOFF = (1.0, 3.0, 5.0)
+_MAX_RETRIES = 5
+_RETRY_BACKOFF = (2.0, 10.0, 30.0, 60.0, 90.0)
+
+
+def _parse_retry_delay(err_str: str) -> float | None:
+    """Extract Gemini 'retryDelay: 59s' or 'retry in 59.78s' from error."""
+    import re as _re
+    m = _re.search(r"retry(?:Delay|\s+in)[^\d]*(\d+(?:\.\d+)?)", err_str)
+    if m:
+        return float(m.group(1))
+    return None
 
 
 def chat(
@@ -32,6 +41,26 @@ def chat(
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
 
+    # Gemma quirks: merge system into user for gemma-3/3n (no system role).
+    model_lower = cfg.model.lower()
+    if ("gemma-3" in model_lower or "gemma-4" in model_lower) and messages and messages[0].get("role") == "system":
+        messages = [dict(m) for m in messages]
+        no_think = (
+            "Respond directly. Do NOT emit <thought> or reasoning blocks. "
+            "Give the final answer only.\n\n"
+        )
+        system_content = no_think + messages[0]["content"]
+        if "gemma-3" in model_lower:
+            # Merge system into first user message
+            for i, m in enumerate(messages[1:], start=1):
+                if m.get("role") == "user":
+                    messages[i] = dict(m)
+                    messages[i]["content"] = system_content + "\n\n" + m["content"]
+                    messages = messages[1:]
+                    break
+        else:
+            messages[0]["content"] = system_content
+
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES):
         try:
@@ -40,18 +69,23 @@ def chat(
                 messages=messages,
                 temperature=cfg.temperature,
             )
-            return response.choices[0].message.content or ""
+            text = response.choices[0].message.content or ""
+            # Strip Gemma 4 thinking blocks (Gemini API)
+            import re as _re_t
+            return _re_t.sub(r"<thought>.*?</thought>\s*", "", text, flags=_re_t.DOTALL)
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             err_str = str(exc).lower()
             status = str(getattr(exc, "status_code", ""))
-            retryable = "rate" in err_str or "timeout" in err_str or "5" in status
+            retryable = "rate" in err_str or "timeout" in err_str or "5" in status or "429" in err_str or "resource_exhausted" in err_str
             if not retryable or attempt == _MAX_RETRIES - 1:
                 break
-            wait = _RETRY_BACKOFF[attempt]
+            # Honor server-suggested retry delay, otherwise use backoff
+            server_delay = _parse_retry_delay(str(exc))
+            wait = max(server_delay + 2, _RETRY_BACKOFF[attempt]) if server_delay else _RETRY_BACKOFF[attempt]
             logger.warning(
                 "LLM call failed (attempt %d/%d), retrying in %.0fs: %s",
-                attempt + 1, _MAX_RETRIES, wait, exc,
+                attempt + 1, _MAX_RETRIES, wait, str(exc)[:200],
             )
             time.sleep(wait)
 
@@ -155,20 +189,88 @@ def chat_structured(
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
 
-    response = client.chat.completions.create(
-        model=cfg.model,
-        messages=messages,
-        temperature=cfg.temperature,
-        max_tokens=4096,
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": schema_name,
-                "schema": schema,
-            },
-        },
+    # Gemma models via Gemini API quirks:
+    # - gemma-4-*: response_format=json_schema hangs (6+ min). Use prompt-based schema.
+    # - gemma-3n-*: does not support system role. Concatenate system into user.
+    # Both strip <thought> reasoning blocks post-hoc.
+    model_lower = cfg.model.lower()
+    is_gemma_quirky = (
+        "gemma-4" in model_lower
+        or "gemma-3n" in model_lower
+        or "gemma-3-" in model_lower
     )
+    use_schema_enforcement = not is_gemma_quirky
+
+    if is_gemma_quirky and messages and messages[0].get("role") == "system":
+        messages = [dict(m) for m in messages]  # shallow copy
+        import json as _json
+        schema_hint = (
+            "CRITICAL: Respond directly with a single valid JSON object only. "
+            "Do NOT emit <thought> or reasoning blocks. Do NOT explain your "
+            "reasoning. Do NOT wrap in markdown fences. The response MUST "
+            f"conform to this JSON schema:\n{_json.dumps(schema, indent=2)}\n\n"
+        )
+        system_content = schema_hint + messages[0]["content"]
+
+        # gemma-3n and gemma-3 don't support system role — merge into user
+        if "gemma-3" in model_lower:
+            # Find first user message and prepend system content
+            for i, m in enumerate(messages[1:], start=1):
+                if m.get("role") == "user":
+                    messages[i] = dict(m)
+                    messages[i]["content"] = system_content + "\n\n" + m["content"]
+                    messages = messages[1:]  # drop the system message
+                    break
+        else:
+            messages[0]["content"] = system_content
+
+    create_kwargs = {
+        "model": cfg.model,
+        "messages": messages,
+        "temperature": cfg.temperature,
+        "max_tokens": 4096,
+    }
+    if use_schema_enforcement:
+        create_kwargs["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {"name": schema_name, "schema": schema},
+        }
+    # Retry loop for rate limits (Gemini API 15k tokens/min free tier)
+    response = None
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            response = client.chat.completions.create(**create_kwargs)
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            err_str = str(exc).lower()
+            status = str(getattr(exc, "status_code", ""))
+            retryable = "rate" in err_str or "timeout" in err_str or "5" in status or "429" in err_str or "resource_exhausted" in err_str
+            if not retryable or attempt == _MAX_RETRIES - 1:
+                raise
+            server_delay = _parse_retry_delay(str(exc))
+            wait = max(server_delay + 2, _RETRY_BACKOFF[attempt]) if server_delay else _RETRY_BACKOFF[attempt]
+            logger.warning(
+                "chat_structured failed (attempt %d/%d), retrying in %.0fs",
+                attempt + 1, _MAX_RETRIES, wait,
+            )
+            time.sleep(wait)
+    if response is None:
+        raise RuntimeError(f"chat_structured failed after {_MAX_RETRIES} attempts: {last_exc}") from last_exc
     text = response.choices[0].message.content or ""
+    # Strip <thought>...</thought> blocks (Gemma 4 thinking mode) and
+    # markdown code fences (Gemma 3/3n habit) before parsing JSON.
+    import re as _re_thought
+    text = _re_thought.sub(r"<thought>.*?</thought>\s*", "", text, flags=_re_thought.DOTALL)
+    text = text.strip()
+    # Remove markdown fences: ```json ... ``` or ``` ... ```
+    if text.startswith("```"):
+        # Strip opening fence (with optional language tag)
+        text = _re_thought.sub(r"^```(?:json)?\s*\n?", "", text)
+        # Strip closing fence
+        text = _re_thought.sub(r"\n?```\s*$", "", text)
+        text = text.strip()
     if not text.strip():
         raise StructuredLLMParseError(
             raw=text, repaired="", reason="empty model output"
