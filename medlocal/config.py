@@ -26,6 +26,19 @@ class LLMConfig(BaseModel):
     base_url: str = Field(default="http://localhost:1234/v1")
     temperature: float = Field(default=0.3)
 
+    def resolved_api_key(self) -> str:
+        """Resolve api_key via env var override.
+
+        If api_key starts with 'env:', read the named env var (e.g. 'env:GEMINI_API_KEY').
+        Otherwise return the literal value. Also auto-picks GEMINI_API_KEY for gemini provider.
+        """
+        if self.api_key.startswith("env:"):
+            var = self.api_key[4:].strip()
+            return os.getenv(var, "")
+        if self.provider == "gemini" and self.api_key in ("", "not-needed"):
+            return os.getenv("GEMINI_API_KEY", "")
+        return self.api_key
+
 
 class MedLocalConfig(BaseModel):
     """Application configuration."""
@@ -59,8 +72,26 @@ class MedLocalConfig(BaseModel):
         return self.teacher_llm or self.llm
 
 
+def _load_dotenv() -> None:
+    """Minimal .env loader: load cwd/.env into os.environ without overwriting."""
+    path = Path.cwd() / ".env"
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        k = k.strip()
+        v = v.strip().strip('"').strip("'")
+        if k and k not in os.environ:
+            os.environ[k] = v
+
+
 def load_config() -> MedLocalConfig:
     """Load config from ~/.medlocal/config.toml."""
+    _load_dotenv()
+
     candidates = [
         Path.cwd() / "medlocal.toml",
         _DEFAULT_CONFIG_DIR / "config.toml",

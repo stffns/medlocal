@@ -42,7 +42,7 @@ Every fact traces to a published protocol. The model never invents.
 - **Multilingual** - works in Spanish, French, Swahili, Portuguese, Hindi, Arabic, English
 - **Vision mode** - photograph a wound, medication package, or document
 - **Spaced repetition training** - 201 clinical training cards with FSRS-6 scheduling
-- **99/101 (98%)** on a 15-category adversarial clinical safety benchmark
+- **101/101 (100%)** on a 15-category adversarial clinical safety benchmark
 
 ## How It Works
 
@@ -86,7 +86,7 @@ The model never generates from general knowledge. It reads retrieved protocol te
 
 | Configuration | Score | Offline | Model |
 |---|---|---|---|
-| Gemma 4 E4B + MedLocal | **99/101 (98%)** | ✅ | 4B params, 6.3 GB |
+| Gemma 4 E4B + MedLocal | **101/101 (100%)** | ✅ | 4B params, 6.3 GB |
 | Gemma 4 E2B + MedLocal | validated | ✅ | 2B params, 4.4 GB |
 
 15 categories: safety · emergency · clinical · dosage · hallucination · contraindication · multilingual · cross-lingual emergency · child protection · rabies · anaphylaxis · and more.

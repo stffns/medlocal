@@ -94,7 +94,7 @@ def _chat_with_image(
 ) -> str:
     """Send a chat completion with an image to an OpenAI-compatible API."""
     base_url = cfg.base_url or "https://generativelanguage.googleapis.com/v1beta/openai/"
-    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.api_key or "not-needed"
+    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.resolved_api_key() or "not-needed"
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=120)
 

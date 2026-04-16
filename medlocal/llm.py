@@ -26,6 +26,62 @@ def _parse_retry_delay(err_str: str) -> float | None:
     return None
 
 
+def _strip_plaintext_cot(text: str) -> str:
+    """Strip Gemma E4B's plaintext chain-of-thought leak.
+
+    Gemma sometimes emits its reasoning as prose before the final answer
+    instead of wrapping it in <thought>...</thought>. Most visible on
+    cross-lingual keyword expansion where the 5-word answer gets buried
+    under 250 words of "Thinking Process: 1. Analyze the Request..." which
+    then pollutes downstream FTS/vector retrieval.
+
+    Detection: response starts with 'thought' (lowercase) OR contains
+    'Thinking Process:' within the first 200 chars. When detected, extract
+    the content after the last Final-Output marker, or fall back to the
+    last non-empty line.
+
+    Preserves structured JSON output: if the final segment starts with
+    '{' or '[' we return as-is (JSON callers handle their own repair).
+    """
+    if not text:
+        return text
+    stripped = text.lstrip()
+    # Preserve structured JSON: JSON callers have their own repair path.
+    if stripped.startswith("{") or stripped.startswith("["):
+        return text
+    import re as _re
+    # Signatures of Gemma's plaintext reasoning leak.
+    cot_signals = (
+        stripped.startswith("thought"),
+        "Thinking Process" in stripped[:400],
+        "Final Selection:" in stripped,
+        "**Final Output" in stripped,
+        "**Final Answer" in stripped,
+        bool(_re.search(r"^\s*\d+\.\s*\*\*Analyze", stripped, _re.MULTILINE)),
+    )
+    if not any(cot_signals):
+        return text
+    markers = (
+        r"\*\*Final Output Generation\.?\*\*\s*:?\s*",
+        r"\*\*Final Output:?\*\*\s*",
+        r"\*\*Final Answer:?\*\*\s*",
+        r"\*\*Final Selection:?\*\*\s*",
+        r"Final Selection:?\s*",
+        r"Final Output:?\s*",
+    )
+    for pat in markers:
+        parts = _re.split(pat, stripped)
+        tail = parts[-1].strip() if len(parts) > 1 else ""
+        if tail:
+            # Some models echo the answer twice; collapse duplicates.
+            half = len(tail) // 2
+            if half > 4 and tail[:half].strip() == tail[half:].strip():
+                tail = tail[:half].strip()
+            return tail
+    lines = [ln.strip() for ln in stripped.splitlines() if ln.strip()]
+    return lines[-1] if lines else text
+
+
 def chat(
     messages: list[dict[str, str]],
     cfg: LLMConfig,
@@ -37,7 +93,7 @@ def chat(
     }
 
     base_url = cfg.base_url or base_urls.get(cfg.provider, "https://api.openai.com/v1")
-    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.api_key or "not-needed"
+    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.resolved_api_key() or "not-needed"
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
 
@@ -72,9 +128,12 @@ def chat(
                 temperature=cfg.temperature,
             )
             text = response.choices[0].message.content or ""
-            # Strip Gemma 4 thinking blocks (Gemini API)
+            # Strip Gemma 4 thinking blocks (Gemini API uses <thought> tags;
+            # LM Studio leaks plaintext "thought\nThinking Process:\n..." before
+            # the actual answer, most visible on non-English keyword expansion).
             import re as _re_t
-            return _re_t.sub(r"<thought>.*?</thought>\s*", "", text, flags=_re_t.DOTALL)
+            text = _re_t.sub(r"<thought>.*?</thought>\s*", "", text, flags=_re_t.DOTALL)
+            return _strip_plaintext_cot(text)
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             err_str = str(exc).lower()
@@ -187,7 +246,7 @@ def chat_structured(
     }
 
     base_url = cfg.base_url or base_urls.get(cfg.provider, "https://api.openai.com/v1")
-    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.api_key or "not-needed"
+    api_key = os.getenv("MEDLOCAL_API_KEY") or cfg.resolved_api_key() or "not-needed"
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=_TIMEOUT)
 
