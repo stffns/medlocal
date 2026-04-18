@@ -216,3 +216,71 @@ Python side on `main`:
 Success criterion for closing this workstream: **≥ 95 / 101 on-device
 with the same 9-layer safety pipeline, on a device we can hand to
 a community health worker.**
+
+---
+
+## 2026-04-18 session conclusion: parity blocked upstream
+
+### What landed
+- **P0 stream + EOS** (`eb6cf69` on `feat/medlocal-spike`). Replaces
+  the sync `sendMessage` in BenchmarkRunner with streaming
+  `sendMessageAsync` + MessageCallback. Accumulates tokens and
+  short-circuits on a complete `SOURCE:` line. Smoke test against
+  the 8 v3 runaways: E2B went from 0/8 to 8/8 by the regex judge,
+  E4B landed 7/8 with zero hard timeouts and 55 s avg vs 141 s.
+- **Rich consult card UI** (`e45c0a9`). Reshapes the structured LLM
+  output into a Compose card with confidence chip, section icons,
+  numbered action badges, and a collapsible "Retrieved protocols (N)"
+  footer. Mirrors the local Python web UI visually. Text pipeline is
+  `fullResponse -> AnswerCleaner -> ResponseFormatter (Markdown) ->
+  ParsedConsult -> MedLocalConsultCard`.
+
+### What we learned that the earlier plan missed
+- **Regex judge is not safety.** The 8/8 rescue on E2B masks dose
+  tokenization errors that the judge does not catch. Inspecting the
+  actual E4B responses on the 8 cases surfaced unsafe numeric output:
+  `Vitamin A 20,0,0,000 IU`, `Ringer's Lactate 30000 mL/kg`,
+  `cetirizine 100 mg`, `Hydrocortisone 000 mg`, `Paracetamol 1.0-5
+  mg/kg`. Laptop E2B on the same queries produces correct values
+  because llama.cpp's grammar-constrained decoding forces each digit
+  through a valid-token mask. LiteRT-LM has no equivalent API.
+- **LiteRT-LM SamplerConfig has no repetition penalty, no stop
+  sequences, no response_format.** Verified by disassembling the
+  0.10.0 api jar. The only constrained-decoding hook is
+  `enableConversationConstrainedDecoding`, which is coupled to the
+  ToolManager (function calling) path. Using it for our schema would
+  require repackaging the consult as a tool call - non-trivial and
+  not attempted in this session.
+- **E4B is not a workaround for missing grammar.** Better than E2B
+  (no infinite loops, cleaner structure) but still emits garbled doses
+  for the same cases because the issue is tokenization of large
+  numbers with separators, not model capability.
+- **Clinic-server deployment is off-spec.** The target user is a CHW
+  in the field, not in a clinic with Wi-Fi and a host. Python-web on
+  a shared server is a fallback, not the primary product. Termux on
+  the phone is viable for judges but not for CHWs - tech install
+  barrier.
+
+### Where this leaves the APK
+- Decision: **defer the native LiteRT-LM APK to post-hackathon**.
+  The P0 + card commits stay on `feat/medlocal-spike` as research
+  artefacts. Do not merge to `main` until LiteRT-LM exposes grammar
+  enforcement or we port to a wasm llama.cpp PWA.
+- The APK is not clinically safe for deployment today. It is safe to
+  show in the writeup as an early pilot that surfaces the runtime
+  gap.
+- Safety checks (Safety.kt allergy + controlled-drug regexes,
+  AnswerCleaner, dose-match flags) still run and still log, but they
+  do not block an unsafe response from reaching the UI. Fixing that
+  gap is the next real item if the APK ever becomes a deliverable.
+
+### For the Kaggle writeup
+- **Primary product is Python on a CHW's own laptop / shared
+  host.** 101/101 on the release bench, Gemma 4 E4B via llama.cpp or
+  MLX, grammar-enforced structured output.
+- **Android APK is a pilot** that demonstrates feasibility of the
+  retrieval + UI layers on a real phone and documents a concrete
+  LiteRT-LM gap: grammar-constrained decoding is required for safe
+  medication dosing. Include before/after screenshots of the consult
+  card so the visual parity lands, and name the runtime limitation
+  explicitly next to a dose-tokenization example.
