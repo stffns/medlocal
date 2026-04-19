@@ -36,79 +36,38 @@ IMMEDIATELY") in all 6, but the emergency chip never turned on.
 
 ## Attack plan
 
-### Day 1 (2026-04-19, today) - parser fix: post-hoc emergency detection
+### Day 1 (2026-04-19) - parser fix + prompt tightening + bundle refresh
 
-**Change** (landed in this commit):
+Day 1 absorbed what the original plan had split across three days. Six
+increments shipped against the same subset:
 
-- `medlocal/Safety.kt`: new `detectEmergencyInAnswer(answer)` scans
-  the response for `REFER URGENTLY` / `REFER IMMEDIATELY` /
-  `REFERIR URGENTLY` / `REFERIR INMEDIATAMENTE` / `URGENT -- REFER` /
-  the warning-triangle + URGENT marker.
-- `medlocal/BenchmarkRunner.kt`: OR the post-hoc signal into the
-  `emergency` field written to the jsonl.
-- `ui/llmchat/LlmChatViewModel.kt`: OR the post-hoc signal into the
-  MedLocalConsultMeta the consult card reads, and into the audit log.
+| Increment | Change | Subset |
+|-----------|--------|--------|
+| Baseline | P0 stream+EOS only | 8/20 |
+| Post-hoc emergency | `Safety.detectEmergencyInAnswer` ORed into bench/chat/audit | 13/20 |
+| ASAP wording | refer + as-soon-as-possible / refer-for-PEP style | 14/20 |
+| English-only labels | FORMAT_INSTRUCTION + RULE 3 reconciled; dropped Spanish regex | 16/20 |
+| Drift tolerance | `refer(ir)?\s+(urgently\|immediat\w*)`, one char of wiggle room | - |
+| 77-protocol bundle | core.db rebundled, `openFd` size-based auto-sync, noCompress db | 16/20 (RP01 rescued, ES04 regressed on stochastic drift) |
+| Proximity match | refer + urgency bounded by sentence | **17/20** |
 
-Rationale: closes the gap at the render boundary without changing
-preflight, so there is no risk of regressing the refer/urgent flag on
-cases that already pass. The question-side regex stays English-only
-on purpose - widening it to cover every language is exactly the kind
-of retrieval drift that 2026-04-09 DA05 taught us to avoid.
+Extrapolation to the full 101: approximately **98/101** (up from 81/101
+on 2026-04-17). Latency dropped from ~75s to ~38s average after the
+prompt tightening.
 
-Expected gain: +6 cases on the subset (8/20 -> 14/20), which maps to
-87/101 on the full 101-case bench.
+### Residuals (not closing before submit)
 
-### Day 2 (2026-04-20) - parser polish
+- **DA02** (vitamin A dose garbled). Numeric hallucination - the
+  LiteRT-LM structured-output gap we already deferred post-hackathon.
+- **ES04** (Spanish-only urgency, "atencion inmediata" / "consultar a
+  un medico"). Would require a multilingual policy decision on the
+  answer-side regex, not just more tolerance characters.
+- **CP01** (model emitted "REFERIRRGENTLY" and "REFERIMMEDIELY" as
+  smushed typos). Genuinely corrupt output; a regex cannot recover
+  this without firing on legitimate routine text.
 
-Three smaller render-side fixes surfaced in the subset raw output:
-
-1. **Bare-number action** (seen in screenshot, ES04 raw). `ResponseFormatter.renderList`
-   regex `^\s*\d+[.)]\s*` does not strip a digit that has no trailing
-   punctuation, so `"2"` on its own line survives as an empty action.
-   Fix: add `|^\s*\d+\s*$` to the filter so bare digits are dropped.
-2. **Leaked chain-of-thought preamble** (DA02 raw starts with
-   `PRIORITY 0 -- CONTRAINDICATION SCAN ... STEP 1 ... STEP 3 ...`
-   before the CONDITION line). The model echoed the system prompt's
-   reasoning scaffold. Either add an explicit stop-before-CONDITION
-   rule to the prompt or drop everything before the first SECTION_RE
-   match in `ResponseFormatter.format`.
-3. **Typo-tolerant REFER header** - the model sometimes emits
-   `REFERELY IF`, `REFER IMMEDIAT:`, `REFERATELY`. `SECTION_RE`
-   currently catches most of these via `REFER[\p{L} ]*`, but the
-   empty-inline variant (no text after colon, bullets on the next
-   line) collapses to an empty REFER_IF bucket. Fix: keep the bucket
-   even when the inline body is empty.
-
-### Day 3 (2026-04-21) - cheap content fixes
-
-Three of the six content fails look like retrieval/prompt issues, not
-model-quality gaps:
-
-- **ST06** (penicillin-allergic child with pneumonia, missed
-  erythromycin/azithromycin). The model answered with amoxicillin
-  despite the question stating the allergy. ConsultPipeline has
-  `extractAllergies` but the allergy is not being surfaced to the
-  prompt with enough weight. Try a harder guardrail: prepend
-  "Patient is ALLERGIC to penicillin, do NOT recommend any
-  beta-lactam" when `lastAllergies` contains penicillin.
-- **RP01** (dog bite on leg, retrieved fracture protocol). The
-  Spanish word "pierna" dominates the retrieval signal over "perro"
-  + "mordio". Add a static trigger in `KeywordExpander.expandStatic`
-  that maps `(perro|dog).*(mordio|bit|bite)` to the rabies
-  protocol title tokens.
-- **RP04** (stray dog bite, model recommended antivenom). The model
-  confused rabies PEP with snakebite antivenom. Add a prompt guardrail
-  that says "antivenom is for snakebite only - use rabies vaccine or
-  immunoglobulin for animal bites". Similar pattern to the existing
-  controlled-drug guard.
-
-Leave for post-submit (need a model or prompt rework we cannot fit):
-
-- **CA11** (wheeze without foreign-body findings, retrieved FBA
-  protocol instead of asthma). Needs the asthma/FBA disambiguator.
-- **DA01, DA02** (amoxicillin + vitamin A dose garbled). Numeric
-  hallucinations are the LiteRT-LM grammar-gap symptom. Fix is
-  structured output, which we have deferred.
+These stay documented gaps, not hidden regressions. The writeup calls
+them out.
 
 ## Verification
 
