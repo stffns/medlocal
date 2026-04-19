@@ -51,6 +51,18 @@ class SearchHandler(BaseHTTPRequestHandler):
             kb = _get_kb()
             results = kb.search(query, top_k=top_k, fts_only=fts_only)
 
+            data = [
+                {
+                    "chunk_id": r.chunk_id,
+                    "title": r.title,
+                    "text": r.text,
+                    "score": r.score,
+                    "profile": r.profile,
+                }
+                for r in results
+            ]
+            self._json(200, data)
+
         elif self.path == "/multi_search":
             # Full _multi_query_search with preflight — same as consult pipeline
             length = int(self.headers.get("Content-Length", 0))

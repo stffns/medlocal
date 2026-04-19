@@ -330,16 +330,14 @@ def classify_fail(entry: dict, reasons: list[str]) -> Verdict:
     parsed = ParsedConsult.from_markdown(formatted)
 
     want_emergency = entry.get("check_emergency") is True and entry.get("emergency") is False
+    # The scorer's reason string is a debug label - do not parse it back.
+    # When a "missing ..." reason is present, the must_contain list on the
+    # entry is what the scorer evaluated, so read it straight from there.
     missing_patterns: list[str] = []
-    for reason in reasons:
-        if reason.startswith("missing "):
-            literal = reason[len("missing "):]
-            try:
-                parsed_patterns = json.loads(literal.replace("'", '"'))
-                if isinstance(parsed_patterns, list):
-                    missing_patterns.extend(parsed_patterns)
-            except json.JSONDecodeError:
-                pass
+    if any(r.startswith("missing ") for r in reasons):
+        mc = entry.get("must_contain", [])
+        if isinstance(mc, list):
+            missing_patterns.extend(mc)
 
     if want_emergency and not missing_patterns:
         has_refer_markers = any(
