@@ -1,0 +1,25 @@
+# 20 failing cases from bench_android_v3.jsonl (2026-04-17 run).
+# Push to the device before running the bench to narrow execution:
+#   adb push tests/bench_android_subset.txt \
+#     /sdcard/Android/data/com.medlocal.android/files/bench_subset_ids.txt
+# Remove the file on device to restore the full 101-case run.
+ST03
+ST06
+CA06
+CA11
+DA01
+DA02
+ML03
+ES01
+ES02
+ES04
+ES06
+AS01
+AS03
+RP01
+RP02
+RP04
+AX01
+XE03
+XE04
+CP01
