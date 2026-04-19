@@ -25,6 +25,12 @@ data/core/who/
 # stdout is the canonical record; the JSON is for local inspection.
 tests/comprehensive_results.json
 tests/baseline_results_*.json
+tests/bench_android_partial.jsonl
+tests/*.log
+
+# LLVM coverage artefact dropped in the repo root by tools that link
+# against instrumented binaries. Never committed.
+*.profraw
 
 # Local agent configuration — tool-specific config files that belong
 # to the author's development environment, not to the published
